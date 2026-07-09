@@ -30,7 +30,8 @@ COLUMN_MAP = {
 }
 
 NUMERIC_COLS = {"harga_awal", "disc_per_row", "harga_jual", "row_total",
-                "disc_for_document", "new_row_total", "quantity", "document_number"}
+                "disc_for_document", "new_row_total", "quantity"}
+INT_COLS = {"document_number"}
 DATE_COLS = {"posting_date", "due_date"}
 OUTPUT_COLS = [
     "document_number", "posting_date", "due_date", "customer_code",
@@ -48,6 +49,15 @@ def _to_float(val):
         return float(val)
     except (TypeError, ValueError):
         return 0.0
+
+
+def _to_int(val):
+    if val is None:
+        return None
+    try:
+        return int(float(val))
+    except (TypeError, ValueError):
+        return None
 
 
 def _to_date(val):
@@ -122,7 +132,9 @@ def parse_excel(file_bytes: bytes) -> Dict[int, Tuple[List[dict], int]]:
                 if col == "year":
                     continue
                 val = get_cell(row, col)
-                if col in NUMERIC_COLS:
+                if col in INT_COLS:
+                    rec[col] = _to_int(val)
+                elif col in NUMERIC_COLS:
                     rec[col] = _to_float(val)
                 elif col in DATE_COLS:
                     rec[col] = _to_date(val)
