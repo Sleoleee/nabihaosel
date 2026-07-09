@@ -98,22 +98,21 @@ def parse_excel(file_bytes: bytes) -> Dict[int, Tuple[List[dict], int]]:
         records = []
         skipped = 0
 
-        for row in rows_iter:
-            def get(col):
-                idx = col_index.get(col)
-                if idx is None or idx >= len(row):
-                    return None
-                return row[idx]
+        def get_cell(row, col):
+            idx = col_index.get(col)
+            if idx is None or idx >= len(row):
+                return None
+            return row[idx]
 
+        for row in rows_iter:
             # Filter: skip canceled rows
-            canceled_val = get("canceled")
+            canceled_val = get_cell(row, "canceled")
             if canceled_val is not None and str(canceled_val).strip().upper() != "N":
                 skipped += 1
                 continue
 
             # Filter: skip zero/negative new_row_total
-            nrt_raw = get("new_row_total")
-            nrt = _to_float(nrt_raw)
+            nrt = _to_float(get_cell(row, "new_row_total"))
             if nrt <= 0:
                 skipped += 1
                 continue
@@ -122,7 +121,7 @@ def parse_excel(file_bytes: bytes) -> Dict[int, Tuple[List[dict], int]]:
             for col in OUTPUT_COLS:
                 if col == "year":
                     continue
-                val = get(col)
+                val = get_cell(row, col)
                 if col in NUMERIC_COLS:
                     rec[col] = _to_float(val)
                 elif col in DATE_COLS:
