@@ -40,8 +40,14 @@ def upload_file(filepath: str, mode: str = "upsert"):
 
         if mode == "replace":
             print(f"Menghapus data tahun {year} yang lama...")
-            # Use gt(0) to satisfy PostgREST requirement for a filter on DELETE
-            db.table("transactions").delete().eq("year", year).gt("id", 0).execute()
+            try:
+                # PostgREST requires 2+ filters on DELETE; use neq as dummy second filter
+                db.table("transactions").delete().eq("year", year).neq("id", -1).execute()
+            except Exception as e:
+                print(f"  PERINGATAN: Tidak bisa hapus data lama ({e})")
+                print(f"  Lanjut insert tanpa menghapus data lama...")
+                print(f"  (Untuk hapus manual: DELETE FROM transactions WHERE year = {year};)")
+                print(f"  Jalankan perintah SQL itu di Supabase SQL Editor lalu coba lagi.")
 
         print(f"Mengimpor {len(records)} baris untuk tahun {year}...")
         for i in range(0, len(records), CHUNK_SIZE):
