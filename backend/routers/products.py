@@ -15,42 +15,13 @@ def _int(val):
 @router.get("/kategori-trend")
 def kategori_trend(year: Optional[str] = Query(None), kategori: Optional[str] = Query(None)):
     db = get_client()
-    params = {
-        "p_year": _int(year),
-        "p_branch": None,
-    }
-    rows = db.rpc("get_product_trend", params).execute().data
-
-    if kategori and kategori != "all":
-        selected = {k.strip() for k in kategori.split(",")}
-        rows = [r for r in rows if r.get("kategori") in selected]
-
-    grouped = defaultdict(lambda: defaultdict(float))
-    all_years = set()
-    all_cats = set()
-
-    # product_trend returns kategori/month/revenue — group by year is not available
-    # so we fetch without year filter and group ourselves
-    params2 = {"p_year": None, "p_branch": None}
-    all_rows = db.rpc("get_product_trend", params2).execute().data
-    if kategori and kategori != "all":
-        selected = {k.strip() for k in kategori.split(",")}
-        all_rows = [r for r in all_rows if r.get("kategori") in selected]
-
-    # We need year info — use a different approach: aggregate by year directly
-    year_rows = db.rpc("get_revenue_by_kategori", {"p_year": None, "p_month": None, "p_branch": None}).execute().data
-
-    # Fall back: get yearly breakdown from transactions via kpi per year per kategori
-    # Use simpler SQL: get all kategori yearly totals
-    data = db.table("transactions").select("new_row_total, kategori, year").limit(10).execute().data
-    # Get distinct years first
     filter_data = db.rpc("get_filters", {}).execute().data
-    all_db_years = filter_data[0].get("years", []) if filter_data else []
+    all_years = sorted(filter_data[0].get("years", [])) if filter_data else []
 
     result_grouped = defaultdict(lambda: defaultdict(float))
-    all_cats2 = set()
+    all_cats = set()
 
-    for y in all_db_years:
+    for y in all_years:
         cat_rows = db.rpc("get_revenue_by_kategori", {"p_year": y, "p_month": None, "p_branch": None}).execute().data
         for r in cat_rows:
             k = r["kategori"]
@@ -58,19 +29,19 @@ def kategori_trend(year: Optional[str] = Query(None), kategori: Optional[str] = 
                 if k not in {kk.strip() for kk in kategori.split(",")}:
                     continue
             result_grouped[y][k] = float(r["revenue"] or 0)
-            all_cats2.add(k)
+            all_cats.add(k)
 
     result = []
-    for y in sorted(all_db_years):
+    for y in sorted(all_years):
         entry = {"year": y}
-        for k in all_cats2:
+        for k in all_cats:
             entry[k] = round(result_grouped[y].get(k, 0))
         result.append(entry)
 
-    cat_totals = {k: sum(result_grouped[y].get(k, 0) for y in all_db_years) for k in all_cats2}
+    cat_totals = {k: sum(result_grouped[y].get(k, 0) for y in all_years) for k in all_cats}
     top5 = sorted(cat_totals, key=lambda x: -cat_totals[x])[:5]
 
-    return {"data": result, "categories": sorted(all_cats2), "top5": top5}
+    return {"data": result, "categories": sorted(all_cats), "top5": top5}
 
 
 @router.get("/kategori-growth")
