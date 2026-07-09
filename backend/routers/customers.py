@@ -7,7 +7,7 @@ from utils.calculations import get_customer_tier
 
 router = APIRouter()
 
-ROW_LIMIT = 100000
+ROW_LIMIT = 300000
 
 
 def load(db, year=None):

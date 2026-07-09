@@ -7,7 +7,7 @@ from utils.calculations import CHANNEL_NAMES
 router = APIRouter()
 
 MONTHS = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"]
-ROW_LIMIT = 100000
+ROW_LIMIT = 300000
 
 
 def load_sales(db, year=None, branch=None):

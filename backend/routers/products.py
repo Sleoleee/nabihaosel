@@ -6,7 +6,7 @@ from utils.db import get_client
 router = APIRouter()
 
 MONTHS = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"]
-ROW_LIMIT = 100000
+ROW_LIMIT = 300000
 
 
 def _int(val):
