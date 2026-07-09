@@ -22,7 +22,7 @@ def load(db, year=None, kategori=None):
     )
     if year and year != "all": q = q.eq("year", int(year))
     if kategori and kategori != "all": q = q.eq("kategori", kategori)
-    return q.limit(ROW_LIMIT).execute().data
+    return q.order("posting_date").limit(ROW_LIMIT).execute().data
 
 
 @router.get("/overview")
@@ -116,7 +116,7 @@ def price_integrity(year: Optional[str] = Query(None), kategori: Optional[str] =
     q = db.table("transactions").select("harga_awal,harga_jual,kategori")
     if year and year != "all": q = q.eq("year", int(year))
     if kategori and kategori != "all": q = q.eq("kategori", kategori)
-    data = q.limit(ROW_LIMIT).execute().data
+    data = q.order("posting_date").limit(ROW_LIMIT).execute().data
     cat_stats = defaultdict(lambda: {"ha": [], "hj": []})
     for r in data:
         k = r.get("kategori") or "Lainnya"
