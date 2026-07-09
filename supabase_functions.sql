@@ -1,26 +1,23 @@
--- Revenue trend by year and month
-CREATE OR REPLACE FUNCTION get_revenue_trend(
-  p_year INT DEFAULT NULL,
-  p_kategori TEXT DEFAULT NULL,
-  p_branch TEXT DEFAULT NULL
-)
-RETURNS TABLE(year INT, month INT, revenue NUMERIC) AS $$
-BEGIN
-  RETURN QUERY
-  SELECT
-    t.year,
-    EXTRACT(MONTH FROM t.posting_date)::INT AS month,
-    SUM(t.new_row_total) AS revenue
-  FROM transactions t
-  WHERE
-    (p_year IS NULL OR t.year = p_year)
-    AND (p_kategori IS NULL OR t.kategori = p_kategori)
-    AND (p_branch IS NULL OR t.branch = p_branch)
-    AND t.posting_date IS NOT NULL
-  GROUP BY t.year, EXTRACT(MONTH FROM t.posting_date)
-  ORDER BY t.year, month;
-END;
-$$ LANGUAGE plpgsql;
+-- ============================================================
+-- STEP 1: Tambah index yang kurang
+-- ============================================================
+CREATE INDEX IF NOT EXISTS idx_transactions_document_number ON transactions(document_number);
+CREATE INDEX IF NOT EXISTS idx_transactions_branch ON transactions(branch);
+CREATE INDEX IF NOT EXISTS idx_transactions_year_month ON transactions(year, EXTRACT(MONTH FROM posting_date));
+
+-- ============================================================
+-- STEP 2: Fungsi sederhana yang cepat
+-- ============================================================
+
+-- Filters (distinct values) - fast karena pakai index
+CREATE OR REPLACE FUNCTION get_filters()
+RETURNS json AS $$
+  SELECT json_build_object(
+    'years', (SELECT array_agg(y ORDER BY y DESC) FROM (SELECT DISTINCT year AS y FROM transactions WHERE year IS NOT NULL) t),
+    'kategori', (SELECT array_agg(k ORDER BY k) FROM (SELECT DISTINCT kategori AS k FROM transactions WHERE kategori IS NOT NULL) t),
+    'branches', (SELECT array_agg(b ORDER BY b) FROM (SELECT DISTINCT branch AS b FROM transactions WHERE branch IS NOT NULL) t)
+  );
+$$ LANGUAGE sql STABLE;
 
 -- KPI summary
 CREATE OR REPLACE FUNCTION get_kpi(
@@ -43,7 +40,31 @@ BEGIN
     AND (p_kategori IS NULL OR t.kategori = p_kategori)
     AND (p_branch IS NULL OR t.branch = p_branch);
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql STABLE;
+
+-- Revenue trend by year and month
+CREATE OR REPLACE FUNCTION get_revenue_trend(
+  p_year INT DEFAULT NULL,
+  p_kategori TEXT DEFAULT NULL,
+  p_branch TEXT DEFAULT NULL
+)
+RETURNS TABLE(year INT, month INT, revenue NUMERIC) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    t.year,
+    EXTRACT(MONTH FROM t.posting_date)::INT AS month,
+    SUM(t.new_row_total) AS revenue
+  FROM transactions t
+  WHERE
+    (p_year IS NULL OR t.year = p_year)
+    AND (p_kategori IS NULL OR t.kategori = p_kategori)
+    AND (p_branch IS NULL OR t.branch = p_branch)
+    AND t.posting_date IS NOT NULL
+  GROUP BY t.year, EXTRACT(MONTH FROM t.posting_date)
+  ORDER BY t.year, month;
+END;
+$$ LANGUAGE plpgsql STABLE;
 
 -- Revenue by kategori
 CREATE OR REPLACE FUNCTION get_revenue_by_kategori(
@@ -65,7 +86,7 @@ BEGIN
   GROUP BY COALESCE(t.kategori, 'Lainnya')
   ORDER BY revenue DESC;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql STABLE;
 
 -- Revenue by branch
 CREATE OR REPLACE FUNCTION get_revenue_by_branch(
@@ -87,7 +108,7 @@ BEGIN
   GROUP BY COALESCE(t.branch, 'Lainnya')
   ORDER BY revenue DESC;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql STABLE;
 
 -- Bills and AOV by month
 CREATE OR REPLACE FUNCTION get_bills_aov(
@@ -111,19 +132,7 @@ BEGIN
   GROUP BY EXTRACT(MONTH FROM t.posting_date)
   ORDER BY month;
 END;
-$$ LANGUAGE plpgsql;
-
--- Available filters
-CREATE OR REPLACE FUNCTION get_filters()
-RETURNS TABLE(years INT[], kategori TEXT[], branches TEXT[]) AS $$
-BEGIN
-  RETURN QUERY
-  SELECT
-    ARRAY(SELECT DISTINCT t.year FROM transactions t WHERE t.year IS NOT NULL ORDER BY t.year DESC),
-    ARRAY(SELECT DISTINCT t.kategori FROM transactions t WHERE t.kategori IS NOT NULL ORDER BY t.kategori),
-    ARRAY(SELECT DISTINCT t.branch FROM transactions t WHERE t.branch IS NOT NULL ORDER BY t.branch);
-END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql STABLE;
 
 -- Sales leaderboard
 CREATE OR REPLACE FUNCTION get_sales_leaderboard(
@@ -150,7 +159,7 @@ BEGIN
   GROUP BY t.slp_name
   ORDER BY revenue DESC;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql STABLE;
 
 -- Sales trend by month per salesperson
 CREATE OR REPLACE FUNCTION get_sales_trend(
@@ -175,7 +184,7 @@ BEGIN
   GROUP BY t.slp_name, EXTRACT(MONTH FROM t.posting_date)
   ORDER BY t.slp_name, month;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql STABLE;
 
 -- Product trend by month and kategori
 CREATE OR REPLACE FUNCTION get_product_trend(
@@ -197,7 +206,7 @@ BEGIN
   GROUP BY COALESCE(t.kategori, 'Lainnya'), EXTRACT(MONTH FROM t.posting_date)
   ORDER BY kategori, month;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql STABLE;
 
 -- Top products
 CREATE OR REPLACE FUNCTION get_top_products(
@@ -226,9 +235,9 @@ BEGIN
   ORDER BY revenue DESC
   LIMIT p_limit;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql STABLE;
 
--- Discount overview
+-- Discount overview by month
 CREATE OR REPLACE FUNCTION get_discount_overview(
   p_year INT DEFAULT NULL,
   p_branch TEXT DEFAULT NULL
@@ -249,9 +258,9 @@ BEGIN
   GROUP BY EXTRACT(MONTH FROM t.posting_date)
   ORDER BY month;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql STABLE;
 
--- Customer list with RFM base data
+-- Customer summary
 CREATE OR REPLACE FUNCTION get_customer_summary(
   p_year INT DEFAULT NULL
 )
@@ -260,7 +269,7 @@ RETURNS TABLE(
   customer_name TEXT,
   revenue NUMERIC,
   bills BIGINT,
-  last_purchase DATE,
+  last_purchase TEXT,
   months_active BIGINT
 ) AS $$
 BEGIN
@@ -270,7 +279,7 @@ BEGIN
     MAX(t.customer_name) AS customer_name,
     SUM(t.new_row_total) AS revenue,
     COUNT(DISTINCT t.document_number) AS bills,
-    MAX(t.posting_date) AS last_purchase,
+    MAX(t.posting_date)::TEXT AS last_purchase,
     COUNT(DISTINCT DATE_TRUNC('month', t.posting_date)) AS months_active
   FROM transactions t
   WHERE
@@ -279,4 +288,4 @@ BEGIN
   GROUP BY t.customer_code
   ORDER BY revenue DESC;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql STABLE;
