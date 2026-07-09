@@ -8,15 +8,27 @@ router = APIRouter()
 MONTHS = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"]
 
 
+def _int(val):
+    return int(val) if val and val != "all" else None
+
+
 def load_data(db, year=None, kategori=None):
-    data = db.table("transactions").select(
+    params = {
+        "p_year": _int(year),
+        "p_branch": None,
+    }
+    rows = db.rpc("get_discount_overview", params).execute().data
+
+    # For endpoints that need per-row detail, we still need a direct query
+    # but filtered down to a manageable set via year filter
+    q = db.table("transactions").select(
         "new_row_total, row_total, disc_for_document, document_number, posting_date, year, kategori, customer_code, customer_name"
-    ).execute().data
+    )
     if year and year != "all":
-        data = [r for r in data if r.get("year") == int(year)]
+        q = q.eq("year", int(year))
     if kategori and kategori != "all":
-        data = [r for r in data if r.get("kategori") == kategori]
-    return data
+        q = q.eq("kategori", kategori)
+    return q.execute().data
 
 
 @router.get("/overview")
@@ -33,7 +45,6 @@ def overview(year: Optional[str] = Query(None), kategori: Optional[str] = Query(
         row_total = r.get("row_total") or 0
         new_row_total = r.get("new_row_total") or 0
         total_lost += max(0, row_total - new_row_total)
-
         doc = r.get("document_number")
         if doc:
             total_bills.add(doc)
@@ -166,14 +177,12 @@ def by_customer(year: Optional[str] = Query(None), kategori: Optional[str] = Que
 @router.get("/price-integrity")
 def price_integrity(year: Optional[str] = Query(None), kategori: Optional[str] = Query(None)):
     db = get_client()
-    data = db.table("transactions").select(
-        "harga_awal, harga_jual, kategori, year"
-    ).execute().data
-
+    q = db.table("transactions").select("harga_awal, harga_jual, kategori, year")
     if year and year != "all":
-        data = [r for r in data if r.get("year") == int(year)]
+        q = q.eq("year", int(year))
     if kategori and kategori != "all":
-        data = [r for r in data if r.get("kategori") == kategori]
+        q = q.eq("kategori", kategori)
+    data = q.execute().data
 
     cat_stats = defaultdict(lambda: {"harga_awal": [], "harga_jual": []})
     for r in data:

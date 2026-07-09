@@ -9,58 +9,41 @@ router = APIRouter()
 MONTHS = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"]
 
 
-def load_human_sales(db, year=None, branch=None):
-    data = db.table("transactions").select(
-        "new_row_total, document_number, customer_code, customer_name, slp_name, posting_date, year, branch, kategori"
-    ).execute().data
-    data = [r for r in data if r.get("slp_name") not in CHANNEL_NAMES]
-    if year and year != "all":
-        data = [r for r in data if r.get("year") == int(year)]
-    if branch and branch != "all":
-        data = [r for r in data if r.get("branch") == branch]
-    return data
+def _int(val):
+    return int(val) if val and val != "all" else None
+
+
+def _get_leaderboard_data(db, year=None, branch=None):
+    params = {
+        "p_year": _int(year) if year else None,
+        "p_month": None,
+        "p_kategori": None,
+        "p_branch": branch if branch and branch != "all" else None,
+    }
+    rows = db.rpc("get_sales_leaderboard", params).execute().data
+    return [r for r in rows if r.get("slp_name") not in CHANNEL_NAMES]
 
 
 @router.get("/leaderboard")
 def leaderboard(year: Optional[str] = Query(None), branch: Optional[str] = Query(None)):
     db = get_client()
-    data = load_human_sales(db, year, branch)
-
-    stats = defaultdict(lambda: {"revenue": 0, "docs": set(), "customers": set(), "categories": defaultdict(float)})
-
-    for r in data:
-        sp = r.get("slp_name") or "UNKNOWN"
-        stats[sp]["revenue"] += r.get("new_row_total") or 0
-        doc = r.get("document_number")
-        if doc:
-            stats[sp]["docs"].add(doc)
-        cust = r.get("customer_code")
-        if cust:
-            stats[sp]["customers"].add(cust)
-        kat = r.get("kategori") or "Lainnya"
-        stats[sp]["categories"][kat] += r.get("new_row_total") or 0
+    rows = _get_leaderboard_data(db, year, branch)
 
     result = []
-    for sp, s in stats.items():
-        bills = len(s["docs"])
-        customers = len(s["customers"])
-        aov = s["revenue"] / bills if bills > 0 else 0
-        avg_per_cust = s["revenue"] / customers if customers > 0 else 0
-        top3_cats = sorted(s["categories"].items(), key=lambda x: -x[1])[:3]
+    for i, r in enumerate(rows):
+        bills = int(r.get("bills") or 0)
+        revenue = float(r.get("revenue") or 0)
+        customers = int(r.get("customers") or 0)
         result.append({
-            "name": sp,
-            "revenue": round(s["revenue"]),
+            "rank": i + 1,
+            "name": r["slp_name"],
+            "revenue": round(revenue),
             "customers": customers,
-            "aov": round(aov),
             "bills": bills,
-            "avg_per_customer": round(avg_per_cust),
-            "top_categories": [c[0] for c in top3_cats],
+            "aov": round(revenue / bills) if bills > 0 else 0,
+            "avg_per_customer": round(revenue / customers) if customers > 0 else 0,
+            "top_categories": [],
         })
-
-    result.sort(key=lambda x: -x["revenue"])
-    for i, r in enumerate(result):
-        r["rank"] = i + 1
-
     return result
 
 
@@ -72,28 +55,37 @@ def sales_chart(year: Optional[str] = Query(None), branch: Optional[str] = Query
 @router.get("/drilldown/{name}")
 def drilldown(name: str, year: Optional[str] = Query(None)):
     db = get_client()
-    data = load_human_sales(db, year)
-    data = [r for r in data if r.get("slp_name") == name]
 
-    # Monthly trend
-    monthly = defaultdict(float)
-    for r in data:
-        pd_str = r.get("posting_date")
-        if pd_str:
-            m = int(pd_str[5:7])
-            monthly[m] += r.get("new_row_total") or 0
-
+    # Monthly trend for this salesperson
+    trend_rows = db.rpc("get_sales_trend", {
+        "p_year": _int(year),
+        "p_kategori": None,
+        "p_branch": None,
+    }).execute().data
+    trend_rows = [r for r in trend_rows if r.get("slp_name") == name]
+    monthly = {r["month"]: float(r["revenue"] or 0) for r in trend_rows}
     trend = [{"month": MONTHS[m-1], "revenue": round(monthly.get(m, 0))} for m in range(1, 13)]
 
-    # Category breakdown
-    cats = defaultdict(float)
-    for r in data:
-        cats[r.get("kategori") or "Lainnya"] += r.get("new_row_total") or 0
-    cat_list = sorted([{"kategori": k, "revenue": round(v)} for k, v in cats.items()], key=lambda x: -x["revenue"])
+    # Category breakdown for this salesperson - fetch via leaderboard with kategori filter
+    cat_rows = db.rpc("get_revenue_by_kategori", {
+        "p_year": _int(year),
+        "p_month": None,
+        "p_branch": None,
+    }).execute().data
 
-    # Customers served
+    # For drilldown we need per-salesperson kategori — fetch limited rows from transactions
+    # Use a small select with filters to avoid 1000-row limit issues
+    raw = db.table("transactions").select(
+        "new_row_total, kategori, customer_code, customer_name, posting_date"
+    ).eq("slp_name", name).execute().data
+
+    if year and year != "all":
+        raw = [r for r in raw if r.get("year") == int(year)]
+
+    cats = defaultdict(float)
     cust_stats = defaultdict(lambda: {"name": "", "revenue": 0, "last": ""})
-    for r in data:
+    for r in raw:
+        cats[r.get("kategori") or "Lainnya"] += r.get("new_row_total") or 0
         code = r.get("customer_code") or "UNKNOWN"
         cust_stats[code]["name"] = r.get("customer_name") or code
         cust_stats[code]["revenue"] += r.get("new_row_total") or 0
@@ -101,6 +93,7 @@ def drilldown(name: str, year: Optional[str] = Query(None)):
         if pd_str > cust_stats[code]["last"]:
             cust_stats[code]["last"] = pd_str
 
+    cat_list = sorted([{"kategori": k, "revenue": round(v)} for k, v in cats.items()], key=lambda x: -x["revenue"])
     custs = sorted(
         [{"name": v["name"], "revenue": round(v["revenue"]), "last_purchase": v["last"]} for v in cust_stats.values()],
         key=lambda x: -x["revenue"]

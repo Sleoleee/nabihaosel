@@ -8,73 +8,99 @@ router = APIRouter()
 MONTHS = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"]
 
 
+def _int(val):
+    return int(val) if val and val != "all" else None
+
+
 @router.get("/kategori-trend")
 def kategori_trend(year: Optional[str] = Query(None), kategori: Optional[str] = Query(None)):
     db = get_client()
-    data = db.table("transactions").select("new_row_total, kategori, year").execute().data
+    params = {
+        "p_year": _int(year),
+        "p_branch": None,
+    }
+    rows = db.rpc("get_product_trend", params).execute().data
 
     if kategori and kategori != "all":
-        selected = [k.strip() for k in kategori.split(",")]
-        data = [r for r in data if r.get("kategori") in selected]
+        selected = {k.strip() for k in kategori.split(",")}
+        rows = [r for r in rows if r.get("kategori") in selected]
 
     grouped = defaultdict(lambda: defaultdict(float))
     all_years = set()
     all_cats = set()
 
-    for r in data:
-        y = r.get("year")
-        k = r.get("kategori") or "Lainnya"
-        if y:
-            grouped[y][k] += r.get("new_row_total") or 0
-            all_years.add(y)
-            all_cats.add(k)
+    # product_trend returns kategori/month/revenue — group by year is not available
+    # so we fetch without year filter and group ourselves
+    params2 = {"p_year": None, "p_branch": None}
+    all_rows = db.rpc("get_product_trend", params2).execute().data
+    if kategori and kategori != "all":
+        selected = {k.strip() for k in kategori.split(",")}
+        all_rows = [r for r in all_rows if r.get("kategori") in selected]
+
+    # We need year info — use a different approach: aggregate by year directly
+    year_rows = db.rpc("get_revenue_by_kategori", {"p_year": None, "p_month": None, "p_branch": None}).execute().data
+
+    # Fall back: get yearly breakdown from transactions via kpi per year per kategori
+    # Use simpler SQL: get all kategori yearly totals
+    data = db.table("transactions").select("new_row_total, kategori, year").limit(10).execute().data
+    # Get distinct years first
+    filter_data = db.rpc("get_filters", {}).execute().data
+    all_db_years = filter_data[0].get("years", []) if filter_data else []
+
+    result_grouped = defaultdict(lambda: defaultdict(float))
+    all_cats2 = set()
+
+    for y in all_db_years:
+        cat_rows = db.rpc("get_revenue_by_kategori", {"p_year": y, "p_month": None, "p_branch": None}).execute().data
+        for r in cat_rows:
+            k = r["kategori"]
+            if kategori and kategori != "all":
+                if k not in {kk.strip() for kk in kategori.split(",")}:
+                    continue
+            result_grouped[y][k] = float(r["revenue"] or 0)
+            all_cats2.add(k)
 
     result = []
-    for y in sorted(all_years):
+    for y in sorted(all_db_years):
         entry = {"year": y}
-        for k in all_cats:
-            entry[k] = round(grouped[y].get(k, 0))
+        for k in all_cats2:
+            entry[k] = round(result_grouped[y].get(k, 0))
         result.append(entry)
 
-    # Top 5 categories by total revenue
-    cat_totals = {k: sum(grouped[y].get(k, 0) for y in all_years) for k in all_cats}
+    cat_totals = {k: sum(result_grouped[y].get(k, 0) for y in all_db_years) for k in all_cats2}
     top5 = sorted(cat_totals, key=lambda x: -cat_totals[x])[:5]
 
-    return {"data": result, "categories": sorted(all_cats), "top5": top5}
+    return {"data": result, "categories": sorted(all_cats2), "top5": top5}
 
 
 @router.get("/kategori-growth")
 def kategori_growth(year: Optional[str] = Query(None)):
     db = get_client()
-    data = db.table("transactions").select("new_row_total, kategori, year").execute().data
+    filter_data = db.rpc("get_filters", {}).execute().data
+    all_years = sorted(filter_data[0].get("years", [])) if filter_data else []
 
-    grouped = defaultdict(lambda: defaultdict(float))
-    for r in data:
-        y = r.get("year")
-        k = r.get("kategori") or "Lainnya"
-        if y:
-            grouped[k][y] += r.get("new_row_total") or 0
-
-    compare_year = int(year) if year and year != "all" else None
-    all_years = sorted(set(r["year"] for r in data if r.get("year")))
-
+    compare_year = _int(year)
     if compare_year is None and len(all_years) >= 2:
         compare_year = all_years[-1]
         prev_year = all_years[-2]
-    elif compare_year:
-        idx = all_years.index(compare_year) if compare_year in all_years else -1
+    elif compare_year and compare_year in all_years:
+        idx = all_years.index(compare_year)
         prev_year = all_years[idx - 1] if idx > 0 else None
     else:
         return []
 
+    curr_rows = db.rpc("get_revenue_by_kategori", {"p_year": compare_year, "p_month": None, "p_branch": None}).execute().data
+    prev_rows = db.rpc("get_revenue_by_kategori", {"p_year": prev_year, "p_month": None, "p_branch": None}).execute().data if prev_year else []
+
+    curr_map = {r["kategori"]: float(r["revenue"] or 0) for r in curr_rows}
+    prev_map = {r["kategori"]: float(r["revenue"] or 0) for r in prev_rows}
+    all_cats = set(curr_map) | set(prev_map)
+
     result = []
-    for k, years_rev in grouped.items():
-        curr = years_rev.get(compare_year, 0)
-        prev = years_rev.get(prev_year, 0) if prev_year else 0
-        if prev == 0:
-            growth = None
-        else:
-            growth = round((curr - prev) / prev * 100, 1)
+    for k in all_cats:
+        curr = curr_map.get(k, 0)
+        prev = prev_map.get(k, 0)
+        growth = round((curr - prev) / prev * 100, 1) if prev > 0 else None
         result.append({"kategori": k, "current": round(curr), "prev": round(prev), "growth": growth})
 
     result.sort(key=lambda x: (x["growth"] is None, -(x["growth"] or 0)))
@@ -87,51 +113,46 @@ def top_products(
     kategori: Optional[str] = Query(None),
 ):
     db = get_client()
-    data = db.table("transactions").select("new_row_total, item_no, item_description, kategori, quantity, year").execute().data
-
-    if year and year != "all":
-        data = [r for r in data if r.get("year") == int(year)]
-    if kategori and kategori != "all":
-        selected = [k.strip() for k in kategori.split(",")]
-        data = [r for r in data if r.get("kategori") in selected]
-
-    grouped = defaultdict(lambda: {"description": "", "revenue": 0, "qty": 0})
-    for r in data:
-        sku = r.get("item_no") or "UNKNOWN"
-        grouped[sku]["description"] = r.get("item_description") or sku
-        grouped[sku]["revenue"] += r.get("new_row_total") or 0
-        grouped[sku]["qty"] += r.get("quantity") or 0
-
-    result = sorted(
-        [{"item_no": k, "description": v["description"], "revenue": round(v["revenue"]), "qty": int(v["qty"])}
-         for k, v in grouped.items()],
-        key=lambda x: -x["revenue"]
-    )[:20]
-
-    return result
+    params = {
+        "p_year": _int(year),
+        "p_month": None,
+        "p_kategori": kategori if kategori and kategori != "all" else None,
+        "p_branch": None,
+        "p_limit": 20,
+    }
+    rows = db.rpc("get_top_products", params).execute().data
+    return [
+        {
+            "item_no": r["item_no"],
+            "description": r["item_description"],
+            "kategori": r["kategori"],
+            "revenue": round(float(r["revenue"] or 0)),
+            "qty": int(float(r["quantity"] or 0)),
+        }
+        for r in rows
+    ]
 
 
 @router.get("/heatmap")
 def heatmap(year: Optional[str] = Query(None), kategori: Optional[str] = Query(None)):
     db = get_client()
-    data = db.table("transactions").select("new_row_total, kategori, posting_date, year").execute().data
+    params = {
+        "p_year": _int(year),
+        "p_branch": None,
+    }
+    rows = db.rpc("get_product_trend", params).execute().data
 
-    if year and year != "all":
-        data = [r for r in data if r.get("year") == int(year)]
     if kategori and kategori != "all":
-        selected = [k.strip() for k in kategori.split(",")]
-        data = [r for r in data if r.get("kategori") in selected]
+        selected = {k.strip() for k in kategori.split(",")}
+        rows = [r for r in rows if r.get("kategori") in selected]
 
     grouped = defaultdict(lambda: defaultdict(float))
     all_cats = set()
 
-    for r in data:
-        k = r.get("kategori") or "Lainnya"
-        pd_str = r.get("posting_date")
-        if not pd_str:
-            continue
-        m = int(pd_str[5:7])
-        grouped[k][m] += r.get("new_row_total") or 0
+    for r in rows:
+        k = r["kategori"]
+        m = r["month"]
+        grouped[k][m] += float(r["revenue"] or 0)
         all_cats.add(k)
 
     result = []
