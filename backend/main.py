@@ -9,7 +9,6 @@ from routers import upload, overview, customers, products, sales, discounts
 
 app = FastAPI(title="Sales Analytics API")
 
-frontend_url = os.getenv("FRONTEND_URL", "*")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
