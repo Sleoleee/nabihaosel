@@ -8,7 +8,7 @@ from utils.parser import parse_excel
 
 router = APIRouter()
 
-CHUNK_SIZE = 500
+CHUNK_SIZE = 200
 
 
 @router.post("/upload")

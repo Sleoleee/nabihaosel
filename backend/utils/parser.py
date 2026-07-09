@@ -44,12 +44,17 @@ def parse_excel(file_bytes: bytes) -> Dict[int, Tuple[List[dict], int]]:
         year = int(match.group(1))
 
         ws = wb[sheet_name]
-        rows = list(ws.iter_rows(values_only=True))
-        if not rows:
+        rows_iter = ws.iter_rows(values_only=True)
+        try:
+            header_row = next(rows_iter)
+        except StopIteration:
             continue
 
-        headers = [str(h).strip() if h is not None else "" for h in rows[0]]
-        data_rows = rows[1:]
+        headers = [str(h).strip() if h is not None else "" for h in header_row]
+        data_rows = list(rows_iter)
+
+        if not data_rows:
+            continue
 
         df = pd.DataFrame(data_rows, columns=headers)
 
