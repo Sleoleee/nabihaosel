@@ -6,76 +6,71 @@ from utils.db import get_client
 router = APIRouter()
 
 MONTHS = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"]
-ROW_LIMIT = 300000
 
 
-def _int(val):
-    return int(val) if val and val != "all" else None
-
-
-def fetch(db, cols, year=None, month=None, kategori=None, branch=None):
-    q = db.table("transactions").select(cols)
-    if year and year != "all":
-        q = q.eq("year", int(year))
-    data = q.order("posting_date").limit(ROW_LIMIT).execute().data
-    if month and month != "all":
-        data = [r for r in data if r.get("posting_date") and int(r["posting_date"][5:7]) == int(month)]
-    if kategori and kategori != "all":
-        data = [r for r in data if r.get("kategori") == kategori]
-    if branch and branch != "all":
-        data = [r for r in data if r.get("branch") == branch]
-    return data
+def _p(year=None, month=None, kategori=None, branch=None):
+    p = {}
+    if year and year != "all": p["p_year"] = int(year)
+    if month and month != "all": p["p_month"] = int(month)
+    if kategori and kategori != "all": p["p_kategori"] = kategori
+    if branch and branch != "all": p["p_branch"] = branch
+    return p
 
 
 @router.get("/kpi")
 def kpi(year: Optional[str] = Query(None), month: Optional[str] = Query(None),
         kategori: Optional[str] = Query(None), branch: Optional[str] = Query(None)):
     db = get_client()
-    data = fetch(db, "new_row_total,document_number,customer_code,posting_date,kategori,branch", year, month, kategori, branch)
-    yoy = []
+    params = _p(year, month, kategori, branch)
+    rows = db.rpc("get_kpi", params).execute().data
+    row = rows[0] if rows else {}
+    rev = float(row.get("revenue") or 0)
+    bills = int(row.get("bills") or 0)
+    customers = int(row.get("customers") or 0)
+    aov = rev / bills if bills else 0
+
+    prev_rev, prev_bills, prev_aov, prev_custs = 0, 0, 0, 0
     if year and year != "all":
-        yoy = fetch(db, "new_row_total,document_number,customer_code,posting_date,kategori,branch", str(int(year)-1), month, kategori, branch)
+        prev_params = _p(str(int(year) - 1), month, kategori, branch)
+        prev_rows = db.rpc("get_kpi", prev_params).execute().data
+        prev = prev_rows[0] if prev_rows else {}
+        prev_rev = float(prev.get("revenue") or 0)
+        prev_bills = int(prev.get("bills") or 0)
+        prev_custs = int(prev.get("customers") or 0)
+        prev_aov = prev_rev / prev_bills if prev_bills else 0
 
-    def metrics(d):
-        rev = sum(r.get("new_row_total") or 0 for r in d)
-        bills = len(set(r.get("document_number") for r in d if r.get("document_number")))
-        custs = len(set(r.get("customer_code") for r in d if r.get("customer_code")))
-        return rev, bills, rev/bills if bills else 0, custs
+    def pct(a, b): return round((a - b) / b * 100, 1) if b else None
 
-    def pct(a, b): return round((a-b)/b*100, 1) if b else None
-
-    rev, bills, aov, custs = metrics(data)
-    prev_rev, prev_bills, prev_aov, prev_custs = metrics(yoy) if yoy else (0,0,0,0)
-    return {"revenue": rev, "bills": bills, "aov": aov, "customers": custs,
-            "revenue_change": pct(rev, prev_rev), "bills_change": pct(bills, prev_bills),
-            "aov_change": pct(aov, prev_aov), "customers_change": pct(custs, prev_custs)}
+    return {
+        "revenue": rev, "bills": bills, "aov": aov, "customers": customers,
+        "revenue_change": pct(rev, prev_rev),
+        "bills_change": pct(bills, prev_bills),
+        "aov_change": pct(aov, prev_aov),
+        "customers_change": pct(customers, prev_custs),
+    }
 
 
 @router.get("/revenue-trend")
-def revenue_trend(year: Optional[str] = Query(None), kategori: Optional[str] = Query(None), branch: Optional[str] = Query(None)):
+def revenue_trend(year: Optional[str] = Query(None), kategori: Optional[str] = Query(None),
+                  branch: Optional[str] = Query(None)):
     db = get_client()
-    q = db.table("transactions").select("new_row_total,posting_date,year,kategori,branch")
-    data = q.order("posting_date").limit(ROW_LIMIT).execute().data
-    if kategori and kategori != "all":
-        data = [r for r in data if r.get("kategori") == kategori]
-    if branch and branch != "all":
-        data = [r for r in data if r.get("branch") == branch]
+    params = _p(year, None, kategori, branch)
+    rows = db.rpc("get_revenue_trend", params).execute().data
 
     grouped = defaultdict(lambda: defaultdict(float))
-    years_set = set(r["year"] for r in data if r.get("year"))
+    years_set = set()
+    for r in rows:
+        y, m = r.get("year"), r.get("month")
+        if y and m:
+            grouped[y][m] += float(r.get("revenue") or 0)
+            years_set.add(y)
+
     if year and year != "all":
         years_set = {int(year)}
 
-    for r in data:
-        y = r.get("year")
-        if not y or y not in years_set: continue
-        pd_str = r.get("posting_date")
-        if not pd_str: continue
-        grouped[y][int(pd_str[5:7])] += r.get("new_row_total") or 0
-
     result = []
     for m in range(1, 13):
-        entry = {"month": MONTHS[m-1], "month_num": m}
+        entry = {"month": MONTHS[m - 1], "month_num": m}
         for y in sorted(years_set):
             entry[str(y)] = round(grouped[y].get(m, 0))
         result.append(entry)
@@ -83,45 +78,46 @@ def revenue_trend(year: Optional[str] = Query(None), kategori: Optional[str] = Q
 
 
 @router.get("/bills-aov")
-def bills_aov(year: Optional[str] = Query(None), kategori: Optional[str] = Query(None), branch: Optional[str] = Query(None)):
+def bills_aov(year: Optional[str] = Query(None), kategori: Optional[str] = Query(None),
+              branch: Optional[str] = Query(None)):
     db = get_client()
-    data = fetch(db, "new_row_total,document_number,posting_date,kategori,branch", year, None, kategori, branch)
-    monthly_bills = defaultdict(set)
-    monthly_rev = defaultdict(float)
-    for r in data:
-        pd_str = r.get("posting_date")
-        if not pd_str: continue
-        m = int(pd_str[5:7])
-        if r.get("document_number"): monthly_bills[m].add(r["document_number"])
-        monthly_rev[m] += r.get("new_row_total") or 0
-    return [{"month": MONTHS[m-1], "bills": len(monthly_bills[m]), "aov": round(monthly_rev[m]/len(monthly_bills[m])) if monthly_bills[m] else 0} for m in range(1, 13)]
+    params = _p(year, None, kategori, branch)
+    rows = db.rpc("get_bills_aov", params).execute().data
+    monthly = {r["month"]: r for r in rows if r.get("month")}
+    return [{"month": MONTHS[m - 1],
+             "bills": int(monthly.get(m, {}).get("bills") or 0),
+             "aov": round(float(monthly.get(m, {}).get("revenue") or 0) / max(1, int(monthly.get(m, {}).get("bills") or 1)))
+             } for m in range(1, 13)]
 
 
 @router.get("/by-kategori")
-def by_kategori(year: Optional[str] = Query(None), month: Optional[str] = Query(None), branch: Optional[str] = Query(None)):
+def by_kategori(year: Optional[str] = Query(None), month: Optional[str] = Query(None),
+                branch: Optional[str] = Query(None)):
     db = get_client()
-    data = fetch(db, "new_row_total,kategori,posting_date,branch", year, month, None, branch)
-    grouped = defaultdict(float)
-    for r in data:
-        grouped[r.get("kategori") or "Lainnya"] += r.get("new_row_total") or 0
-    return sorted([{"kategori": k, "revenue": round(v)} for k, v in grouped.items()], key=lambda x: -x["revenue"])
+    params = _p(year, month, None, branch)
+    rows = db.rpc("get_revenue_by_kategori", params).execute().data
+    return [{"kategori": r["kategori"], "revenue": round(float(r["revenue"] or 0))} for r in rows]
 
 
 @router.get("/by-branch")
-def by_branch(year: Optional[str] = Query(None), month: Optional[str] = Query(None), kategori: Optional[str] = Query(None)):
+def by_branch(year: Optional[str] = Query(None), month: Optional[str] = Query(None),
+              kategori: Optional[str] = Query(None)):
     db = get_client()
-    data = fetch(db, "new_row_total,branch,posting_date,kategori", year, month, kategori, None)
-    grouped = defaultdict(float)
-    for r in data:
-        grouped[r.get("branch") or "Lainnya"] += r.get("new_row_total") or 0
-    return sorted([{"branch": b, "revenue": round(v)} for b, v in grouped.items()], key=lambda x: -x["revenue"])
+    params = _p(year, month, kategori, None)
+    rows = db.rpc("get_revenue_by_branch", params).execute().data
+    return [{"branch": r["branch"], "revenue": round(float(r["revenue"] or 0))} for r in rows]
 
 
 @router.get("/filters")
 def get_filters():
     db = get_client()
-    data = db.table("transactions").select("year,kategori,branch").order("posting_date").limit(ROW_LIMIT).execute().data
-    years = sorted(set(r["year"] for r in data if r.get("year")), reverse=True)
-    kategori = sorted(set(r["kategori"] for r in data if r.get("kategori")))
-    branches = sorted(set(r["branch"] for r in data if r.get("branch")))
-    return {"years": years, "kategori": kategori, "branches": branches}
+    result = db.rpc("get_filters", {}).execute().data
+    if isinstance(result, list) and result:
+        data = result[0]
+    else:
+        data = result or {}
+    return {
+        "years": data.get("years") or [],
+        "kategori": data.get("kategori") or [],
+        "branches": data.get("branches") or [],
+    }

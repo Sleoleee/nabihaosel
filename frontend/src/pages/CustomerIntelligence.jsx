@@ -240,7 +240,7 @@ export default function CustomerIntelligence() {
       {error && <ErrorState message={error} onRetry={load} />}
 
       {/* KPI Tiles */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
         {loading ? [1,2,3,4].map(i => <SkeletonCard key={i} />) : <>
           <KPITile
             title="Total Customer"
@@ -291,7 +291,7 @@ export default function CustomerIntelligence() {
       </Card>
 
       {/* Top 5 Kategori + RFM Segments */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 20 }}>
         <Card>
           <SectionTitle>Top 5 Kategori Produk</SectionTitle>
           {loading ? <Skeleton height={220} /> : !byKat?.length ? <EmptyState /> : (

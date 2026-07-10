@@ -235,7 +235,7 @@ export default function Overview() {
       )}
 
       {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
         {loading ? [1,2,3,4].map(i => <SkeletonCard key={i} />) : kpi ? <>
           <KPICard title="Total Revenue" value={kpi.revenue} change={kpi.revenue_change} format="rupiah" />
           <KPICard title="Jumlah Bills" value={kpi.bills} change={kpi.bills_change} format="number" />
@@ -266,7 +266,7 @@ export default function Overview() {
       </Card>
 
       {/* Tier Pie + Top Kategori */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 20 }}>
         <Card>
           <SectionTitle>Revenue per Customer Tier</SectionTitle>
           {loading ? <Skeleton height={240} /> : !tierPieData.length ? <EmptyState /> : (
@@ -303,7 +303,7 @@ export default function Overview() {
       </div>
 
       {/* Top Customers + Needs Attention */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 20 }}>
         <Card>
           <SectionTitle>Top 10 Customer</SectionTitle>
           {loading ? <Skeleton height={240} /> : !topCustomers?.data?.length ? <EmptyState /> : (
