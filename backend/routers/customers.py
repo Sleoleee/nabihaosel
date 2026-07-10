@@ -16,16 +16,38 @@ def year_key(year):
     return year if (year and year != "all") else "all"
 
 
+def load_customers(db, yk):
+    rows = get_cache(db, f"customers__{yk}") or []
+    if not rows:
+        rows = get_cache(db, "customers__all") or []
+        return rows
+    # Fall back if rfm_segment is missing on all rows (stale cache)
+    has_rfm = any(r.get("rfm_segment") for r in rows[:20])
+    if not has_rfm:
+        fallback = get_cache(db, "customers__all") or []
+        if fallback and any(r.get("rfm_segment") for r in fallback[:20]):
+            return fallback
+    return rows
+
+
 @router.get("/rfm")
 def rfm(year: Optional[str] = Query(None)):
     db = get_client()
-    return get_cache(db, f"rfm__{year_key(year)}") or {"matrix": [], "segments": []}
+    yk = year_key(year)
+    data = get_cache(db, f"rfm__{yk}")
+    if not data or not data.get("segments"):
+        data = get_cache(db, "rfm__all")
+    return data or {"matrix": [], "segments": []}
 
 
 @router.get("/tiers")
 def tiers(year: Optional[str] = Query(None)):
     db = get_client()
-    return get_cache(db, f"tiers__{year_key(year)}") or []
+    yk = year_key(year)
+    data = get_cache(db, f"tiers__{yk}")
+    if not data:
+        data = get_cache(db, "tiers__all")
+    return data or []
 
 
 @router.get("/list")
@@ -34,7 +56,7 @@ def customer_list(year: Optional[str] = Query(None), tier: Optional[str] = Query
                   sort: Optional[str] = Query("revenue"),
                   page: int = Query(1), limit: int = Query(25)):
     db = get_client()
-    rows = get_cache(db, f"customers__{year_key(year)}") or []
+    rows = load_customers(db, year_key(year))
 
     if search:
         rows = [r for r in rows if search.lower() in r["name"].lower()]
@@ -59,4 +81,8 @@ def customer_list(year: Optional[str] = Query(None), tier: Optional[str] = Query
 @router.get("/recency")
 def recency(year: Optional[str] = Query(None)):
     db = get_client()
-    return get_cache(db, f"recency__{year_key(year)}") or []
+    yk = year_key(year)
+    data = get_cache(db, f"recency__{yk}")
+    if not data:
+        data = get_cache(db, "recency__all")
+    return data or []

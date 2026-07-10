@@ -302,6 +302,13 @@ export default function Overview() {
         onTargetChange={setTarget}
       />
 
+      {/* Stale cache banner */}
+      {!loading && kpi?.cache_stale && (
+        <div style={{ background: '#fef9c3', border: '1px solid #fbbf24', borderRadius: 8, padding: '8px 16px', fontSize: 12, color: '#92400e' }}>
+          ⚠ Data KPI ditampilkan dari cache gabungan (semua tahun) karena cache tahun ini belum diperbarui. Jalankan <code>python compute_cache.py</code> untuk memperbarui.
+        </div>
+      )}
+
       {/* Alert Bar */}
       {!loading && <AlertBar alerts={alerts} targetNum={targetNum} kpi={kpi} attentionRef={attentionRef} />}
       {error && (
