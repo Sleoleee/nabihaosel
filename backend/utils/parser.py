@@ -1,6 +1,6 @@
 import openpyxl
-import pandas as pd
 import re
+from datetime import datetime
 from typing import Dict, List, Tuple
 
 
@@ -29,10 +29,45 @@ COLUMN_MAP = {
     "Status_payment": "status_payment",
 }
 
+NUMERIC_COLS = {"harga_awal", "disc_per_row", "harga_jual", "row_total",
+                "disc_for_document", "new_row_total"}
+INT_COLS = {"document_number", "quantity"}
+DATE_COLS = {"posting_date", "due_date"}
+OUTPUT_COLS = [
+    "document_number", "posting_date", "due_date", "customer_code",
+    "customer_name", "item_no", "item_description", "kategori",
+    "warehouse_code", "quantity", "unit", "harga_awal", "disc_per_row",
+    "harga_jual", "row_total", "disc_for_document", "new_row_total",
+    "slp_name", "branch", "status_payment", "year",
+]
+
+
+def _to_float(val):
+    if val is None:
+        return 0.0
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _to_date(val):
+    if val is None:
+        return None
+    if isinstance(val, datetime):
+        return val.date().isoformat()
+    if hasattr(val, 'isoformat'):
+        return val.isoformat()
+    try:
+        return datetime.fromisoformat(str(val)).date().isoformat()
+    except Exception:
+        return None
+
 
 def parse_excel(file_bytes: bytes) -> Dict[int, Tuple[List[dict], int]]:
     """
     Returns dict: {year: (records, skipped_count)}
+    Streams rows without building a full DataFrame to minimize memory usage.
     """
     wb = openpyxl.load_workbook(filename=file_bytes, read_only=True, data_only=True)
     results = {}
@@ -44,62 +79,60 @@ def parse_excel(file_bytes: bytes) -> Dict[int, Tuple[List[dict], int]]:
         year = int(match.group(1))
 
         ws = wb[sheet_name]
-        rows = list(ws.iter_rows(values_only=True))
-        if not rows:
+        rows_iter = ws.iter_rows(values_only=True)
+
+        try:
+            header_row = next(rows_iter)
+        except StopIteration:
             continue
 
-        headers = [str(h).strip() if h is not None else "" for h in rows[0]]
-        data_rows = rows[1:]
+        # Build index map: excel column name -> db column name -> position
+        col_index = {}
+        for i, h in enumerate(header_row):
+            if h is None:
+                continue
+            h_str = str(h).strip()
+            db_name = COLUMN_MAP.get(h_str)
+            if db_name:
+                col_index[db_name] = i
 
-        df = pd.DataFrame(data_rows, columns=headers)
-
-        # Rename columns
-        rename = {k: v for k, v in COLUMN_MAP.items() if k in df.columns}
-        df = df.rename(columns=rename)
-
-        total_before = len(df)
-
-        # Filter
-        if "canceled" in df.columns:
-            df = df[df["canceled"] == "N"]
-        if "new_row_total" in df.columns:
-            df["new_row_total"] = pd.to_numeric(df["new_row_total"], errors="coerce").fillna(0)
-            df = df[df["new_row_total"] > 0]
-
-        skipped = total_before - len(df)
-
-        # Type coercions
-        numeric_cols = ["harga_awal", "disc_per_row", "harga_jual", "row_total", "disc_for_document", "new_row_total", "quantity"]
-        for col in numeric_cols:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
-
-        if "posting_date" in df.columns:
-            df["posting_date"] = pd.to_datetime(df["posting_date"], errors="coerce")
-        if "due_date" in df.columns:
-            df["due_date"] = pd.to_datetime(df["due_date"], errors="coerce")
-
-        if "document_number" in df.columns:
-            df["document_number"] = pd.to_numeric(df["document_number"], errors="coerce")
-
-        df["year"] = year
-
-        # Convert to records
         records = []
-        for _, row in df.iterrows():
-            rec = {}
-            for col in ["document_number", "posting_date", "due_date", "customer_code",
-                        "customer_name", "item_no", "item_description", "kategori",
-                        "warehouse_code", "quantity", "unit", "harga_awal", "disc_per_row",
-                        "harga_jual", "row_total", "disc_for_document", "new_row_total",
-                        "slp_name", "branch", "status_payment", "year"]:
-                val = row.get(col)
-                if pd.isna(val) if not isinstance(val, str) else False:
-                    rec[col] = None
-                elif isinstance(val, pd.Timestamp):
-                    rec[col] = val.date().isoformat()
+        skipped = 0
+
+        for row in rows_iter:
+            def get(col):
+                idx = col_index.get(col)
+                if idx is None or idx >= len(row):
+                    return None
+                return row[idx]
+
+            # Filter: skip canceled rows
+            canceled_val = get("canceled")
+            if canceled_val is not None and str(canceled_val).strip().upper() != "N":
+                skipped += 1
+                continue
+
+            # Filter: skip zero/negative new_row_total
+            nrt_raw = get("new_row_total")
+            nrt = _to_float(nrt_raw)
+            if nrt <= 0:
+                skipped += 1
+                continue
+
+            rec = {"year": year}
+            for col in OUTPUT_COLS:
+                if col == "year":
+                    continue
+                val = get(col)
+                if col in INT_COLS:
+                    rec[col] = int(float(val)) if val is not None else None
+                elif col in NUMERIC_COLS:
+                    rec[col] = _to_float(val)
+                elif col in DATE_COLS:
+                    rec[col] = _to_date(val)
                 else:
-                    rec[col] = val
+                    rec[col] = str(val).strip() if val is not None else None
+
             records.append(rec)
 
         results[year] = (records, skipped)
