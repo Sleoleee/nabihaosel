@@ -11,6 +11,9 @@ Jalankan ulang setiap kali ada upload data baru.
 import sys, os, json
 from collections import defaultdict
 from datetime import date
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 sys.path.insert(0, os.path.dirname(__file__))
 from utils.db import get_client
