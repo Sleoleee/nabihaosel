@@ -48,8 +48,6 @@ function getActivityStatus(c) {
 function FilterBar({ filters, onChange, availFilters, target, onTargetChange }) {
   const years = availFilters.years || []
   const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des']
-  const kategoriList = availFilters.kategori || []
-  const branches = availFilters.branches || []
 
   const selStyle = {
     border: '1px solid #ddd', borderRadius: 6, padding: '5px 8px',
@@ -65,7 +63,7 @@ function FilterBar({ filters, onChange, availFilters, target, onTargetChange }) 
       marginLeft: -32, marginRight: -32,
     }}>
       <select style={selStyle} value={filters.year || 'all'}
-        onChange={e => onChange({ ...filters, year: e.target.value })}>
+        onChange={e => onChange({ ...filters, year: e.target.value, month: 'all' })}>
         <option value="all">Semua Tahun</option>
         {years.map(y => <option key={y} value={String(y)}>{y}</option>)}
       </select>
@@ -74,18 +72,6 @@ function FilterBar({ filters, onChange, availFilters, target, onTargetChange }) 
         onChange={e => onChange({ ...filters, month: e.target.value })}>
         <option value="all">Semua Bulan</option>
         {months.map((m, i) => <option key={i + 1} value={String(i + 1)}>{m}</option>)}
-      </select>
-
-      <select style={selStyle} value={filters.kategori || 'all'}
-        onChange={e => onChange({ ...filters, kategori: e.target.value })}>
-        <option value="all">Semua Kategori</option>
-        {kategoriList.map(k => <option key={k} value={k}>{k}</option>)}
-      </select>
-
-      <select style={selStyle} value={filters.branch || 'all'}
-        onChange={e => onChange({ ...filters, branch: e.target.value })}>
-        <option value="all">Semua Branch</option>
-        {branches.map(b => <option key={b} value={b}>{b}</option>)}
       </select>
 
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -216,7 +202,7 @@ function KPIRow({ kpi, targetNum, loading }) {
 
 export default function Overview() {
   const [availFilters, setAvailFilters] = useState({})
-  const [filters, setFilters] = useState(null) // null until we know defaults
+  const [filters, setFilters] = useState(null)
   const [target, setTarget] = useState(() => localStorage.getItem('targetRevenue') || '')
   const [kpi, setKpi] = useState(null)
   const [trend, setTrend] = useState(null)
@@ -236,8 +222,8 @@ export default function Overview() {
       setAvailFilters(f)
       // Set defaults: latest year + latest month from data
       const latestYear = f.years?.[0] ? String(f.years[0]) : 'all'
-      setFilters({ year: latestYear, month: 'all', kategori: 'all', branch: 'all' })
-    }).catch(() => setFilters({ year: 'all', month: 'all', kategori: 'all', branch: 'all' }))
+      setFilters({ year: latestYear, month: 'all' })
+    }).catch(() => setFilters({ year: 'all', month: 'all' }))
   }, [])
 
   useEffect(() => {
