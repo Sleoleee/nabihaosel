@@ -30,7 +30,8 @@ def tiers(year: Optional[str] = Query(None)):
 
 @router.get("/list")
 def customer_list(year: Optional[str] = Query(None), tier: Optional[str] = Query(None),
-                  search: Optional[str] = Query(None), sort: Optional[str] = Query("revenue"),
+                  segment: Optional[str] = Query(None), search: Optional[str] = Query(None),
+                  sort: Optional[str] = Query("revenue"),
                   page: int = Query(1), limit: int = Query(25)):
     db = get_client()
     rows = get_cache(db, f"customers__{year_key(year)}") or []
@@ -39,9 +40,16 @@ def customer_list(year: Optional[str] = Query(None), tier: Optional[str] = Query
         rows = [r for r in rows if search.lower() in r["name"].lower()]
     if tier:
         rows = [r for r in rows if r.get("tier") == tier]
+    if segment:
+        rows = [r for r in rows if r.get("rfm_segment") == segment]
 
-    sort_key = {"revenue": "revenue", "bills": "bills", "avg_monthly": "avg_monthly"}.get(sort, "revenue")
-    rows = sorted(rows, key=lambda x: -x.get(sort_key, 0))
+    def sort_val(x):
+        if sort == "overdue_ratio":
+            v = x.get("overdue_ratio")
+            return -(v if v is not None else -1)
+        return -x.get(sort, 0)
+
+    rows = sorted(rows, key=sort_val)
 
     total = len(rows)
     start = (page - 1) * limit

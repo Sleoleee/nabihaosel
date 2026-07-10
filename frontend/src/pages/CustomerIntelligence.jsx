@@ -93,6 +93,11 @@ export default function CustomerIntelligence() {
 
   useEffect(() => {
     if (!filters) return
+    setPage(1)
+  }, [segFilter, tierFilter])
+
+  useEffect(() => {
+    if (!filters) return
     setListLoading(true)
     const params = {
       year: filters.year,
@@ -100,13 +105,11 @@ export default function CustomerIntelligence() {
       limit: 25,
       sort: 'overdue_ratio',
       ...(search ? { search } : {}),
-      ...(segFilter !== 'all' ? { tier: undefined } : {}),
+      ...(segFilter !== 'all' ? { segment: segFilter } : {}),
+      ...(tierFilter !== 'all' ? { tier: tierFilter } : {}),
     }
-    getCustomerList(params).then(data => {
-      // Client-side filter by segFilter, tierFilter, statusFilter
-      setCustList(data)
-    }).catch(() => {}).finally(() => setListLoading(false))
-  }, [JSON.stringify(filters), page, search])
+    getCustomerList(params).then(setCustList).catch(() => {}).finally(() => setListLoading(false))
+  }, [JSON.stringify(filters), page, search, segFilter, tierFilter])
 
   const setFilterAndScroll = (seg) => {
     setSegFilter(seg)
@@ -141,17 +144,13 @@ export default function CustomerIntelligence() {
     (rfm?.segments?.find(s => s.segment === 'Loyal')?.count || 0)
   const activeRecent = recency?.find(r => r.bucket === '0–7')?.count || 0
 
-  // Client-side filtering of custList
+  // Client-side status filter (only runs on fetched page)
   const allCustomers = custList?.data || []
-  const filtered = allCustomers.filter(c => {
-    if (segFilter !== 'all' && c.rfm_segment !== segFilter) return false
-    if (tierFilter !== 'all' && c.tier !== tierFilter) return false
-    if (statusFilter !== 'all') {
-      const st = getActivityStatus(c)
-      if (statusFilter === 'aktif' && st.ratio >= 1.0) return false
-      if (statusFilter === 'lapsed' && !(st.ratio >= 1.5 && st.ratio < 2.0)) return false
-      if (statusFilter === 'overdue' && !(st.ratio >= 2.0)) return false
-    }
+  const filtered = statusFilter === 'all' ? allCustomers : allCustomers.filter(c => {
+    const st = getActivityStatus(c)
+    if (statusFilter === 'aktif') return st.ratio < 1.0 && st.ratio !== null
+    if (statusFilter === 'lapsed') return st.ratio >= 1.0 && st.ratio < 2.0
+    if (statusFilter === 'overdue') return st.ratio >= 2.0
     return true
   })
 
@@ -472,7 +471,8 @@ export default function CustomerIntelligence() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
               <span style={{ fontSize: 12, color: '#888' }}>
-                {custList?.total || 0} customer total {filtered.length < (custList?.data?.length || 0) ? `· ${filtered.length} sesuai filter` : ''}
+                {custList?.total || 0} customer{segFilter !== 'all' ? ` (${segFilter})` : tierFilter !== 'all' ? ` (${tierFilter.split(' — ')[0]})` : ''}
+                {statusFilter !== 'all' && filtered.length !== allCustomers.length ? ` · ${filtered.length} tampil` : ''}
               </span>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}

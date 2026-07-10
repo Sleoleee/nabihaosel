@@ -39,7 +39,7 @@ def fetch_all(db):
 
 
 def compute_all(rows):
-    years_set = sorted(set(r["year"] for r in rows if r.get("year")), reverse=True)
+    years_set = sorted(set(str(r["year"]) for r in rows if r.get("year")), reverse=True)
 
     # Aggregation buckets keyed by (year_or_all, month_or_all)
     kpi       = defaultdict(lambda: {"rev": 0.0, "docs": set(), "custs": set()})
@@ -54,7 +54,7 @@ def compute_all(rows):
     cust_doc_date = defaultdict(dict)            # code → {doc → first_posting_date}
 
     for r in rows:
-        y     = r.get("year")
+        y     = str(r.get("year")) if r.get("year") is not None else None
         doc   = r.get("document_number")
         code  = r.get("customer_code") or "UNKNOWN"
         rev   = float(r.get("new_row_total") or 0)
@@ -136,14 +136,14 @@ def build_kpi(agg, yk, mk):
 
 def build_trend(agg, y):
     if y == "all":
-        years_in = list(agg["years_set"])
+        years_in = list(agg["years_set"])  # strings like "2025"
     else:
-        years_in = [int(y)] if int(y) in agg["years_set"] else []
+        years_in = [y] if y in agg["years_set"] else []
     result = []
     for m in range(1, 13):
         entry = {"month": MONTHS[m - 1], "month_num": m}
         for yr in years_in:
-            entry[str(yr)] = round(agg["trend"].get((yr, m), 0))
+            entry[yr] = round(agg["trend"].get((yr, m), 0))
         result.append(entry)
     return {"data": result, "years": years_in}
 
@@ -309,7 +309,7 @@ def main():
     if not rows:
         print("No data found."); return
 
-    years = sorted(set(r["year"] for r in rows if r.get("year")), reverse=True)
+    years = sorted(set(str(r["year"]) for r in rows if r.get("year")), reverse=True)
     kategori_list = sorted(set(r["kategori"] for r in rows if r.get("kategori")))
     branches = sorted(set(r["branch"] for r in rows if r.get("branch")))
     upsert(db, "filters", {"years": years, "kategori": kategori_list, "branches": branches})
@@ -330,7 +330,7 @@ def main():
 
     # Per-year customer cache
     for y in years:
-        yr_rows = [r for r in rows if r.get("year") == y]
+        yr_rows = [r for r in rows if str(r.get("year")) == y]
         yr_agg = compute_all(yr_rows)
         yr_custs = build_customers(yr_agg)
         yr_custs, yr_rfm = compute_rfm_and_attach(yr_custs)
@@ -341,7 +341,7 @@ def main():
         upsert(db, f"alerts__{y}",    build_alerts(yr_custs))
 
     # Overview metrics: full-year + per-month
-    year_keys = ["all"] + [str(y) for y in years]
+    year_keys = ["all"] + years
     for yk in year_keys:
         upsert(db, f"kpi__{yk}",           build_kpi(agg, yk, "all"))
         upsert(db, f"revenue_trend__{yk}", build_trend(agg, yk))
