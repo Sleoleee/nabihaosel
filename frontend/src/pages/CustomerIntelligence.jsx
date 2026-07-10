@@ -1,309 +1,293 @@
-import { useState, useEffect, useMemo } from 'react'
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts'
+import { useState, useEffect, useRef } from 'react'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import Card from '../components/Card'
 import Skeleton, { SkeletonCard } from '../components/Skeleton'
-import ErrorState from '../components/ErrorState'
-import EmptyState from '../components/EmptyState'
 import { formatRupiah, formatRupiahShort, formatNumber } from '../utils/format'
-import { getRFM, getTiers, getCustomerList, getRecency, getFilters, getRevenueTrend, getByKategori } from '../utils/api'
-
-const YEAR_COLORS = { '2025': '#d31137', '2024': '#fc3961', '2023': '#fc93a6', '2022': '#feb5c2' }
+import { getRFM, getTiers, getCustomerList, getRecency, getFilters } from '../utils/api'
 
 const tooltipStyle = {
-  contentStyle: { background: '#1a1a1a', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13 },
+  contentStyle: { background: '#1a1a1a', border: 'none', borderRadius: 8, color: '#fff', fontSize: 12 },
   labelStyle: { color: '#fff', fontWeight: 600 },
 }
 
-function SectionTitle({ children }) {
-  return <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>{children}</h3>
+const RFM_COLORS = {
+  Champions:      { bg: '#dcfce7', text: '#166534', bar: '#22c55e' },
+  Loyal:          { bg: '#d1fae5', text: '#065f46', bar: '#4ade80' },
+  Promising:      { bg: '#fef9c3', text: '#854d0e', bar: '#fbbf24' },
+  'Need Attention':{ bg: '#ffedd5', text: '#9a3412', bar: '#f59e0b' },
+  'At Risk':      { bg: '#fee2e2', text: '#991b1b', bar: '#fc617e' },
+  Lost:           { bg: '#f1f5f9', text: '#475569', bar: '#d31137' },
 }
 
-function KPITile({ title, value, sub, highlight }) {
-  return (
-    <Card>
-      <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{title}</div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: highlight || 'var(--color-text)' }}>{value}</div>
-      {sub && <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>{sub}</div>}
-    </Card>
-  )
+const TIER_COLORS = [
+  '#d31137','#e0243f','#ec3650','#f44f64','#f96b7e','#fc8799',
+  '#fca4b5','#fbbfc9','#f8d4dc','#f2e4e8','#eedce0','#e8d6d9','#e2d0d3',
+]
+
+const RECENCY_COLORS = {
+  '0–7':   '#22c55e',
+  '8–30':  '#86efac',
+  '31–60': '#fbbf24',
+  '61–90': '#f97316',
+  '91–180':'#fc617e',
+  '180+':  '#d31137',
 }
 
-function RecommendationPanel({ rfm, recency, tiers, lapsedCount, totalCustomers, custList }) {
-  const items = useMemo(() => {
-    const recs = []
-
-    const champions = rfm?.segments?.find(s => s.segment === 'Champions')
-    const atRisk = rfm?.segments?.find(s => s.segment === 'At Risk')
-    const lost = rfm?.segments?.find(s => s.segment === 'Lost')
-    const loyal = rfm?.segments?.find(s => s.segment === 'Loyal')
-
-    if (atRisk && atRisk.count > 0) {
-      recs.push({
-        priority: 'high',
-        icon: '🔴',
-        title: `${atRisk.count} customer "At Risk" terdeteksi`,
-        action: `Customer At Risk pernah aktif tapi mulai jarang beli. Hubungi mereka dengan penawaran personal sebelum benar-benar hilang. Revenue potensial: ${formatRupiahShort(atRisk.revenue)}.`,
-      })
-    }
-
-    if (lost && lost.count > 0) {
-      recs.push({
-        priority: 'high',
-        icon: '⚫',
-        title: `${lost.count} customer sudah "Lost"`,
-        action: `Customer ini sudah lama tidak bertransaksi. Coba campaign win-back dengan diskon atau promo eksklusif. Jika tidak respon, pertimbangkan untuk di-archive.`,
-      })
-    }
-
-    if (lapsedCount > 0) {
-      recs.push({
-        priority: 'high',
-        icon: '⚠',
-        title: `${lapsedCount} customer belum beli 90+ hari`,
-        action: 'Buat daftar follow-up prioritas. Hubungi via telepon atau WhatsApp dengan penawaran reaktivasi.',
-      })
-    }
-
-    if (champions && champions.count > 0) {
-      recs.push({
-        priority: 'low',
-        icon: '🏆',
-        title: `${champions.count} customer Champions — lindungi mereka`,
-        action: `Champions adalah customer terbaik (beli sering, nilai tinggi, baru-baru ini). Berikan pelayanan VIP, early access produk baru, atau program loyalty eksklusif.`,
-      })
-    }
-
-    if (loyal && loyal.count > 0) {
-      recs.push({
-        priority: 'medium',
-        icon: '⭐',
-        title: `${loyal.count} customer Loyal siap diupgrade ke Champions`,
-        action: `Dorong customer Loyal untuk beli lebih sering dengan program reward atau target pembelian bulanan.`,
-      })
-    }
-
-    const tier1 = tiers?.find(t => t.tier?.includes('Tier 1'))
-    if (tier1 && tier1.count > 0) {
-      recs.push({
-        priority: 'low',
-        icon: '💎',
-        title: `${tier1.count} customer Tier 1 (≥30jt/bulan) — prioritas utama`,
-        action: `Customer Tier 1 adalah pilar pendapatan. Pastikan sales senior menangani langsung dan tidak ada keluhan yang terlambat ditangani.`,
-      })
-    }
-
-    const recency91180 = recency?.find(r => r.bucket === '91–180')
-    const recency180plus = recency?.find(r => r.bucket === '180+')
-    const longLapsed = (recency91180?.count || 0) + (recency180plus?.count || 0)
-    if (longLapsed > 5) {
-      recs.push({
-        priority: 'medium',
-        icon: '📞',
-        title: `${longLapsed} customer tidak aktif 3-6+ bulan`,
-        action: 'Jadwalkan panggilan follow-up mingguan. Tanyakan apakah ada masalah layanan atau kompetitor yang lebih menarik.',
-      })
-    }
-
-    if (recs.length === 0) {
-      recs.push({
-        priority: 'low',
-        icon: '✅',
-        title: 'Base customer dalam kondisi sehat',
-        action: 'Fokus pada pertumbuhan: rekrut customer baru dan tingkatkan AOV customer bestaan.',
-      })
-    }
-
-    return recs.sort((a, b) => ({ high: 0, medium: 1, low: 2 }[a.priority] - { high: 0, medium: 1, low: 2 }[b.priority]))
-  }, [rfm, recency, tiers, lapsedCount])
-
-  const priorityColors = { high: '#d31137', medium: '#f59e0b', low: '#22c55e' }
-  const priorityBg = { high: '#fde3e9', medium: '#fef3c7', low: '#f0fdf4' }
-  const priorityLabel = { high: 'URGENT', medium: 'PERHATIAN', low: 'INFO' }
-
-  return (
-    <Card>
-      <SectionTitle>💡 Rekomendasi Customer Management</SectionTitle>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {items.map((item, i) => (
-          <div key={i} style={{
-            background: priorityBg[item.priority],
-            borderLeft: `4px solid ${priorityColors[item.priority]}`,
-            borderRadius: '0 8px 8px 0',
-            padding: '12px 16px',
-          }}>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-              <span style={{ fontSize: 18, flexShrink: 0 }}>{item.icon}</span>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13 }}>{item.title}</div>
-                  <span style={{
-                    fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
-                    background: priorityColors[item.priority], color: '#fff', letterSpacing: '0.05em',
-                  }}>{priorityLabel[item.priority]}</span>
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.6 }}>{item.action}</div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </Card>
-  )
+function formatDuration(hours) {
+  if (!hours && hours !== 0) return '-'
+  if (hours < 72) return `${Math.round(hours)}j`
+  return `${Math.round(hours / 24)} hari`
 }
+
+function getActivityStatus(c) {
+  const { hours_since_last, avg_interval_hours, bills } = c
+  if (!bills || bills <= 1) {
+    return hours_since_last > 720
+      ? { emoji: '⚫', label: 'Baru sekali', color: '#888', bg: '#f0f0f0', ratio: 9999 }
+      : { emoji: '🟢', label: 'Baru', color: '#22c55e', bg: '#f0fdf4', ratio: 0 }
+  }
+  if (!avg_interval_hours) return { emoji: '⚪', label: '-', color: '#888', bg: '#f0f0f0', ratio: 0 }
+  const ratio = hours_since_last / avg_interval_hours
+  if (ratio >= 2.0) return { emoji: '🔴', label: `${ratio.toFixed(0)}× overdue`, color: '#d31137', bg: '#fde3e9', ratio }
+  if (ratio >= 1.5) return { emoji: '🟠', label: `${ratio.toFixed(1)}× interval`, color: '#f97316', bg: '#fff7ed', ratio }
+  if (ratio >= 1.0) return { emoji: '🟡', label: 'Mulai telat', color: '#f59e0b', bg: '#fef9c3', ratio }
+  return { emoji: '🟢', label: 'Aktif', color: '#22c55e', bg: '#f0fdf4', ratio }
+}
+
+const RFM_DISPLAY_ORDER = ['At Risk', 'Lost', 'Need Attention', 'Promising', 'Loyal', 'Champions']
 
 export default function CustomerIntelligence() {
-  const [filters, setFilters] = useState({ year: 'all' })
   const [years, setYears] = useState([])
+  const [filters, setFilters] = useState(null)
+  const [segFilter, setSegFilter] = useState('all') // applied to table
+  const [tierFilter, setTierFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
   const [rfm, setRfm] = useState(null)
   const [tiers, setTiers] = useState(null)
   const [recency, setRecency] = useState(null)
   const [custList, setCustList] = useState(null)
-  const [trend, setTrend] = useState(null)
-  const [byKat, setByKat] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [listLoading, setListLoading] = useState(false)
   const [error, setError] = useState(null)
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
-  const [activeTab, setActiveTab] = useState('overview')
+  const tableRef = useRef(null)
 
   useEffect(() => {
-    getFilters().then(f => setYears(f.years || [])).catch(() => {})
+    getFilters().then(f => {
+      setYears(f.years || [])
+      const latestYear = f.years?.[0] ? String(f.years[0]) : 'all'
+      setFilters({ year: latestYear })
+    }).catch(() => setFilters({ year: 'all' }))
   }, [])
 
-  const load = () => {
+  useEffect(() => {
+    if (!filters) return
     setLoading(true)
     setError(null)
-    Promise.all([
-      getRFM(filters),
-      getTiers(filters),
-      getRecency(filters),
-      getRevenueTrend(filters),
-      getByKategori(filters),
-    ])
-      .then(([r, t, rec, tr, kat]) => {
-        setRfm(r); setTiers(t); setRecency(rec); setTrend(tr); setByKat(kat)
-      })
+    Promise.all([getRFM(filters), getTiers(filters), getRecency(filters)])
+      .then(([r, t, rec]) => { setRfm(r); setTiers(t); setRecency(rec) })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
+  }, [JSON.stringify(filters)])
+
+  useEffect(() => {
+    if (!filters) return
+    setListLoading(true)
+    const params = {
+      year: filters.year,
+      page,
+      limit: 25,
+      sort: 'overdue_ratio',
+      ...(search ? { search } : {}),
+      ...(segFilter !== 'all' ? { tier: undefined } : {}),
+    }
+    getCustomerList(params).then(data => {
+      // Client-side filter by segFilter, tierFilter, statusFilter
+      setCustList(data)
+    }).catch(() => {}).finally(() => setListLoading(false))
+  }, [JSON.stringify(filters), page, search])
+
+  const setFilterAndScroll = (seg) => {
+    setSegFilter(seg)
+    setTimeout(() => tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
 
-  useEffect(() => { load() }, [JSON.stringify(filters)])
+  // RFM chart data in priority order
+  const rfmData = RFM_DISPLAY_ORDER
+    .map(seg => rfm?.segments?.find(s => s.segment === seg))
+    .filter(Boolean)
+    .map(s => ({ segment: s.segment, count: s.count, revenue: s.revenue }))
 
-  const loadList = () => {
-    getCustomerList({ year: filters.year, page, limit: 25, search: search || undefined })
-      .then(setCustList).catch(() => {})
+  const tierData = (tiers || []).filter(t => t.count > 0).slice(0, 7).map(t => ({
+    tier: t.tier.split(' — ')[0],
+    count: t.count,
+    revenue: t.revenue,
+  }))
+
+  const recencyData = (recency || []).map(r => ({
+    bucket: r.bucket,
+    count: r.count,
+    color: RECENCY_COLORS[r.bucket] || '#ccc',
+  }))
+
+  // KPI derived
+  const totalCustomers = rfm?.segments?.reduce((s, x) => s + (x.count || 0), 0) || 0
+  const totalRevenue = rfm?.segments?.reduce((s, x) => s + (x.revenue || 0), 0) || 0
+  const avgRevPerCust = totalCustomers > 0 ? totalRevenue / totalCustomers : 0
+  const perluAksiCount = (rfm?.segments?.find(s => s.segment === 'At Risk')?.count || 0) +
+    (rfm?.segments?.find(s => s.segment === 'Lost')?.count || 0)
+  const champLoyalCount = (rfm?.segments?.find(s => s.segment === 'Champions')?.count || 0) +
+    (rfm?.segments?.find(s => s.segment === 'Loyal')?.count || 0)
+  const activeRecent = recency?.find(r => r.bucket === '0–7')?.count || 0
+
+  // Client-side filtering of custList
+  const allCustomers = custList?.data || []
+  const filtered = allCustomers.filter(c => {
+    if (segFilter !== 'all' && c.rfm_segment !== segFilter) return false
+    if (tierFilter !== 'all' && c.tier !== tierFilter) return false
+    if (statusFilter !== 'all') {
+      const st = getActivityStatus(c)
+      if (statusFilter === 'aktif' && st.ratio >= 1.0) return false
+      if (statusFilter === 'lapsed' && !(st.ratio >= 1.5 && st.ratio < 2.0)) return false
+      if (statusFilter === 'overdue' && !(st.ratio >= 2.0)) return false
+    }
+    return true
+  })
+
+  const selStyle = {
+    border: '1px solid #ddd', borderRadius: 6, padding: '5px 8px',
+    fontSize: 12, background: '#fff', cursor: 'pointer',
   }
-  useEffect(() => { loadList() }, [JSON.stringify(filters), page, search])
 
-  // Derived metrics
-  const totalCustomers = custList?.total || 0
-  const avgAOV = rfm?.segments?.length
-    ? rfm.segments.reduce((s, x) => s + (x.revenue || 0), 0) / Math.max(1, rfm.segments.reduce((s, x) => s + (x.count || 0), 0))
-    : 0
+  // Recommendations from RFM data
+  const atRisk = rfm?.segments?.find(s => s.segment === 'At Risk')
+  const lost = rfm?.segments?.find(s => s.segment === 'Lost')
+  const loyal = rfm?.segments?.find(s => s.segment === 'Loyal')
+  const champions = rfm?.segments?.find(s => s.segment === 'Champions')
+  const tier1 = tiers?.find(t => t.tier?.includes('Tier 1'))
 
-  const recency180 = recency?.find(r => r.bucket === '180+')?.count || 0
-  const recency0_30 = recency?.find(r => r.bucket === '0–30')?.count || 0
-  const lapsedCount = custList
-    ? (custList.data?.filter(c => c.days_since_purchase >= 90).length || 0)
-    : 0
-  const trendYears = trend?.years?.map(String) || []
+  if (!filters) return null
 
-  const SEGMENT_COLORS = {
-    'Champions': '#d31137',
-    'Loyal': '#fc3961',
-    'Promising': '#22c55e',
-    'Need Attention': '#f59e0b',
-    'At Risk': '#f97316',
-    'Lost': '#888',
-  }
+  const kpiCards = [
+    {
+      title: 'TOTAL CUSTOMER',
+      value: formatNumber(totalCustomers),
+      sub: `${activeRecent} aktif 7 hari terakhir`,
+      onClick: null,
+    },
+    {
+      title: 'AVG REV/CUSTOMER',
+      value: formatRupiahShort(avgRevPerCust),
+      sub: 'per customer',
+      onClick: null,
+    },
+    {
+      title: 'PERLU AKSI',
+      value: formatNumber(perluAksiCount),
+      sub: 'At Risk + Lost',
+      color: '#d31137',
+      onClick: () => setFilterAndScroll('At Risk'),
+      clickLabel: 'klik → filter',
+    },
+    {
+      title: 'CHAMPIONS + LOYAL',
+      value: formatNumber(champLoyalCount),
+      sub: 'nilai tinggi',
+      color: '#22c55e',
+      onClick: () => setFilterAndScroll('Champions'),
+      clickLabel: 'klik → filter',
+    },
+  ]
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <div>
-        <h2 style={{ fontSize: 20, marginBottom: 4 }}>Customer Dashboard</h2>
-        <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Analisis, segmentasi, dan rekomendasi aksi untuk customer</p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Filter bar */}
+      <div style={{
+        position: 'sticky', top: 54, zIndex: 90,
+        background: '#fff', borderBottom: '1px solid #e5e7eb',
+        padding: '0 32px', height: 48,
+        display: 'flex', alignItems: 'center', gap: 10,
+        marginLeft: -32, marginRight: -32,
+      }}>
+        <select style={selStyle} value={filters.year || 'all'}
+          onChange={e => { setFilters({ year: e.target.value }); setPage(1) }}>
+          <option value="all">Semua Tahun</option>
+          {years.map(y => <option key={y} value={String(y)}>{y}</option>)}
+        </select>
+
+        <select style={selStyle} value={segFilter}
+          onChange={e => { setSegFilter(e.target.value); setPage(1) }}>
+          <option value="all">Semua Segmen RFM</option>
+          {RFM_DISPLAY_ORDER.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+
+        <select style={selStyle} value={tierFilter}
+          onChange={e => { setTierFilter(e.target.value); setPage(1) }}>
+          <option value="all">Semua Tier</option>
+          {(tiers || []).filter(t => t.count > 0).map(t => (
+            <option key={t.tier} value={t.tier}>{t.tier}</option>
+          ))}
+        </select>
+
+        <input
+          placeholder="🔍 Cari nama customer..."
+          value={search}
+          onChange={e => { setSearch(e.target.value); setPage(1) }}
+          style={{ ...selStyle, width: 200, marginLeft: 4 }}
+        />
       </div>
 
-      {/* Year Filter */}
-      <Card style={{ display: 'flex', gap: 16, padding: '14px 20px', alignItems: 'flex-end' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <label style={{ fontSize: 11, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tahun</label>
-          <select value={filters.year || 'all'}
-            onChange={e => setFilters(f => ({ ...f, year: e.target.value }))}
-            style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: '6px 10px', fontSize: 13, background: '#fff', cursor: 'pointer' }}>
-            <option value="all">Semua</option>
-            {years.map(y => <option key={y} value={String(y)}>{y}</option>)}
-          </select>
+      {error && (
+        <div style={{ background: '#fde3e9', border: '1px solid #fca5a5', borderRadius: 8, padding: '10px 16px', fontSize: 13, color: '#d31137' }}>
+          ⚠ {error}
         </div>
-      </Card>
+      )}
 
-      {error && <ErrorState message={error} onRetry={load} />}
-
-      {/* KPI Tiles */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
-        {loading ? [1,2,3,4].map(i => <SkeletonCard key={i} />) : <>
-          <KPITile
-            title="Total Customer"
-            value={formatNumber(totalCustomers)}
-            sub={`${recency0_30} aktif 30 hari terakhir`}
-          />
-          <KPITile
-            title="Avg Revenue/Customer"
-            value={formatRupiahShort(avgAOV)}
-            sub="berdasarkan segmen RFM"
-          />
-          <KPITile
-            title="Customer Tidak Aktif"
-            value={formatNumber(recency180)}
-            sub="belum beli 180+ hari"
-            highlight={recency180 > 10 ? '#d31137' : undefined}
-          />
-          <KPITile
-            title="Champions + Loyal"
-            value={formatNumber(
-              (rfm?.segments?.find(s => s.segment === 'Champions')?.count || 0) +
-              (rfm?.segments?.find(s => s.segment === 'Loyal')?.count || 0)
-            )}
-            sub="customer bernilai tinggi"
-            highlight="#22c55e"
-          />
-        </>}
+      {/* KPI Row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        {loading ? [1,2,3,4].map(i => <SkeletonCard key={i} />) : kpiCards.map((c, i) => (
+          <div key={i}
+            onClick={c.onClick || undefined}
+            style={{
+              background: '#fff', borderRadius: 10, padding: 16, height: 88,
+              boxSizing: 'border-box', boxShadow: '0 1px 4px rgba(0,0,0,0.07)',
+              border: '1px solid #f0f0f0',
+              cursor: c.onClick ? 'pointer' : 'default',
+              display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+              transition: 'box-shadow 0.15s',
+            }}
+            onMouseEnter={e => { if (c.onClick) e.currentTarget.style.boxShadow = '0 2px 12px rgba(211,17,55,0.15)' }}
+            onMouseLeave={e => { if (c.onClick) e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.07)' }}
+          >
+            <div style={{ fontSize: 11, color: '#888', fontWeight: 600, letterSpacing: '0.05em' }}>{c.title}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: c.color || 'var(--color-text)' }}>{c.value}</div>
+            <div style={{ fontSize: 11, color: c.onClick ? '#d31137' : '#888' }}>
+              {c.clickLabel || c.sub}
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* Revenue Trend */}
-      <Card>
-        <SectionTitle>Revenue Trend</SectionTitle>
-        {loading ? <Skeleton height={240} /> : !trend?.data?.length ? <EmptyState /> : (
-          <ResponsiveContainer width="100%" height={240}>
-            <LineChart data={trend.data}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#888' }} />
-              <YAxis tickFormatter={formatRupiahShort} tick={{ fontSize: 12, fill: '#888' }} width={72} />
-              <Tooltip {...tooltipStyle} formatter={(v) => formatRupiah(v)} />
-              <Legend />
-              {trendYears.map(y => (
-                <Line key={y} type="monotone" dataKey={y} name={y}
-                  stroke={YEAR_COLORS[y] || '#cccccc'} strokeWidth={2} dot={false} />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        )}
-      </Card>
-
-      {/* Top 5 Kategori + RFM Segments */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 20 }}>
-        <Card>
-          <SectionTitle>Top 5 Kategori Produk</SectionTitle>
-          {loading ? <Skeleton height={220} /> : !byKat?.length ? <EmptyState /> : (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={byKat.slice(0, 5)} layout="vertical">
+      {/* 3-panel row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '35% 30% 35%', gap: 12 }}>
+        {/* RFM Segments */}
+        <Card style={{ padding: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Segmen RFM</div>
+          {loading ? <Skeleton height={200} /> : !rfmData.length ? (
+            <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', fontSize: 13 }}>Tidak ada data</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={rfmData} layout="vertical" margin={{ right: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis type="number" tickFormatter={formatRupiahShort} tick={{ fontSize: 11, fill: '#888' }} />
-                <YAxis type="category" dataKey="kategori" tick={{ fontSize: 11, fill: '#888' }} width={110} />
-                <Tooltip {...tooltipStyle} formatter={(v) => formatRupiah(v)} />
-                <Bar dataKey="revenue" name="Revenue" isAnimationActive>
-                  {byKat.slice(0, 5).map((_, i) => (
-                    <Cell key={i} fill={['#d31137','#fc3961','#fc617e','#fc93a6','#feb5c2'][i] || '#ccc'} />
+                <XAxis type="number" tick={{ fontSize: 11, fill: '#888' }} />
+                <YAxis type="category" dataKey="segment" tick={{ fontSize: 11, fill: '#888' }} width={88} />
+                <Tooltip {...tooltipStyle}
+                  formatter={(v, name, props) => [`${v} customer · ${formatRupiahShort(props.payload.revenue)}`, 'Segmen']} />
+                <Bar dataKey="count" name="Customer" radius={[0, 3, 3, 0]}
+                  onClick={(data) => setFilterAndScroll(data.segment)}>
+                  {rfmData.map((d, i) => (
+                    <Cell key={i} fill={RFM_COLORS[d.segment]?.bar || '#ccc'} cursor="pointer" />
                   ))}
                 </Bar>
               </BarChart>
@@ -311,95 +295,173 @@ export default function CustomerIntelligence() {
           )}
         </Card>
 
-        <Card>
-          <SectionTitle>Segmen Customer (RFM)</SectionTitle>
-          {loading ? <Skeleton height={220} /> : !rfm?.segments?.length ? <EmptyState /> : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
-              {rfm.segments.sort((a, b) => b.count - a.count).map((seg, i) => {
-                const maxCount = Math.max(...rfm.segments.map(s => s.count))
-                const pct = maxCount > 0 ? seg.count / maxCount * 100 : 0
-                return (
-                  <div key={i}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: SEGMENT_COLORS[seg.segment] || '#ccc' }} />
-                        <span style={{ fontSize: 13 }}>{seg.segment}</span>
-                      </div>
-                      <div style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
-                        <strong>{seg.count}</strong>
-                        <span style={{ color: 'var(--color-text-muted)', marginLeft: 6, fontSize: 12 }}>{formatRupiahShort(seg.revenue)}</span>
-                      </div>
-                    </div>
-                    <div style={{ height: 6, background: '#f0f0f0', borderRadius: 3 }}>
-                      <div style={{ height: 6, width: `${pct}%`, background: SEGMENT_COLORS[seg.segment] || '#ccc', borderRadius: 3 }} />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+        {/* Tier Distribution */}
+        <Card style={{ padding: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Tier Distribution</div>
+          {loading ? <Skeleton height={200} /> : !tierData.length ? (
+            <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', fontSize: 13 }}>Tidak ada data</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={tierData} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis type="number" tick={{ fontSize: 11, fill: '#888' }} />
+                <YAxis type="category" dataKey="tier" tick={{ fontSize: 11, fill: '#888' }} width={40} />
+                <Tooltip {...tooltipStyle}
+                  formatter={(v, name, props) => [`${v} cust · ${formatRupiahShort(props.payload.revenue)}`, 'Tier']} />
+                <Bar dataKey="count" name="Customer" radius={[0, 3, 3, 0]}>
+                  {tierData.map((_, i) => <Cell key={i} fill={TIER_COLORS[i] || '#ccc'} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </Card>
+
+        {/* Customer Recency */}
+        <Card style={{ padding: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Customer Recency</div>
+          {loading ? <Skeleton height={200} /> : !recencyData.length ? (
+            <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', fontSize: 13 }}>Tidak ada data</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={recencyData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="bucket" tick={{ fontSize: 10, fill: '#888' }} />
+                <YAxis tick={{ fontSize: 11, fill: '#888' }} width={36} />
+                <Tooltip {...tooltipStyle} formatter={(v) => [v, 'Customer']} />
+                <Bar dataKey="count" name="Customer" radius={[3, 3, 0, 0]}>
+                  {recencyData.map((d, i) => <Cell key={i} fill={d.color} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           )}
         </Card>
       </div>
 
-      {/* Recommendations */}
+      {/* Compact Recommendations */}
       {!loading && (
-        <RecommendationPanel
-          rfm={rfm}
-          recency={recency}
-          tiers={tiers}
-          lapsedCount={lapsedCount}
-          totalCustomers={totalCustomers}
-          custList={custList}
-        />
+        <Card style={{ padding: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Aksi yang Disarankan</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {atRisk?.count > 0 && (
+              <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', fontSize: 13 }}>
+                <span>🔴 <strong>URGENT</strong></span>
+                <span>{atRisk.count} customer At Risk · {formatRupiahShort(atRisk.revenue)} potensi hilang</span>
+                <span style={{ color: '#888', fontSize: 12 }}>→ Hubungi sebelum akhir minggu ·</span>
+                <button onClick={() => setFilterAndScroll('At Risk')}
+                  style={{ fontSize: 12, color: '#d31137', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 500 }}>
+                  [Filter ke At Risk]
+                </button>
+              </div>
+            )}
+            {lost?.count > 0 && (
+              <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', fontSize: 13 }}>
+                <span>🔴 <strong>URGENT</strong></span>
+                <span>{lost.count} customer Lost · {formatRupiahShort(lost.revenue)} · Campaign win-back</span>
+                <span style={{ color: '#888', fontSize: 12 }}>→ Coba promo eksklusif ·</span>
+                <button onClick={() => setFilterAndScroll('Lost')}
+                  style={{ fontSize: 12, color: '#d31137', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 500 }}>
+                  [Filter ke Lost]
+                </button>
+              </div>
+            )}
+            {loyal?.count > 0 && (
+              <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', fontSize: 13 }}>
+                <span>🟡 <strong>PANTAU</strong></span>
+                <span>{loyal.count} customer Loyal siap naik ke Champions</span>
+                <span style={{ color: '#888', fontSize: 12 }}>→ Program reward / target bulanan ·</span>
+                <button onClick={() => setFilterAndScroll('Loyal')}
+                  style={{ fontSize: 12, color: '#d31137', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 500 }}>
+                  [Filter ke Loyal]
+                </button>
+              </div>
+            )}
+            {tier1?.count > 0 && (
+              <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', fontSize: 13 }}>
+                <span>🔵 <strong>INFO</strong></span>
+                <span>{tier1.count} customer Tier 1 — pastikan dilayani sales senior</span>
+                <button onClick={() => { setTierFilter(tier1.tier); tableRef.current?.scrollIntoView({ behavior: 'smooth' }) }}
+                  style={{ fontSize: 12, color: '#d31137', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 500 }}>
+                  [Filter ke Tier 1]
+                </button>
+              </div>
+            )}
+            {!atRisk?.count && !lost?.count && (
+              <div style={{ fontSize: 13, color: '#22c55e' }}>✅ Base customer dalam kondisi sehat</div>
+            )}
+          </div>
+        </Card>
       )}
 
       {/* Customer Table */}
-      <Card>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <SectionTitle>Daftar Customer</SectionTitle>
-          <input
-            placeholder="Cari nama customer..."
-            value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1) }}
-            style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: '6px 12px', fontSize: 13, width: 220 }}
-          />
+      <Card style={{ padding: 16 }} ref={tableRef}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <div style={{ fontSize: 13, fontWeight: 600 }}>Daftar Customer</div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {segFilter !== 'all' && (
+              <span style={{
+                background: RFM_COLORS[segFilter]?.bg || '#f0f0f0',
+                color: RFM_COLORS[segFilter]?.text || '#333',
+                fontSize: 11, padding: '2px 10px', borderRadius: 12, fontWeight: 600,
+              }}>{segFilter} ×
+                <button onClick={() => setSegFilter('all')}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: 'inherit', marginLeft: 4 }}>✕</button>
+              </span>
+            )}
+            <select style={{ border: '1px solid #ddd', borderRadius: 6, padding: '4px 8px', fontSize: 12, background: '#fff' }}
+              value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+              <option value="all">Semua Status</option>
+              <option value="aktif">Aktif</option>
+              <option value="lapsed">Lapsed</option>
+              <option value="overdue">Overdue</option>
+            </select>
+          </div>
         </div>
-        {!custList ? <Skeleton height={200} /> : (
+
+        {listLoading ? <Skeleton height={200} /> : filtered.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px 0', color: '#888', fontSize: 13 }}>
+            Tidak ada customer yang sesuai filter ini.
+          </div>
+        ) : (
           <>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                 <thead>
-                  <tr style={{ borderBottom: '2px solid var(--color-border)' }}>
-                    {['Nama Customer', 'Tier', 'Total Revenue', 'Avg/Bulan', 'Bills', 'Terakhir Beli', 'Hari Sejak Beli'].map(h => (
-                      <th key={h} style={{ padding: '8px 10px', textAlign: 'left', color: 'var(--color-text-muted)', fontWeight: 600, fontSize: 12, whiteSpace: 'nowrap' }}>{h}</th>
+                  <tr style={{ borderBottom: '2px solid #f0f0f0' }}>
+                    {['Nama Customer', 'Tier', 'Segmen RFM', 'Total Revenue', 'Avg/Bulan', 'Bills', 'Terakhir Beli', 'Status Keaktifan'].map(h => (
+                      <th key={h} style={{ padding: '6px 8px', textAlign: 'left', color: '#888', fontWeight: 600, fontSize: 11, whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {custList.data?.map((c, i) => {
-                    const isLapsed = c.days_since_purchase >= 90
-                    const isVeryLapsed = c.days_since_purchase >= 180
+                  {filtered.map((c, i) => {
+                    const st = getActivityStatus(c)
+                    const rfmC = RFM_COLORS[c.rfm_segment] || { bg: '#f0f0f0', text: '#333' }
+                    const rowBg = st.ratio >= 2.0 ? '#fde3e9' : st.ratio >= 1.0 ? '#fff8e1' : 'transparent'
                     return (
-                      <tr key={i} style={{
-                        background: isVeryLapsed ? '#fde3e9' : isLapsed ? '#fef3c7' : 'transparent',
-                        borderBottom: '1px solid var(--color-border)',
-                      }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#fde3e9'}
-                        onMouseLeave={e => e.currentTarget.style.background = isVeryLapsed ? '#fde3e9' : isLapsed ? '#fef3c7' : 'transparent'}
-                      >
-                        <td style={{ padding: '8px 10px', fontWeight: 500 }}>{c.name}</td>
-                        <td style={{ padding: '8px 10px', fontSize: 12, color: 'var(--color-text-muted)' }}>{c.tier}</td>
-                        <td style={{ padding: '8px 10px', fontVariantNumeric: 'tabular-nums' }}>{formatRupiah(c.revenue)}</td>
-                        <td style={{ padding: '8px 10px', fontVariantNumeric: 'tabular-nums' }}>{formatRupiah(c.avg_monthly)}</td>
-                        <td style={{ padding: '8px 10px' }}>{c.bills}</td>
-                        <td style={{ padding: '8px 10px', fontSize: 12 }}>{c.last_purchase}</td>
-                        <td style={{ padding: '8px 10px' }}>
+                      <tr key={i} style={{ background: rowBg, borderBottom: '1px solid #f5f5f5' }}>
+                        <td style={{ padding: '6px 8px', fontWeight: 600, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</td>
+                        <td style={{ padding: '6px 8px', fontSize: 11 }}>
+                          <span style={{ background: '#f1f5f9', color: '#475569', padding: '2px 6px', borderRadius: 4, fontWeight: 500 }}>
+                            {c.tier?.split(' — ')[0]}
+                          </span>
+                        </td>
+                        <td style={{ padding: '6px 8px' }}>
+                          {c.rfm_segment && (
+                            <span style={{ background: rfmC.bg, color: rfmC.text, fontSize: 11, padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>
+                              {c.rfm_segment}
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ padding: '6px 8px', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{formatRupiahShort(c.revenue)}</td>
+                        <td style={{ padding: '6px 8px', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{formatRupiahShort(c.avg_monthly)}</td>
+                        <td style={{ padding: '6px 8px' }}>{c.bills}</td>
+                        <td style={{ padding: '6px 8px', whiteSpace: 'nowrap', fontSize: 11, color: '#666' }}>{c.last_purchase}</td>
+                        <td style={{ padding: '6px 8px' }}>
                           <span style={{
-                            fontSize: 11, padding: '2px 8px', borderRadius: 12, fontWeight: 600,
-                            background: isVeryLapsed ? '#fde3e9' : isLapsed ? '#fef3c7' : '#f0fdf4',
-                            color: isVeryLapsed ? '#d31137' : isLapsed ? '#d97706' : '#22c55e',
+                            fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
+                            background: st.bg, color: st.color,
                           }}>
-                            {c.days_since_purchase >= 9999 ? '—' : `${c.days_since_purchase}h`}
+                            {st.emoji} {st.label}
                           </span>
                         </td>
                       </tr>
@@ -408,16 +470,16 @@ export default function CustomerIntelligence() {
                 </tbody>
               </table>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
-              <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
-                {custList.total} customer ditemukan
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+              <span style={{ fontSize: 12, color: '#888' }}>
+                {custList?.total || 0} customer total {filtered.length < (custList?.data?.length || 0) ? `· ${filtered.length} sesuai filter` : ''}
               </span>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                  style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-border)', cursor: 'pointer', background: '#fff', fontSize: 13 }}>← Prev</button>
-                <span style={{ padding: '6px 12px', fontSize: 13 }}>Hal {page}</span>
-                <button onClick={() => setPage(p => p + 1)} disabled={page * 25 >= custList.total}
-                  style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-border)', cursor: 'pointer', background: '#fff', fontSize: 13 }}>Next →</button>
+                  style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid #ddd', cursor: 'pointer', background: '#fff', fontSize: 12, color: page === 1 ? '#ccc' : '#333' }}>← Prev</button>
+                <span style={{ padding: '5px 10px', fontSize: 12, color: '#888' }}>Hal {page}</span>
+                <button onClick={() => setPage(p => p + 1)} disabled={page * 25 >= (custList?.total || 0)}
+                  style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid #ddd', cursor: 'pointer', background: '#fff', fontSize: 12 }}>Next →</button>
               </div>
             </div>
           </>

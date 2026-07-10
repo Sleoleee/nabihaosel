@@ -19,6 +19,7 @@ export const getRevenueTrend = (f) => api.get('/api/overview/revenue-trend', { p
 export const getBillsAOV = (f) => api.get('/api/overview/bills-aov', { params: buildParams(f) }).then(r => r.data)
 export const getByKategori = (f) => api.get('/api/overview/by-kategori', { params: buildParams(f) }).then(r => r.data)
 export const getByBranch = (f) => api.get('/api/overview/by-branch', { params: buildParams(f) }).then(r => r.data)
+export const getAlerts = (f) => api.get('/api/overview/alerts', { params: buildParams(f) }).then(r => r.data)
 
 // Customers
 export const getRFM = (f) => api.get('/api/customers/rfm', { params: buildParams(f) }).then(r => r.data)
