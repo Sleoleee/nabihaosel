@@ -48,6 +48,8 @@ function getActivityStatus(c) {
 function FilterBar({ filters, onChange, availFilters, target, onTargetChange }) {
   const years = availFilters.years || []
   const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des']
+  const kategoriList = availFilters.kategori || []
+  const branchList = availFilters.branches || []
 
   const selStyle = {
     border: '1px solid #ddd', borderRadius: 6, padding: '5px 8px',
@@ -73,6 +75,22 @@ function FilterBar({ filters, onChange, availFilters, target, onTargetChange }) 
         <option value="all">Semua Bulan</option>
         {months.map((m, i) => <option key={i + 1} value={String(i + 1)}>{m}</option>)}
       </select>
+
+      {kategoriList.length > 0 && (
+        <select style={selStyle} value={filters.kategori || 'all'}
+          onChange={e => onChange({ ...filters, kategori: e.target.value, branch: 'all' })}>
+          <option value="all">Semua Kategori</option>
+          {kategoriList.map(k => <option key={k} value={k}>{k}</option>)}
+        </select>
+      )}
+
+      {branchList.length > 0 && (
+        <select style={selStyle} value={filters.branch || 'all'}
+          onChange={e => onChange({ ...filters, branch: e.target.value, kategori: 'all' })}>
+          <option value="all">Semua Cabang</option>
+          {branchList.map(b => <option key={b} value={b}>{b}</option>)}
+        </select>
+      )}
 
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ fontSize: 12, color: '#666', whiteSpace: 'nowrap' }}>Target bulan ini:</span>
@@ -222,8 +240,8 @@ export default function Overview() {
       setAvailFilters(f)
       // Set defaults: latest year + latest month from data
       const latestYear = f.years?.[0] ? String(f.years[0]) : 'all'
-      setFilters({ year: latestYear, month: 'all' })
-    }).catch(() => setFilters({ year: 'all', month: 'all' }))
+      setFilters({ year: latestYear, month: 'all', kategori: 'all', branch: 'all' })
+    }).catch(() => setFilters({ year: 'all', month: 'all', kategori: 'all', branch: 'all' }))
   }, [])
 
   useEffect(() => {

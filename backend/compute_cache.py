@@ -343,8 +343,7 @@ def main():
     years = sorted(set(str(r["year"]) for r in rows if r.get("year")), reverse=True)
     kategori_list = sorted(set(r["kategori"] for r in rows if r.get("kategori")))
     branches = sorted(set(r["branch"] for r in rows if r.get("branch")))
-    upsert(db, "filters", {"years": years, "kategori": kategori_list, "branches": branches})
-    print("✓ filters")
+    print("✓ filters (will be saved at end with safe key mappings)")
 
     print("Computing aggregations...")
     agg = compute_all(rows)
@@ -387,6 +386,51 @@ def main():
             upsert(db, f"by_branch__{yk}__{ms}",   build_branch(agg, yk, ms))
 
         print(f"  ✓ year={yk}")
+
+    # Per-kategori caches (so kategori filter makes all charts reactive)
+    print("Computing per-kategori caches...")
+    for k in kategori_list:
+        k_rows = [r for r in rows if (r.get("kategori") or "Lainnya") == k]
+        if not k_rows:
+            continue
+        k_agg = compute_all(k_rows)
+        safe_k = k.replace("/", "_").replace(" ", "_")
+        for yk in year_keys:
+            upsert(db, f"kpi__{yk}__kat__{safe_k}",           build_kpi(k_agg, yk, "all"))
+            upsert(db, f"revenue_trend__{yk}__kat__{safe_k}", build_trend(k_agg, yk))
+            upsert(db, f"bills_aov__{yk}__kat__{safe_k}",     build_bills_aov(k_agg, yk))
+            upsert(db, f"by_branch__{yk}__kat__{safe_k}",     build_branch(k_agg, yk, "all"))
+            for m in range(1, 13):
+                ms = str(m)
+                upsert(db, f"kpi__{yk}__{ms}__kat__{safe_k}", build_kpi(k_agg, yk, m))
+        print(f"  ✓ kategori={k}")
+
+    # Per-branch caches
+    print("Computing per-branch caches...")
+    for br in branches:
+        br_rows = [r for r in rows if (r.get("branch") or "Lainnya") == br]
+        if not br_rows:
+            continue
+        br_agg = compute_all(br_rows)
+        safe_br = br.replace("/", "_").replace(" ", "_")
+        for yk in year_keys:
+            upsert(db, f"kpi__{yk}__br__{safe_br}",           build_kpi(br_agg, yk, "all"))
+            upsert(db, f"revenue_trend__{yk}__br__{safe_br}", build_trend(br_agg, yk))
+            upsert(db, f"bills_aov__{yk}__br__{safe_br}",     build_bills_aov(br_agg, yk))
+            upsert(db, f"by_kategori__{yk}__br__{safe_br}",   build_kat(br_agg, yk, "all"))
+            for m in range(1, 13):
+                ms = str(m)
+                upsert(db, f"kpi__{yk}__{ms}__br__{safe_br}", build_kpi(br_agg, yk, m))
+        print(f"  ✓ branch={br}")
+
+    # Store safe key mappings in filters so frontend can reference them
+    upsert(db, "filters", {
+        "years": years,
+        "kategori": kategori_list,
+        "branches": branches,
+        "kategori_keys": {k: k.replace("/", "_").replace(" ", "_") for k in kategori_list},
+        "branch_keys": {br: br.replace("/", "_").replace(" ", "_") for br in branches},
+    })
 
     print("\nDone! Cache updated. Dashboard will now read from cache.")
 
