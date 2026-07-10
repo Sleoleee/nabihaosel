@@ -21,7 +21,6 @@ def safe_key(v):
 
 
 def fsuffix(kategori, branch):
-    """Cache key suffix for an active kategori or branch filter."""
     if kategori and kategori != "all":
         return f"__kat__{safe_key(kategori)}"
     if branch and branch != "all":
@@ -43,20 +42,20 @@ def kpi(year: Optional[str] = Query(None), month: Optional[str] = Query(None),
     mk = month if (month and month != "all") else "all"
     suf = fsuffix(kategori, branch)
 
+    # Build candidate keys: filter-specific first, then fall back to unfiltered
     candidates = []
     if suf:
-        # With a filter, pre-computed per-month+filter keys exist too
         if mk != "all" and yk != "all":
             candidates.append((f"kpi__{yk}__{mk}{suf}", True))
         if yk != "all":
             candidates.append((f"kpi__{yk}{suf}", True))
-        candidates.append((f"kpi__all{suf}", False))
-    else:
-        if mk != "all" and yk != "all":
-            candidates.append((f"kpi__{yk}__{mk}", True))
-        if yk != "all":
-            candidates.append((f"kpi__{yk}", True))
-        candidates.append(("kpi__all", False))
+        candidates.append((f"kpi__all{suf}", True))
+    # Always add unfiltered fallback so we never return zeros just because filter cache missing
+    if mk != "all" and yk != "all":
+        candidates.append((f"kpi__{yk}__{mk}", not bool(suf)))
+    if yk != "all":
+        candidates.append((f"kpi__{yk}", not bool(suf)))
+    candidates.append(("kpi__all", False))
 
     data = None
     cache_stale = False
@@ -74,15 +73,17 @@ def kpi(year: Optional[str] = Query(None), month: Optional[str] = Query(None),
 
     rev, bills, customers, aov = data["revenue"], data["bills"], data["customers"], data["aov"]
 
-    # YoY comparison
     prev_rev, prev_bills, prev_aov, prev_custs = 0, 0, 0, 0
     if yk != "all":
         prev_yk = str(int(yk) - 1)
         if mk != "all":
             prev = (get_cache(db, f"kpi__{prev_yk}__{mk}{suf}") or
-                    get_cache(db, f"kpi__{prev_yk}{suf}") or {})
+                    get_cache(db, f"kpi__{prev_yk}{suf}") or
+                    get_cache(db, f"kpi__{prev_yk}__{mk}") or
+                    get_cache(db, f"kpi__{prev_yk}") or {})
         else:
-            prev = get_cache(db, f"kpi__{prev_yk}{suf}") or {}
+            prev = (get_cache(db, f"kpi__{prev_yk}{suf}") or
+                    get_cache(db, f"kpi__{prev_yk}") or {})
         prev_rev   = prev.get("revenue", 0)
         prev_bills = prev.get("bills", 0)
         prev_custs = prev.get("customers", 0)
@@ -106,10 +107,12 @@ def revenue_trend(year: Optional[str] = Query(None), kategori: Optional[str] = Q
     db = get_client()
     yk = year_key(year)
     suf = fsuffix(kategori, branch)
-    data = (get_cache(db, f"revenue_trend__{yk}{suf}") or
-            get_cache(db, f"revenue_trend__all{suf}") or
-            get_cache(db, f"revenue_trend__{yk}") or
-            get_cache(db, "revenue_trend__all"))
+    data = (
+        (get_cache(db, f"revenue_trend__{yk}{suf}") if suf else None) or
+        (get_cache(db, f"revenue_trend__all{suf}") if suf else None) or
+        get_cache(db, f"revenue_trend__{yk}") or
+        get_cache(db, "revenue_trend__all")
+    )
     return data or {"data": [], "years": []}
 
 
@@ -119,10 +122,12 @@ def bills_aov(year: Optional[str] = Query(None), kategori: Optional[str] = Query
     db = get_client()
     yk = year_key(year)
     suf = fsuffix(kategori, branch)
-    return (get_cache(db, f"bills_aov__{yk}{suf}") or
-            get_cache(db, f"bills_aov__all{suf}") or
-            get_cache(db, f"bills_aov__{yk}") or
-            get_cache(db, "bills_aov__all") or [])
+    return (
+        (get_cache(db, f"bills_aov__{yk}{suf}") if suf else None) or
+        (get_cache(db, f"bills_aov__all{suf}") if suf else None) or
+        get_cache(db, f"bills_aov__{yk}") or
+        get_cache(db, "bills_aov__all") or []
+    )
 
 
 @router.get("/by-kategori")
@@ -131,20 +136,20 @@ def by_kategori(year: Optional[str] = Query(None), month: Optional[str] = Query(
     db = get_client()
     yk = year_key(year)
     mk = month if (month and month != "all") else "all"
-    suf = fsuffix(None, branch)  # only branch filter applies here
+    suf = fsuffix(None, branch)
     candidates = []
-    if mk != "all" and yk != "all":
-        candidates.append(f"by_kategori__{yk}__{mk}{suf}" if suf else f"by_kategori__{yk}__{mk}")
-    if yk != "all":
-        candidates.append(f"by_kategori__{yk}{suf}" if suf else f"by_kategori__{yk}")
-    candidates.append(f"by_kategori__all{suf}" if suf else "by_kategori__all")
-    # fallback to no-filter if filter cache missing
     if suf:
         if mk != "all" and yk != "all":
-            candidates.append(f"by_kategori__{yk}__{mk}")
+            candidates.append(f"by_kategori__{yk}__{mk}{suf}")
         if yk != "all":
-            candidates.append(f"by_kategori__{yk}")
-        candidates.append("by_kategori__all")
+            candidates.append(f"by_kategori__{yk}{suf}")
+        candidates.append(f"by_kategori__all{suf}")
+    # Always include unfiltered fallback
+    if mk != "all" and yk != "all":
+        candidates.append(f"by_kategori__{yk}__{mk}")
+    if yk != "all":
+        candidates.append(f"by_kategori__{yk}")
+    candidates.append("by_kategori__all")
     for key in candidates:
         data = get_cache(db, key)
         if data:
@@ -158,19 +163,20 @@ def by_branch(year: Optional[str] = Query(None), month: Optional[str] = Query(No
     db = get_client()
     yk = year_key(year)
     mk = month if (month and month != "all") else "all"
-    suf = fsuffix(kategori, None)  # only kategori filter applies here
+    suf = fsuffix(kategori, None)
     candidates = []
-    if mk != "all" and yk != "all":
-        candidates.append(f"by_branch__{yk}__{mk}{suf}" if suf else f"by_branch__{yk}__{mk}")
-    if yk != "all":
-        candidates.append(f"by_branch__{yk}{suf}" if suf else f"by_branch__{yk}")
-    candidates.append(f"by_branch__all{suf}" if suf else "by_branch__all")
     if suf:
         if mk != "all" and yk != "all":
-            candidates.append(f"by_branch__{yk}__{mk}")
+            candidates.append(f"by_branch__{yk}__{mk}{suf}")
         if yk != "all":
-            candidates.append(f"by_branch__{yk}")
-        candidates.append("by_branch__all")
+            candidates.append(f"by_branch__{yk}{suf}")
+        candidates.append(f"by_branch__all{suf}")
+    # Always include unfiltered fallback
+    if mk != "all" and yk != "all":
+        candidates.append(f"by_branch__{yk}__{mk}")
+    if yk != "all":
+        candidates.append(f"by_branch__{yk}")
+    candidates.append("by_branch__all")
     for key in candidates:
         data = get_cache(db, key)
         if data:
