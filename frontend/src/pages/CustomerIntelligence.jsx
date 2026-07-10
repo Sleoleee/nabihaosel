@@ -8,6 +8,8 @@ import { getRFM, getTiers, getCustomerList, getRecency, getFilters } from '../ut
 const tooltipStyle = {
   contentStyle: { background: '#1a1a1a', border: 'none', borderRadius: 8, color: '#fff', fontSize: 12 },
   labelStyle: { color: '#fff', fontWeight: 600 },
+  itemStyle: { color: '#fff' },
+  cursor: { fill: 'rgba(255,255,255,0.06)' },
 }
 
 const RFM_COLORS = {
@@ -35,8 +37,8 @@ const RECENCY_COLORS = {
 
 function formatDuration(hours) {
   if (!hours && hours !== 0) return '-'
-  if (hours < 72) return `${Math.round(hours)}j`
-  return `${Math.round(hours / 24)} hari`
+  const days = Math.round(hours / 24)
+  return `${days} hari`
 }
 
 function getActivityStatus(c) {

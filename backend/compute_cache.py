@@ -221,12 +221,14 @@ def build_customers(agg):
         days_since    = (date.fromisoformat(cutoff) - date.fromisoformat(last)).days if last else 9999
         hours_since   = round(days_since * 24.0, 1)
 
-        # Avg interval between bills (in hours)
-        bill_dates_sorted = sorted(cust_doc_date[code].values())
-        if len(bill_dates_sorted) >= 2:
-            intervals_days = [(date.fromisoformat(bill_dates_sorted[i]) - date.fromisoformat(bill_dates_sorted[i-1])).days
-                              for i in range(1, len(bill_dates_sorted))]
-            avg_interval_hours = round(sum(intervals_days) / len(intervals_days) * 24.0, 1)
+        # Avg interval between bills in days (posting_date is date-only, min 1 day)
+        # Deduplicate same-day dates so multiple same-day docs count as one billing day
+        unique_dates = sorted(set(cust_doc_date[code].values()))
+        if len(unique_dates) >= 2:
+            intervals_days = [(date.fromisoformat(unique_dates[i]) - date.fromisoformat(unique_dates[i-1])).days
+                              for i in range(1, len(unique_dates))
+                              if (date.fromisoformat(unique_dates[i]) - date.fromisoformat(unique_dates[i-1])).days > 0]
+            avg_interval_hours = round(sum(intervals_days) / len(intervals_days) * 24.0, 1) if intervals_days else None
         else:
             avg_interval_hours = None
 
