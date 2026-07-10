@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, ScatterChart, Scatter,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -20,6 +20,92 @@ const MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov
 
 function SectionTitle({ children }) {
   return <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>{children}</h3>
+}
+
+function SalesRecommendations({ leaderboard, avgRevenue }) {
+  const items = useMemo(() => {
+    if (!leaderboard?.length) return []
+    const recs = []
+    const top = leaderboard[0]
+    const bottom = leaderboard[leaderboard.length - 1]
+    const belowAvg = leaderboard.filter(s => s.revenue < avgRevenue)
+
+    if (top) {
+      recs.push({
+        priority: 'low',
+        icon: '🏆',
+        title: `${top.name} adalah top performer`,
+        action: `Revenue ${formatRupiahShort(top.revenue)} — ${top.customers} customer, AOV ${formatRupiahShort(top.aov)}. Jadikan benchmark untuk tim. Bagikan best practice ke anggota lain.`,
+      })
+    }
+
+    if (belowAvg.length > 0) {
+      recs.push({
+        priority: 'high',
+        icon: '📚',
+        title: `${belowAvg.length} sales di bawah rata-rata tim (${formatRupiahShort(avgRevenue)})`,
+        action: `Identifikasi bottleneck: kurang coverage customer, AOV rendah, atau frekuensi kunjungan kurang. Jadwalkan coaching 1-on-1 dan sharing strategi dari top performer.`,
+      })
+    }
+
+    const lowAovSales = leaderboard.filter(s => s.customers > 3 && s.aov < avgRevenue * 0.5)
+    if (lowAovSales.length > 0) {
+      recs.push({
+        priority: 'medium',
+        icon: '🛒',
+        title: `${lowAovSales.map(s => s.name).join(', ')} memiliki AOV rendah`,
+        action: 'Sales dengan AOV rendah perlu didorong untuk upsell dan cross-sell. Latih teknik menawarkan produk pelengkap atau bundle.',
+      })
+    }
+
+    const singleCustSales = leaderboard.filter(s => s.customers <= 2)
+    if (singleCustSales.length > 0) {
+      recs.push({
+        priority: 'medium',
+        icon: '👥',
+        title: `${singleCustSales.map(s => s.name).join(', ')} hanya melayani ≤2 customer`,
+        action: 'Coverage customer sangat terbatas. Dorong untuk aktif mencari customer baru atau handle lebih banyak akun.',
+      })
+    }
+
+    return recs.sort((a, b) => ({ high: 0, medium: 1, low: 2 }[a.priority] - { high: 0, medium: 1, low: 2 }[b.priority]))
+  }, [leaderboard, avgRevenue])
+
+  if (!items.length) return null
+
+  const priorityColors = { high: '#d31137', medium: '#f59e0b', low: '#22c55e' }
+  const priorityBg = { high: '#fde3e9', medium: '#fef3c7', low: '#f0fdf4' }
+  const priorityLabel = { high: 'URGENT', medium: 'PERHATIAN', low: 'INFO' }
+
+  return (
+    <Card>
+      <SectionTitle>💡 Rekomendasi Tim Sales</SectionTitle>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {items.map((item, i) => (
+          <div key={i} style={{
+            background: priorityBg[item.priority],
+            borderLeft: `4px solid ${priorityColors[item.priority]}`,
+            borderRadius: '0 8px 8px 0',
+            padding: '12px 16px',
+          }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <span style={{ fontSize: 18, flexShrink: 0 }}>{item.icon}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13 }}>{item.title}</div>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                    background: priorityColors[item.priority], color: '#fff', letterSpacing: '0.05em',
+                  }}>{priorityLabel[item.priority]}</span>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.6 }}>{item.action}</div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
 }
 
 export default function SalesPerformance() {
@@ -123,6 +209,11 @@ export default function SalesPerformance() {
           </div>
         )}
       </Card>
+
+      {/* Recommendations */}
+      {!loading && leaderboard?.length > 0 && (
+        <SalesRecommendations leaderboard={leaderboard} avgRevenue={avgRevenue} />
+      )}
 
       {/* Sales Chart */}
       <Card>
