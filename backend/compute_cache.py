@@ -27,15 +27,28 @@ TIER_ORDER = [
 ]
 
 
+BATCH_SIZE = 5000
+
 def fetch_all(db):
-    print("Fetching all transactions from Supabase...")
-    rows = (db.table("transactions")
-            .select("customer_code,customer_name,new_row_total,document_number,posting_date,year,kategori,branch")
-            .order("posting_date")
-            .limit(ROW_LIMIT)
-            .execute().data)
-    print(f"  {len(rows)} rows fetched.")
-    return rows
+    print("Fetching all transactions from Supabase (paginated)...")
+    all_rows = []
+    start = 0
+    while True:
+        end = start + BATCH_SIZE - 1
+        batch = (db.table("transactions")
+                 .select("customer_code,customer_name,new_row_total,document_number,posting_date,year,kategori,branch")
+                 .order("posting_date")
+                 .range(start, end)
+                 .execute().data)
+        if not batch:
+            break
+        all_rows.extend(batch)
+        print(f"  fetched {len(all_rows)} rows...", end="\r")
+        if len(batch) < BATCH_SIZE:
+            break
+        start += BATCH_SIZE
+    print(f"\n  Total: {len(all_rows)} rows fetched.")
+    return all_rows
 
 
 def compute_all(rows):
