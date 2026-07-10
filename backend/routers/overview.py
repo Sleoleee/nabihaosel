@@ -25,13 +25,22 @@ def kpi(
     month: Optional[str] = Query(None),
     kategori: Optional[str] = Query(None),
     branch: Optional[str] = Query(None),
+    customer_name: Optional[str] = Query(None),
 ):
     db = get_client()
 
     def fetch_revenue(y=None, m=None):
-        q = db.table("transactions").select("new_row_total, document_number, customer_code, posting_date")
+        q = db.table("transactions").select(
+            "new_row_total, document_number, customer_code, posting_date, kategori, branch, customer_name"
+        )
         if y:
             q = q.eq("year", int(y))
+        if kategori and kategori != "all":
+            q = q.eq("kategori", kategori)
+        if branch and branch != "all":
+            q = q.eq("branch", branch)
+        if customer_name and customer_name != "all":
+            q = q.eq("customer_name", customer_name)
         if m and m != "all":
             # Filter by month via posting_date month
             pass
@@ -40,11 +49,6 @@ def kpi(
     current_data = fetch_revenue(year if year and year != "all" else None)
     if month and month != "all":
         current_data = [r for r in current_data if r.get("posting_date") and int(r["posting_date"][5:7]) == int(month)]
-    if kategori and kategori != "all":
-        current_data = [r for r in current_data if r.get("kategori") == kategori]
-    if branch and branch != "all":
-        current_data = [r for r in current_data if r.get("branch") == branch]
-
     # YoY comparison
     yoy_data = []
     if year and year != "all":
@@ -85,14 +89,19 @@ def revenue_trend(
     year: Optional[str] = Query(None),
     kategori: Optional[str] = Query(None),
     branch: Optional[str] = Query(None),
+    customer_name: Optional[str] = Query(None),
 ):
     db = get_client()
-    data = db.table("transactions").select("new_row_total, posting_date, year").execute().data
-
+    query = db.table("transactions").select("new_row_total, posting_date, year")
     if kategori and kategori != "all":
-        data = [r for r in data if r.get("kategori") == kategori]
+        query = query.eq("kategori", kategori)
     if branch and branch != "all":
-        data = [r for r in data if r.get("branch") == branch]
+        query = query.eq("branch", branch)
+    if customer_name and customer_name != "all":
+        query = query.eq("customer_name", customer_name)
+    if year and year != "all":
+        query = query.eq("year", int(year))
+    data = query.execute().data
 
     # Group by year and month
     from collections import defaultdict
@@ -173,16 +182,21 @@ def by_kategori(
     year: Optional[str] = Query(None),
     month: Optional[str] = Query(None),
     branch: Optional[str] = Query(None),
+    customer_name: Optional[str] = Query(None),
 ):
     db = get_client()
-    data = db.table("transactions").select("new_row_total, kategori, posting_date, year, branch").execute().data
+    query = db.table("transactions").select("new_row_total, kategori, posting_date, year, branch")
 
     if year and year != "all":
-        data = [r for r in data if r.get("year") == int(year)]
+        query = query.eq("year", int(year))
+    if branch and branch != "all":
+        query = query.eq("branch", branch)
+    if customer_name and customer_name != "all":
+        query = query.eq("customer_name", customer_name)
+    data = query.execute().data
+
     if month and month != "all":
         data = [r for r in data if r.get("posting_date") and int(r["posting_date"][5:7]) == int(month)]
-    if branch and branch != "all":
-        data = [r for r in data if r.get("branch") == branch]
 
     from collections import defaultdict
     grouped = defaultdict(float)

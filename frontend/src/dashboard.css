@@ -1,0 +1,53 @@
+.executive-page { display:flex; flex-direction:column; gap:18px; max-width:1500px; margin:0 auto; }
+.executive-header { min-height:142px; margin:-32px -32px 4px; padding:30px 34px; color:#fff; background:linear-gradient(120deg,#575757,#707070); display:flex; align-items:center; justify-content:space-between; gap:30px; }
+.executive-header h1 { font-size:clamp(25px,3vw,34px); line-height:1.08; }
+.executive-header p { margin-top:6px; color:rgba(255,255,255,.86); font-size:17px; }
+.executive-header__filters { display:flex; align-items:center; justify-content:flex-end; gap:14px; }
+.dashboard-filter,.date-range label { display:flex; flex-direction:column; gap:5px; }
+.dashboard-filter>span,.date-range span { color:rgba(255,255,255,.72); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
+.dashboard-filter select,.date-range input { min-width:175px; height:42px; border:0; border-radius:8px; padding:0 13px; background:#fff; color:#f34f70; font:inherit; font-weight:700; outline:none; }
+.dashboard-filter select:focus,.date-range input:focus { box-shadow:0 0 0 3px rgba(255,90,122,.28); }
+.date-range { display:grid; grid-template-columns:repeat(2,minmax(135px,1fr)); gap:8px; }
+.date-range input { min-width:135px; height:33px; font-size:11px; }
+.executive-progress { display:grid; grid-template-columns:minmax(180px,1.6fr) repeat(4,minmax(130px,1fr)); gap:14px; align-items:stretch; }
+.executive-progress__revenue { display:grid; gap:8px; }
+.target-progress { height:14px; overflow:hidden; border-radius:999px; background:#e9e9e9; position:relative; }
+.target-progress>div { height:100%; border-radius:inherit; background:linear-gradient(90deg,#ff5b78,#e43f61); transition:width .35s ease; }
+.target-progress span { position:absolute; inset:0 8px 0 auto; display:flex; align-items:center; color:#fff; font-size:9px; font-weight:800; }
+.executive-metrics { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:14px; }
+.executive-metric { min-height:88px; padding:15px 12px; border:1px solid #ededed; border-radius:11px; background:#fff; box-shadow:0 3px 7px rgba(42,42,42,.17); text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.executive-metric>span { color:#f34f70; font-size:12px; line-height:1.15; }
+.executive-metric strong { margin-top:7px; color:#ff5575; font-size:clamp(20px,2vw,28px); line-height:1; letter-spacing:-.03em; }
+.executive-metric small { margin-top:6px; color:#989898; font-size:10px; }
+.executive-metric--accent { background:#fff5f7; border-color:#ffcbd5; }
+.executive-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:stretch; }
+.executive-grid--sales { grid-template-columns:.95fr .95fr 1.1fr; }
+.executive-grid--tables { grid-template-columns:1.05fr 1fr; }
+.executive-stack { display:grid; gap:18px; }
+.executive-panel { min-width:0; padding:20px; background:#fff; border:1px solid #ececec; border-radius:13px; box-shadow:0 3px 7px rgba(42,42,42,.17); }
+.executive-panel__heading { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:12px; }
+.executive-panel__heading span { color:#a0a0a0; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }
+.executive-panel__heading h2 { color:#f34f70; font-size:17px; }
+.chart-placeholder { height:260px; }
+.recommendation-panel { padding:20px; border:1px solid #ffd0d9; border-radius:13px; background:linear-gradient(145deg,#fff 35%,#fff5f7); box-shadow:0 3px 7px rgba(42,42,42,.17); }
+.recommendation-panel__title { display:flex; align-items:center; gap:11px; }
+.recommendation-panel__spark { width:38px; height:38px; border-radius:11px; display:grid; place-items:center; color:#fff; background:#ff5575; font-size:20px; }
+.recommendation-panel__title span:not(.recommendation-panel__spark) { color:#acacac; font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }
+.recommendation-panel h2 { color:#ef4969; font-size:19px; }
+.recommendation-panel>p { margin:12px 0 15px; color:#656565; line-height:1.45; }
+.recommendation-list { display:grid; gap:10px; }
+.recommendation-item { display:grid; grid-template-columns:28px 1fr; gap:10px; align-items:start; }
+.recommendation-item>span { padding-top:2px; color:#ff5575; font-size:10px; font-weight:800; }
+.recommendation-item strong,.recommendation-item small { display:block; }
+.recommendation-item strong { color:#333; font-size:12px; }
+.recommendation-item small { margin-top:2px; color:#888; line-height:1.35; }
+.dashboard-table-wrap { overflow-x:auto; }
+.dashboard-table { width:100%; border-collapse:collapse; font-size:11px; }
+.dashboard-table th { padding:7px 8px; background:#ff9bb0; color:#282828; text-align:left; white-space:nowrap; }
+.dashboard-table td { padding:7px 8px; border-bottom:1px solid #e7e7e7; white-space:nowrap; }
+.dashboard-table tbody tr:hover { background:#fff3f6; }
+.dashboard-table__empty { padding:24px!important; color:#888; text-align:center; }
+.attention-pill { display:inline-flex; min-width:50px; justify-content:center; padding:3px 7px; border-radius:999px; color:#ce3453; background:#ffe4ea; font-size:10px; font-weight:800; }
+@media(max-width:1200px){.executive-metrics{grid-template-columns:repeat(3,1fr)}.executive-grid--sales{grid-template-columns:1fr 1fr}.executive-grid--sales>:last-child{grid-column:1/-1}.executive-progress{grid-template-columns:repeat(2,1fr)}.executive-progress__revenue{grid-column:1/-1}}
+@media(max-width:850px){.executive-header{margin:-20px -20px 2px;padding:24px 20px;align-items:flex-start;flex-direction:column}.executive-header__filters{width:100%;justify-content:flex-start;flex-wrap:wrap}.executive-grid,.executive-grid--sales,.executive-grid--tables{grid-template-columns:1fr}.executive-grid--sales>:last-child{grid-column:auto}}
+@media(max-width:560px){.executive-metrics,.executive-progress{grid-template-columns:repeat(2,1fr)}.executive-progress__revenue{grid-column:1/-1}.date-range{grid-template-columns:1fr}.dashboard-filter,.dashboard-filter select,.date-range,.date-range input{width:100%;min-width:0}.executive-metric strong{font-size:20px}}

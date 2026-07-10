@@ -10,11 +10,11 @@ const navItems = [
 
 export default function Sidebar() {
   return (
-    <aside style={{
+    <aside className="app-sidebar" style={{
       width: 220, minHeight: '100vh', background: '#1a1a1a',
       display: 'flex', flexDirection: 'column', position: 'fixed', top: 0, left: 0, zIndex: 100,
     }}>
-      <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="app-sidebar__brand" style={{ padding: '20px 16px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <img src="/logo.png" alt="Logo" style={{ height: 36, maxWidth: '100%', objectFit: 'contain' }}
           onError={e => { e.target.style.display = 'none' }} />
         <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, marginTop: 8, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
@@ -22,7 +22,7 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <nav style={{ flex: 1, padding: '12px 8px' }}>
+      <nav className="app-sidebar__nav" style={{ flex: 1, padding: '12px 8px' }}>
         {navItems.map(({ to, label, icon }) => (
           <NavLink key={to} to={to} end={to === '/'}
             style={({ isActive }) => ({
