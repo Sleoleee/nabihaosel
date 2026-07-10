@@ -27,27 +27,43 @@ TIER_ORDER = [
 ]
 
 
-BATCH_SIZE = 5000
+BATCH_SIZE = 1000
 
-def fetch_all(db):
-    print("Fetching all transactions from Supabase (paginated)...")
-    all_rows = []
+def fetch_year(db, year, cols):
+    """Fetch all rows for one year in small batches (no ORDER BY = no sort timeout)."""
+    rows = []
     start = 0
     while True:
-        end = start + BATCH_SIZE - 1
         batch = (db.table("transactions")
-                 .select("customer_code,customer_name,new_row_total,document_number,posting_date,year,kategori,branch")
-                 .order("posting_date")
-                 .range(start, end)
+                 .select(cols)
+                 .eq("year", year)
+                 .range(start, start + BATCH_SIZE - 1)
                  .execute().data)
         if not batch:
             break
-        all_rows.extend(batch)
-        print(f"  fetched {len(all_rows)} rows...", end="\r")
+        rows.extend(batch)
         if len(batch) < BATCH_SIZE:
             break
         start += BATCH_SIZE
-    print(f"\n  Total: {len(all_rows)} rows fetched.")
+    return rows
+
+
+def fetch_all(db):
+    cols = "customer_code,customer_name,new_row_total,document_number,posting_date,year,kategori,branch"
+    print("Detecting years...")
+    # Fetch a small sample to get year list (fast, no sort)
+    sample = db.table("transactions").select("year").range(0, 999).execute().data
+    years = sorted(set(r["year"] for r in sample if r.get("year")), reverse=True)
+    print(f"  Years found: {years}")
+
+    all_rows = []
+    for y in years:
+        print(f"  Fetching year {y}...", end=" ")
+        yr_rows = fetch_year(db, y, cols)
+        all_rows.extend(yr_rows)
+        print(f"{len(yr_rows)} rows")
+
+    print(f"Total: {len(all_rows)} rows fetched.")
     return all_rows
 
 
