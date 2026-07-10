@@ -24,23 +24,14 @@ MONTHS = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des
 
 
 def fetch_all(db):
-    print("Fetching all transactions from Supabase (pagination)...")
-    all_rows = []
-    batch = 1000
-    start = 0
-    while True:
-        rows = (db.table("transactions")
-                .select("customer_code,customer_name,new_row_total,document_number,posting_date,year,kategori,branch")
-                .order("posting_date")
-                .range(start, start + batch - 1)
-                .execute().data)
-        if not rows:
-            break
-        all_rows.extend(rows)
-        print(f"  fetched {len(all_rows)} rows...", end="\r")
-        start += batch
-    print(f"\n  Total: {len(all_rows)} rows fetched.")
-    return all_rows
+    print("Fetching all transactions from Supabase...")
+    rows = (db.table("transactions")
+            .select("customer_code,customer_name,new_row_total,document_number,posting_date,year,kategori,branch")
+            .order("posting_date")
+            .limit(ROW_LIMIT)
+            .execute().data)
+    print(f"  {len(rows)} rows fetched.")
+    return rows
 
 
 def compute_all(rows):
