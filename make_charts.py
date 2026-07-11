@@ -4,6 +4,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 from matplotlib.patches import FancyArrowPatch, Rectangle
+import matplotlib.patheffects as pe
+import math
 import os
 
 # ---------- Fonts ----------
@@ -61,18 +63,18 @@ ax.text(9.7, logistic(9.7,6.6,0.95,96)-6.5, "B2B  (Enterprise)", color=RED_TSEL,
         fontproperties=font(14, "SemiBold"), ha="right", va="top")
 
 # Annotation boxes \u2014 text placed in clear whitespace, connected to its marker
-# by a thin leader line; a white halo behind each text keeps any residual
-# line-crossing legible.
-_HALO = dict(boxstyle="round,pad=0.28", facecolor="white", edgecolor="none", alpha=0.85)
+# by a thin leader line. A fully opaque white stroke behind each glyph keeps any
+# residual line-crossing legible without the ghosting a semi-transparent bbox caused.
+_STROKE = [pe.withStroke(linewidth=3, foreground="white")]
 def anno(mx, my, lx, ly, tx, ty, title, sub, color, ha="left"):
     # leader: marker -> block, in the de-emphasis gray, pulled clear of both ends
     ax.annotate("", xy=(mx, my), xytext=(lx, ly),
                 arrowprops=dict(arrowstyle="-", color=GRAY_MID, lw=1.2, alpha=0.9,
                                 shrinkA=7, shrinkB=3), zorder=4)
     ax.text(tx, ty, title, color=color, fontproperties=font(12.5, "SemiBold"),
-            ha=ha, va="center", bbox=_HALO, zorder=8)
+            ha=ha, va="center", alpha=1.0, zorder=10, path_effects=_STROKE)
     ax.text(tx, ty-4.4, sub, color=GRAY_TXT, fontproperties=font(10.5),
-            ha=ha, va="center", bbox=_HALO, zorder=8)
+            ha=ha, va="center", alpha=1.0, zorder=10, path_effects=_STROKE)
 
 # B2C block -> upper-left whitespace (above the gray curve, clear of the y-axis label)
 anno(b2c_here_x, b2c_here_y, 3.5, 86, 1.7, 90,
@@ -103,12 +105,12 @@ ax.text(-0.15, 104, "Adoption /\npenetration", color=GRAY_TXT, fontproperties=fo
         ha="left", va="top")
 
 # Titles (action title, left aligned)
-fig.text(0.055, 0.955, "B2C has matured into saturation; B2B is still on its steep growth curve",
+fig.text(0.055, 0.965, "B2C has matured into saturation; B2B is still on its steep growth curve",
          fontproperties=font(17.5, "Bold"), color=INK, ha="left", va="top")
-fig.text(0.055, 0.905, "Market maturity of Telkomsel\u2019s consumer vs enterprise segments",
+fig.text(0.055, 0.915, "Market maturity of Telkomsel\u2019s consumer vs enterprise segments",
          fontproperties=font(12), color=GRAY_TXT, ha="left", va="top")
-# top accent rule
-fig.add_artist(plt.Line2D([0.055,0.945],[0.882,0.882], color=RED_TSEL, lw=2.4, transform=fig.transFigure))
+# top accent rule \u2014 clearly below the subtitle, in clean whitespace
+fig.add_artist(plt.Line2D([0.055,0.945],[0.865,0.865], color=RED_TSEL, lw=2.4, transform=fig.transFigure))
 
 fig.text(0.055, 0.028, "Source: PT Telkom Indonesia (2025); The Jakarta Post (2025). Curve shape illustrative; annotated figures are actual FY2024 data.",
          fontproperties=font(8.5), color=GRAY_MID, ha="left")
@@ -151,16 +153,24 @@ edge_map  = {"gray": "#9a9a9a", "near": "#d9740a", "win": "#b3141b"}
 def bsize(s):  # scalability -> area
     return (s ** 2) * 46
 
+# bubble radius (data units) from marker area, for placing labels clear of the edge.
+# ~50 pt per y data-unit given this figure size / axis range.
+def r_data(s):
+    return math.sqrt(bsize(s) / math.pi) / 50.0
+
+LABEL_ABOVE = {"CPaaS", "IoT"}  # low bubbles: label above so it clears axis/source
 for name, xf, yr, sc, cat in items:
     col = color_map[cat]
     ax.scatter([xf],[yr], s=bsize(sc), color=col, alpha=0.9,
                edgecolor=edge_map[cat], lw=1.6, zorder=5)
-    # 5G+MEC special: bright red core ring
-    if name == "5G + MEC":
-        ax.scatter([xf],[yr], s=bsize(sc)*0.30, color=RED_BRIGHT, edgecolor="white", lw=1.2, zorder=6)
-    txt_col = "white" if cat in ("win","near") else INK
-    ax.text(xf, yr, name, color=txt_col, fontproperties=font(10.5, "SemiBold"),
-            ha="center", va="center", zorder=7, linespacing=1.0)
+    # labels sit OUTSIDE the bubble, dark ink, always fully legible
+    gap = r_data(sc) + 0.42
+    if name in LABEL_ABOVE:
+        ax.text(xf, yr + gap, name, color=INK, fontproperties=font(10.5, "SemiBold"),
+                ha="center", va="bottom", zorder=8, linespacing=1.0)
+    else:
+        ax.text(xf, yr - gap, name, color=INK, fontproperties=font(10.5, "SemiBold"),
+                ha="center", va="top", zorder=8, linespacing=1.0)
 
 # axis labels
 ax.set_xlabel("Strategic fit with 5G", fontproperties=font(12.5, "SemiBold"), color=INK, labelpad=10)
@@ -193,11 +203,12 @@ ax.text(lx-0.15, ly+0.78, "Bubble size = Scalability", color=GRAY_TXT,
         fontproperties=font(9.5, "SemiBold"), ha="left")
 
 # Titles
-fig.text(0.055, 0.955, "5G + MEC and Private 5G occupy the high-value, high-fit quadrant",
+fig.text(0.055, 0.965, "5G + MEC and Private 5G occupy the high-value, high-fit quadrant",
          fontproperties=font(17.5, "Bold"), color=INK, ha="left", va="top")
-fig.text(0.055, 0.905, "B2B technology opportunities scored on revenue potential vs strategic fit with 5G",
+fig.text(0.055, 0.915, "B2B technology opportunities scored on revenue potential vs strategic fit with 5G",
          fontproperties=font(12), color=GRAY_TXT, ha="left", va="top")
-fig.add_artist(plt.Line2D([0.055,0.945],[0.882,0.882], color=RED_TSEL, lw=2.4, transform=fig.transFigure))
+# top accent rule — clearly below the subtitle, in clean whitespace
+fig.add_artist(plt.Line2D([0.055,0.945],[0.865,0.865], color=RED_TSEL, lw=2.4, transform=fig.transFigure))
 
 fig.text(0.055, 0.030, "Source: Team assessment (1\u201310 scale), aligned with the FMEA strategic-value scoring in Appendix A. Market context: MarketsandMarkets (2025); Mordor Intelligence (2025).",
          fontproperties=font(8), color=GRAY_MID, ha="left")
