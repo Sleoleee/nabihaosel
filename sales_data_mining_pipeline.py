@@ -241,10 +241,13 @@ df["Customer_enc"] = le_cust.fit_transform(df["Customer_Name"])
 # Target: On Time=0, Late=1
 df["Status_enc"] = df["Status_payment"].map({"On Time": 0, "Late": 1})
 
+# Catatan: 'delay_days' SENGAJA dikeluarkan dari fitur karena merupakan
+# data leakage — nilainya baru diketahui setelah pembayaran selesai,
+# sehingga tidak tersedia saat transaksi terjadi (waktu prediksi).
 feature_cols = [
     "Kategori_enc", "SlpName_enc", "Customer_enc", "Quantity",
     "harga_awal", "harga_jual", "Disc_pct_row", "Disc_pct_doc",
-    "Row_Total", "delay_days", "discount_flag", "revenue_per_unit",
+    "Row_Total", "discount_flag", "revenue_per_unit",
 ]
 X = df[feature_cols].copy()
 y = df["Status_enc"].copy()
@@ -316,20 +319,30 @@ print("\nPenamaan cluster (berdasarkan profil):")
 for c in sorted(cluster_names):
     print(f"  Cluster {c} = {cluster_names[c]}")
 
-# 3d. Scatter plot cluster
+# 3d. Scatter plot cluster (skala log agar pemisahan cluster jelas)
 cluster_colors = {0: "#6f2dbd", 1: "#b298dc", 2: "#b9faf8"}
+df["log_harga_jual"] = np.log1p(df["harga_jual"])
+df["log_row_total"] = np.log1p(df["Row_Total"])
+
 fig, ax = plt.subplots(figsize=(10, 7))
 fig.patch.set_facecolor("white")
 for c in sorted(df["Cluster"].unique()):
     sub = df[df["Cluster"] == c]
     ax.scatter(
-        sub["harga_jual"], sub["Row_Total"],
+        sub["log_harga_jual"], sub["log_row_total"],
         c=cluster_colors[c], alpha=0.6, edgecolor="white", linewidth=0.3,
         label=f"Cluster {c}: {cluster_names[c]}",
     )
-ax.set_title("Cluster Transaksi: harga_jual vs Row_Total", fontweight="bold")
-ax.set_xlabel("harga_jual")
-ax.set_ylabel("Row_Total")
+# Anotasi centroid tiap cluster sebagai bintang
+centroids = df.groupby("Cluster")[["log_harga_jual", "log_row_total"]].mean()
+ax.scatter(
+    centroids["log_harga_jual"], centroids["log_row_total"],
+    marker="*", s=200, c="#ffffff", edgecolor="#6f2dbd", linewidth=1.5,
+    zorder=5, label="Centroid",
+)
+ax.set_title("Cluster Transaksi: log(harga_jual) vs log(Row_Total)", fontweight="bold")
+ax.set_xlabel("log(harga_jual)")
+ax.set_ylabel("log(Row_Total)")
 ax.legend()
 plt.tight_layout()
 fig.savefig(os.path.join(OUTDIR, "step3_scatter.png"), dpi=150, facecolor="white")
