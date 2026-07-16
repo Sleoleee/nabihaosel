@@ -12,10 +12,10 @@ load_dotenv()
 from utils.db import get_client
 from utils.parser import parse_excel
 
-CHUNK_SIZE = 500
+CHUNK_SIZE = 2000
 
 
-def upload_file(filepath: str, mode: str = "upsert"):
+def upload_file(filepath: str, mode: str = "upsert", chunk_size: int = CHUNK_SIZE):
     print(f"Membaca file: {filepath}")
     with open(filepath, "rb") as f:
         import io
@@ -49,11 +49,11 @@ def upload_file(filepath: str, mode: str = "upsert"):
                 print(f"  (Untuk hapus manual: DELETE FROM transactions WHERE year = {year};)")
                 print(f"  Jalankan perintah SQL itu di Supabase SQL Editor lalu coba lagi.")
 
-        print(f"Mengimpor {len(records)} baris untuk tahun {year}...")
-        for i in range(0, len(records), CHUNK_SIZE):
-            chunk = records[i:i + CHUNK_SIZE]
+        print(f"Mengimpor {len(records)} baris untuk tahun {year} (batch {chunk_size})...")
+        for i in range(0, len(records), chunk_size):
+            chunk = records[i:i + chunk_size]
             db.table("transactions").insert(chunk).execute()
-            pct = min(i + CHUNK_SIZE, len(records))
+            pct = min(i + chunk_size, len(records))
             print(f"  {pct}/{len(records)} baris...", end="\r")
         print(f"  {len(records)}/{len(records)} baris selesai.")
         total_imported += len(records)
@@ -79,10 +79,13 @@ if __name__ == "__main__":
     parser.add_argument("filepath", help="Path ke file .xlsx")
     parser.add_argument("--mode", choices=["upsert", "replace"], default="replace",
                         help="upsert = tambah data, replace = hapus dulu lalu impor (default: replace)")
+    parser.add_argument("--chunk", type=int, default=CHUNK_SIZE,
+                        help=f"Jumlah baris per batch insert (default: {CHUNK_SIZE}). "
+                             f"Makin besar makin cepat, tapi kalau error 'payload too large' turunkan lagi.")
     args = parser.parse_args()
 
     if not os.path.exists(args.filepath):
         print(f"ERROR: File tidak ditemukan: {args.filepath}")
         sys.exit(1)
 
-    upload_file(args.filepath, mode=args.mode)
+    upload_file(args.filepath, mode=args.mode, chunk_size=args.chunk)
