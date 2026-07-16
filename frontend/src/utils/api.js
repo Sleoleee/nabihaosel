@@ -20,6 +20,8 @@ export const getBillsAOV = (f) => api.get('/api/overview/bills-aov', { params: b
 export const getByKategori = (f) => api.get('/api/overview/by-kategori', { params: buildParams(f) }).then(r => r.data)
 export const getByBranch = (f) => api.get('/api/overview/by-branch', { params: buildParams(f) }).then(r => r.data)
 export const getAlerts = (f) => api.get('/api/overview/alerts', { params: buildParams(f) }).then(r => r.data)
+export const getCategoryPairings = (f) => api.get('/api/overview/category-pairings', { params: buildParams(f) }).then(r => r.data)
+export const getSalesTargets = (f) => api.get('/api/overview/sales-targets', { params: buildParams(f) }).then(r => r.data)
 
 // Customers
 export const getRFM = (f) => api.get('/api/customers/rfm', { params: buildParams(f) }).then(r => r.data)

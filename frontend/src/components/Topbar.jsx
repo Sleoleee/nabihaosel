@@ -17,7 +17,7 @@ export default function Topbar() {
 
       <nav style={{ display: 'flex', gap: 2 }}>
         {[
-          { to: '/', label: 'Sales Command Center' },
+          { to: '/', label: 'Overview' },
           { to: '/customers', label: 'Customer Dashboard' },
         ].map(({ to, label }) => (
           <NavLink key={to} to={to} end={to === '/'}

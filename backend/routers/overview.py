@@ -20,7 +20,13 @@ def safe_key(v):
     return v.replace("/", "_").replace(" ", "_") if v else v
 
 
-def fsuffix(kategori, branch):
+def fsuffix(kategori=None, branch=None, spv=None, salesperson=None):
+    """Suffix cache key untuk SATU irisan aktif (mutually exclusive di UI).
+    Prioritas: salesperson > spv > kategori > branch."""
+    if salesperson and salesperson != "all":
+        return f"__sp__{safe_key(salesperson)}"
+    if spv and spv != "all":
+        return f"__spv__{safe_key(spv)}"
     if kategori and kategori != "all":
         return f"__kat__{safe_key(kategori)}"
     if branch and branch != "all":
@@ -36,11 +42,12 @@ def is_empty(data):
 
 @router.get("/kpi")
 def kpi(year: Optional[str] = Query(None), month: Optional[str] = Query(None),
-        kategori: Optional[str] = Query(None), branch: Optional[str] = Query(None)):
+        kategori: Optional[str] = Query(None), branch: Optional[str] = Query(None),
+        spv: Optional[str] = Query(None), salesperson: Optional[str] = Query(None)):
     db = get_client()
     yk = year_key(year)
     mk = month if (month and month != "all") else "all"
-    suf = fsuffix(kategori, branch)
+    suf = fsuffix(kategori, branch, spv, salesperson)
 
     # Build candidate keys: filter-specific first, then fall back to unfiltered
     candidates = []
@@ -103,25 +110,27 @@ def kpi(year: Optional[str] = Query(None), month: Optional[str] = Query(None),
 
 @router.get("/revenue-trend")
 def revenue_trend(year: Optional[str] = Query(None), kategori: Optional[str] = Query(None),
-                  branch: Optional[str] = Query(None)):
+                  branch: Optional[str] = Query(None), spv: Optional[str] = Query(None),
+                  salesperson: Optional[str] = Query(None)):
     db = get_client()
     yk = year_key(year)
-    suf = fsuffix(kategori, branch)
+    suf = fsuffix(kategori, branch, spv, salesperson)
     data = (
         (get_cache(db, f"revenue_trend__{yk}{suf}") if suf else None) or
         (get_cache(db, f"revenue_trend__all{suf}") if suf else None) or
         get_cache(db, f"revenue_trend__{yk}") or
         get_cache(db, "revenue_trend__all")
     )
-    return data or {"data": [], "years": []}
+    return data or {"data": [], "years": [], "primary": None}
 
 
 @router.get("/bills-aov")
 def bills_aov(year: Optional[str] = Query(None), kategori: Optional[str] = Query(None),
-              branch: Optional[str] = Query(None)):
+              branch: Optional[str] = Query(None), spv: Optional[str] = Query(None),
+              salesperson: Optional[str] = Query(None)):
     db = get_client()
     yk = year_key(year)
-    suf = fsuffix(kategori, branch)
+    suf = fsuffix(kategori, branch, spv, salesperson)
     return (
         (get_cache(db, f"bills_aov__{yk}{suf}") if suf else None) or
         (get_cache(db, f"bills_aov__all{suf}") if suf else None) or
@@ -130,13 +139,29 @@ def bills_aov(year: Optional[str] = Query(None), kategori: Optional[str] = Query
     )
 
 
+@router.get("/category-pairings")
+def category_pairings(year: Optional[str] = Query(None)):
+    db = get_client()
+    yk = year_key(year)
+    return get_cache(db, f"pairings__{yk}") or get_cache(db, "pairings__all") or []
+
+
+@router.get("/sales-targets")
+def sales_targets(year: Optional[str] = Query(None)):
+    db = get_client()
+    yk = year_key(year)
+    return (get_cache(db, f"sales_targets__{yk}") or get_cache(db, "sales_targets__all")
+            or {"salespeople": [], "teams": []})
+
+
 @router.get("/by-kategori")
 def by_kategori(year: Optional[str] = Query(None), month: Optional[str] = Query(None),
-                branch: Optional[str] = Query(None)):
+                branch: Optional[str] = Query(None), spv: Optional[str] = Query(None),
+                salesperson: Optional[str] = Query(None)):
     db = get_client()
     yk = year_key(year)
     mk = month if (month and month != "all") else "all"
-    suf = fsuffix(None, branch)
+    suf = fsuffix(None, branch, spv, salesperson)
     candidates = []
     if suf:
         if mk != "all" and yk != "all":
@@ -159,11 +184,12 @@ def by_kategori(year: Optional[str] = Query(None), month: Optional[str] = Query(
 
 @router.get("/by-branch")
 def by_branch(year: Optional[str] = Query(None), month: Optional[str] = Query(None),
-              kategori: Optional[str] = Query(None)):
+              kategori: Optional[str] = Query(None), spv: Optional[str] = Query(None),
+              salesperson: Optional[str] = Query(None)):
     db = get_client()
     yk = year_key(year)
     mk = month if (month and month != "all") else "all"
-    suf = fsuffix(kategori, None)
+    suf = fsuffix(kategori, None, spv, salesperson)
     candidates = []
     if suf:
         if mk != "all" and yk != "all":

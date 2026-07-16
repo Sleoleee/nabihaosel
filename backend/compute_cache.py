@@ -15,9 +15,16 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from utils.db import get_client
 from utils.calculations import get_customer_tier
+from sales_targets import SALESPERSONS, TEAMS, match_salesperson
 
 ROW_LIMIT = 1_000_000
+MIN_YEAR = 2023           # abaikan data sebelum 2023 (mis. 2022) sesuai arahan
 MONTHS = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"]
+
+
+def safe(v):
+    """Sanitasi nilai untuk dipakai sebagai bagian cache key (samakan dengan backend)."""
+    return str(v).replace("/", "_").replace(" ", "_") if v is not None else v
 
 TIER_ORDER = [
     "Tier 1 — ≥30jt","Tier 2 — 20–30jt","Tier 3 — 15–20jt","Tier 4 — 10–15jt",
@@ -49,12 +56,13 @@ def fetch_year(db, year, cols):
 
 
 def fetch_all(db):
-    cols = "customer_code,customer_name,new_row_total,document_number,posting_date,year,kategori,branch"
+    cols = "customer_code,customer_name,new_row_total,document_number,posting_date,year,kategori,branch,slp_name"
     print("Detecting years...")
     # Fetch a small sample to get year list (fast, no sort)
     sample = db.table("transactions").select("year").range(0, 999).execute().data
     years = sorted(set(r["year"] for r in sample if r.get("year")), reverse=True)
-    print(f"  Years found: {years}")
+    years = [y for y in years if int(y) >= MIN_YEAR]   # abaikan < 2023
+    print(f"  Years used (>= {MIN_YEAR}): {years}")
 
     all_rows = []
     for y in years:
@@ -165,16 +173,26 @@ def build_kpi(agg, yk, mk):
 
 def build_trend(agg, y):
     if y == "all":
-        years_in = list(agg["years_set"])  # strings like "2025"
+        # semua tahun, terurut menaik agar tahun terbaru digambar paling menonjol
+        years_in = sorted(agg["years_set"])
+        primary = years_in[-1] if years_in else None
     else:
-        years_in = [y] if y in agg["years_set"] else []
+        # tahun terpilih + tahun sebelumnya (garis pembanding) bila tersedia
+        years_in = []
+        prev = str(int(y) - 1)
+        if prev in agg["years_set"]:
+            years_in.append(prev)
+        if y in agg["years_set"]:
+            years_in.append(y)
+        primary = y
     result = []
     for m in range(1, 13):
         entry = {"month": MONTHS[m - 1], "month_num": m}
         for yr in years_in:
             entry[yr] = round(agg["trend"].get((yr, m), 0))
         result.append(entry)
-    return {"data": result, "years": years_in}
+    # `primary` = tahun utama (digambar merah tebal), sisanya pembanding (abu-abu)
+    return {"data": result, "years": years_in, "primary": primary}
 
 
 def build_kat(agg, yk, mk):
@@ -327,6 +345,85 @@ def build_alerts(customers):
     }
 
 
+def build_pairings(rows, top_n=10):
+    """Top pasangan kategori yang muncul bersama dalam satu nota (market basket)."""
+    doc_cats = defaultdict(set)
+    for r in rows:
+        doc = r.get("document_number")
+        k = r.get("kategori") or "Lainnya"
+        if doc:
+            doc_cats[doc].add(k)
+    pair_count = defaultdict(int)
+    for cats in doc_cats.values():
+        cats = sorted(cats)
+        for i in range(len(cats)):
+            for j in range(i + 1, len(cats)):
+                pair_count[(cats[i], cats[j])] += 1
+    ranked = sorted(pair_count.items(), key=lambda x: -x[1])[:top_n]
+    return [{"pair": f"{a} + {b}", "kategori_a": a, "kategori_b": b, "count": c}
+            for (a, b), c in ranked]
+
+
+def build_sales_targets(rows):
+    """
+    Revenue aktual per salesperson (via SlpName) + target, dikelompokkan per SPV.
+    Mengembalikan (payload, unmatched_slpnames).
+    """
+    # Revenue aktual per entri salesperson (dicocokkan dari SlpName)
+    rev_by_group = defaultdict(float)          # group -> revenue
+    unmatched = defaultdict(float)             # slpname mentah -> revenue (tak cocok)
+    for r in rows:
+        rev = float(r.get("new_row_total") or 0)
+        sp = match_salesperson(r.get("slp_name"))
+        if sp:
+            rev_by_group[sp["group"]] += rev
+        elif r.get("slp_name"):
+            unmatched[str(r.get("slp_name")).strip()] += rev
+
+    salespeople = []
+    for s in SALESPERSONS:
+        rev = round(rev_by_group.get(s["group"], 0))
+        tgt = s["target"]
+        salespeople.append({
+            "group": s["group"], "name": s["name"], "team": s["team"],
+            "target": tgt, "revenue": rev,
+            "pct": round(rev / tgt * 100, 1) if tgt else None,
+        })
+
+    # Agregasi per SPV
+    teams = []
+    for t in TEAMS:
+        members = [s for s in salespeople if s["team"] == t]
+        trev = sum(m["revenue"] for m in members)
+        ttgt = sum(m["target"] for m in members)
+        teams.append({
+            "team": t, "revenue": round(trev), "target": round(ttgt),
+            "pct": round(trev / ttgt * 100, 1) if ttgt else None,
+            "members": len(members),
+        })
+
+    payload = {"salespeople": salespeople, "teams": teams}
+    unmatched_sorted = sorted(unmatched.items(), key=lambda x: -x[1])
+    return payload, unmatched_sorted
+
+
+def upsert_slice(db, subset, suffix, year_keys):
+    """Hitung & simpan set metrik standar (kpi/trend/bills_aov/by_kategori/by_branch)
+    untuk sebuah irisan data (kategori / branch / SPV / salesperson)."""
+    if not subset:
+        return
+    sagg = compute_all(subset)
+    for yk in year_keys:
+        upsert(db, f"kpi__{yk}{suffix}",           build_kpi(sagg, yk, "all"))
+        upsert(db, f"revenue_trend__{yk}{suffix}", build_trend(sagg, yk))
+        upsert(db, f"bills_aov__{yk}{suffix}",     build_bills_aov(sagg, yk))
+        upsert(db, f"by_kategori__{yk}{suffix}",   build_kat(sagg, yk, "all"))
+        upsert(db, f"by_branch__{yk}{suffix}",     build_branch(sagg, yk, "all"))
+        for m in range(1, 13):
+            ms = str(m)
+            upsert(db, f"kpi__{yk}__{ms}{suffix}", build_kpi(sagg, yk, m))
+
+
 def upsert(db, key, payload):
     db.table("dashboard_cache").upsert(
         {"cache_key": key, "payload": payload, "updated_at": "now()"},
@@ -370,7 +467,7 @@ def main():
         upsert(db, f"recency__{y}",   build_recency(yr_custs))
         upsert(db, f"alerts__{y}",    build_alerts(yr_custs))
 
-    # Overview metrics: full-year + per-month
+    # Overview metrics: full-year + per-month (unfiltered)
     year_keys = ["all"] + years
     for yk in year_keys:
         upsert(db, f"kpi__{yk}",           build_kpi(agg, yk, "all"))
@@ -378,6 +475,14 @@ def main():
         upsert(db, f"bills_aov__{yk}",     build_bills_aov(agg, yk))
         upsert(db, f"by_kategori__{yk}",   build_kat(agg, yk, "all"))
         upsert(db, f"by_branch__{yk}",     build_branch(agg, yk, "all"))
+
+        # Category pairings (market basket) per year
+        yk_rows = rows if yk == "all" else [r for r in rows if str(r.get("year")) == yk]
+        upsert(db, f"pairings__{yk}", build_pairings(yk_rows))
+
+        # Salesperson vs target per year
+        st_payload, _ = build_sales_targets(yk_rows)
+        upsert(db, f"sales_targets__{yk}", st_payload)
 
         for m in range(1, 13):
             ms = str(m)
@@ -387,50 +492,62 @@ def main():
 
         print(f"  ✓ year={yk}")
 
-    # Per-kategori caches (so kategori filter makes all charts reactive)
+    # Per-kategori slices
     print("Computing per-kategori caches...")
     for k in kategori_list:
-        k_rows = [r for r in rows if (r.get("kategori") or "Lainnya") == k]
-        if not k_rows:
-            continue
-        k_agg = compute_all(k_rows)
-        safe_k = k.replace("/", "_").replace(" ", "_")
-        for yk in year_keys:
-            upsert(db, f"kpi__{yk}__kat__{safe_k}",           build_kpi(k_agg, yk, "all"))
-            upsert(db, f"revenue_trend__{yk}__kat__{safe_k}", build_trend(k_agg, yk))
-            upsert(db, f"bills_aov__{yk}__kat__{safe_k}",     build_bills_aov(k_agg, yk))
-            upsert(db, f"by_branch__{yk}__kat__{safe_k}",     build_branch(k_agg, yk, "all"))
-            for m in range(1, 13):
-                ms = str(m)
-                upsert(db, f"kpi__{yk}__{ms}__kat__{safe_k}", build_kpi(k_agg, yk, m))
-        print(f"  ✓ kategori={k}")
+        upsert_slice(db, [r for r in rows if (r.get("kategori") or "Lainnya") == k],
+                     f"__kat__{safe(k)}", year_keys)
+    print(f"  ✓ {len(kategori_list)} kategori")
 
-    # Per-branch caches
+    # Per-branch slices
     print("Computing per-branch caches...")
     for br in branches:
-        br_rows = [r for r in rows if (r.get("branch") or "Lainnya") == br]
-        if not br_rows:
-            continue
-        br_agg = compute_all(br_rows)
-        safe_br = br.replace("/", "_").replace(" ", "_")
-        for yk in year_keys:
-            upsert(db, f"kpi__{yk}__br__{safe_br}",           build_kpi(br_agg, yk, "all"))
-            upsert(db, f"revenue_trend__{yk}__br__{safe_br}", build_trend(br_agg, yk))
-            upsert(db, f"bills_aov__{yk}__br__{safe_br}",     build_bills_aov(br_agg, yk))
-            upsert(db, f"by_kategori__{yk}__br__{safe_br}",   build_kat(br_agg, yk, "all"))
-            for m in range(1, 13):
-                ms = str(m)
-                upsert(db, f"kpi__{yk}__{ms}__br__{safe_br}", build_kpi(br_agg, yk, m))
-        print(f"  ✓ branch={br}")
+        upsert_slice(db, [r for r in rows if (r.get("branch") or "Lainnya") == br],
+                     f"__br__{safe(br)}", year_keys)
+    print(f"  ✓ {len(branches)} branch")
 
-    # Store safe key mappings in filters so frontend can reference them
+    # Per-SPV slices (matched via SlpName -> salesperson -> team)
+    print("Computing per-SPV caches...")
+    for team in TEAMS:
+        team_rows = [r for r in rows
+                     if (match_salesperson(r.get("slp_name")) or {}).get("team") == team]
+        upsert_slice(db, team_rows, f"__spv__{safe(team)}", year_keys)
+    print(f"  ✓ {len(TEAMS)} SPV")
+
+    # Per-salesperson slices
+    print("Computing per-salesperson caches...")
+    for sp in SALESPERSONS:
+        sp_rows = [r for r in rows
+                   if (match_salesperson(r.get("slp_name")) or {}).get("group") == sp["group"]]
+        upsert_slice(db, sp_rows, f"__sp__{safe(sp['name'])}", year_keys)
+    print(f"  ✓ {len(SALESPERSONS)} salesperson")
+
+    # Filter metadata for the frontend
     upsert(db, "filters", {
         "years": years,
         "kategori": kategori_list,
         "branches": branches,
-        "kategori_keys": {k: k.replace("/", "_").replace(" ", "_") for k in kategori_list},
-        "branch_keys": {br: br.replace("/", "_").replace(" ", "_") for br in branches},
+        "spv": TEAMS,
+        "salespeople": [{"name": s["name"], "team": s["team"], "group": s["group"]}
+                        for s in SALESPERSONS],
     })
+
+    # Laporan pencocokan SlpName (bantu perbaiki nama yang belum ketemu)
+    _, unmatched = build_sales_targets(rows)
+    print("\n--- LAPORAN PENCOCOKAN SALESPERSON ---")
+    st_all, _ = build_sales_targets(rows)
+    zero_sp = [s["name"] for s in st_all["salespeople"] if s["revenue"] == 0]
+    if zero_sp:
+        print(f"  ⚠ Salesperson TANPA revenue (nama mungkin belum cocok di SlpName):")
+        for n in zero_sp:
+            print(f"      - {n}")
+    if unmatched:
+        print(f"  ⚠ SlpName di transaksi yang TIDAK cocok ke target (top 15 by revenue):")
+        for name, rev in unmatched[:15]:
+            print(f"      - {name!r}: Rp {rev:,.0f}")
+    if not zero_sp and not unmatched:
+        print("  ✓ Semua salesperson & SlpName tercocokkan.")
+    print("  (Perbaiki daftar `match` di backend/sales_targets.py bila ada yang meleset.)")
 
     print("\nDone! Cache updated. Dashboard will now read from cache.")
 
