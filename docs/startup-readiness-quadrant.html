@@ -1,0 +1,238 @@
+<title>Peta Kesiapan Startup × Kedekatan PLN ICE</title>
+<style>
+  :root {
+    --bg: #f4f2ee;
+    --surface: #ffffff;
+    --ink: #1f2227;
+    --ink-soft: #565b66;
+    --muted: #8a909c;
+    --hair: #e3dfd8;
+    --grid: #eae6df;
+    /* segment hues */
+    --a: #2e9e6b;       /* Ready Believers - green */
+    --a-soft: rgba(46,158,107,.14);
+    --b: #e2892f;       /* Hesitant Idealists - amber */
+    --b-soft: rgba(226,137,47,.16);
+    --c: #5f7d9c;       /* Competition Hoppers - slate blue */
+    --c-soft: rgba(95,125,156,.16);
+    --quad-warm: rgba(226,137,47,.05);
+    --quad-cool: rgba(95,125,156,.05);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16181d;
+      --surface: #1e2127;
+      --ink: #eef0f3;
+      --ink-soft: #b3b9c4;
+      --muted: #7d838f;
+      --hair: #2c303a;
+      --grid: #262a33;
+      --a: #43c489; --a-soft: rgba(67,196,137,.16);
+      --b: #f0a24d; --b-soft: rgba(240,162,77,.18);
+      --c: #83a4c6; --c-soft: rgba(131,164,198,.18);
+      --quad-warm: rgba(240,162,77,.06);
+      --quad-cool: rgba(131,164,198,.06);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #16181d; --surface: #1e2127; --ink: #eef0f3; --ink-soft: #b3b9c4;
+    --muted: #7d838f; --hair: #2c303a; --grid: #262a33;
+    --a: #43c489; --a-soft: rgba(67,196,137,.16);
+    --b: #f0a24d; --b-soft: rgba(240,162,77,.18);
+    --c: #83a4c6; --c-soft: rgba(131,164,198,.18);
+    --quad-warm: rgba(240,162,77,.06); --quad-cool: rgba(131,164,198,.06);
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f2ee; --surface: #ffffff; --ink: #1f2227; --ink-soft: #565b66;
+    --muted: #8a909c; --hair: #e3dfd8; --grid: #eae6df;
+    --a: #2e9e6b; --a-soft: rgba(46,158,107,.14);
+    --b: #e2892f; --b-soft: rgba(226,137,47,.16);
+    --c: #5f7d9c; --c-soft: rgba(95,125,156,.16);
+    --quad-warm: rgba(226,137,47,.05); --quad-cool: rgba(95,125,156,.05);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--font); line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 40px 24px 64px; }
+
+  header { margin-bottom: 28px; }
+  .eyebrow {
+    font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); font-weight: 600; margin: 0 0 10px;
+  }
+  h1 {
+    font-size: clamp(24px, 4vw, 34px); line-height: 1.15; margin: 0 0 10px;
+    font-weight: 700; letter-spacing: -.01em; text-wrap: balance;
+  }
+  .lede { margin: 0; color: var(--ink-soft); max-width: 62ch; font-size: 15.5px; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--hair);
+    border-radius: 16px; padding: 22px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 12px 34px rgba(0,0,0,.05);
+  }
+
+  .chartcard { margin-bottom: 26px; }
+  svg { width: 100%; height: auto; display: block; }
+
+  /* segment detail cards */
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+
+  .seg { position: relative; padding-left: 20px; }
+  .seg::before {
+    content: ""; position: absolute; left: 0; top: 4px; bottom: 4px;
+    width: 5px; border-radius: 4px; background: var(--seg);
+  }
+  .seg .tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 700; letter-spacing: .04em;
+    color: var(--seg); margin-bottom: 6px;
+  }
+  .seg .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--seg); }
+  .seg h3 { margin: 0 0 4px; font-size: 17px; font-weight: 700; }
+  .seg .n { font-size: 13px; color: var(--muted); font-weight: 600;
+            font-variant-numeric: tabular-nums; margin-bottom: 10px; }
+  .seg p { margin: 0; font-size: 14px; color: var(--ink-soft); }
+  .seg .move {
+    margin-top: 12px; font-size: 13px; font-weight: 600; color: var(--ink);
+    padding-top: 10px; border-top: 1px dashed var(--hair);
+  }
+
+  .footnote { margin-top: 22px; font-size: 12.5px; color: var(--muted); max-width: 70ch; }
+
+  /* svg text uses currentColor via classes */
+  .axis-label { fill: var(--ink); font-weight: 700; font-size: 15px; font-family: var(--font); }
+  .axis-end { fill: var(--muted); font-size: 12.5px; font-family: var(--font); font-weight: 600; }
+  .bub-title { fill: #fff; font-weight: 700; font-size: 15px; font-family: var(--font); }
+  .bub-sub { fill: rgba(255,255,255,.9); font-size: 11px; font-family: var(--font); font-weight: 600; }
+  .quad-note { fill: var(--muted); font-size: 11px; font-family: var(--font);
+               font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+  .gridline { stroke: var(--grid); stroke-width: 1; }
+  .axisline { stroke: var(--muted); stroke-width: 1.5; }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Segmentasi Peserta · PLN ICE</p>
+    <h1>Peta Kesiapan Startup × Kedekatan dengan PLN ICE</h1>
+    <p class="lede">Tiga cluster berdasarkan kematangan startup dan seberapa dekat mereka dengan PLN ICE
+      (kombinasi <em>intent</em> + <em>awareness level</em>). Ukuran bubble sebanding dengan jumlah orang di tiap segmen.</p>
+  </header>
+
+  <div class="card chartcard">
+    <svg viewBox="0 0 820 620" role="img"
+         aria-label="Scatter plot kuadran: sumbu X kesiapan startup, sumbu Y kedekatan dengan PLN ICE, dengan tiga bubble segmen.">
+      <!-- plot geometry: x 96..772, y 60..532 -->
+
+      <!-- quadrant tints -->
+      <rect x="96"  y="60"  width="338" height="236" fill="var(--quad-cool)"/>
+      <rect x="434" y="60"  width="338" height="236" fill="var(--a-soft)"/>
+      <rect x="96"  y="296" width="338" height="236" fill="var(--quad-warm)"/>
+      <rect x="434" y="296" width="338" height="236" fill="var(--quad-cool)"/>
+
+      <!-- gridlines -->
+      <line class="gridline" x1="96"  y1="178" x2="772" y2="178"/>
+      <line class="gridline" x1="96"  y1="414" x2="772" y2="414"/>
+      <line class="gridline" x1="265" y1="60"  x2="265" y2="532"/>
+      <line class="gridline" x1="603" y1="60"  x2="603" y2="532"/>
+
+      <!-- mid crosshair -->
+      <line class="axisline" x1="434" y1="60"  x2="434" y2="532" stroke-dasharray="5 5" opacity=".5"/>
+      <line class="axisline" x1="96"  y1="296" x2="772" y2="296" stroke-dasharray="5 5" opacity=".5"/>
+
+      <!-- axes frame -->
+      <line class="axisline" x1="96" y1="532" x2="772" y2="532"/>
+      <line class="axisline" x1="96" y1="60"  x2="96"  y2="532"/>
+
+      <!-- quadrant micro-notes -->
+      <text class="quad-note" x="450" y="82">Zona konversi</text>
+      <text class="quad-note" x="112" y="318">Zona nurture</text>
+      <text class="quad-note" x="588" y="514" text-anchor="end">Zona rebut</text>
+
+      <!-- ===== BUBBLES ===== -->
+      <!-- radius ∝ √n so area ∝ jumlah orang -->
+
+      <!-- C: Competition Hoppers — kanan bawah, kedekatan rendah, startup matang. n=2 -->
+      <g>
+        <circle cx="672" cy="452" r="37" fill="var(--c-soft)" stroke="var(--c)" stroke-width="2"/>
+        <circle cx="672" cy="452" r="37" fill="var(--c)" opacity=".82"/>
+        <text class="bub-title" x="672" y="449" text-anchor="middle">C</text>
+        <text class="bub-sub"   x="672" y="466" text-anchor="middle">n=2 · 20%</text>
+      </g>
+
+      <!-- A: Ready Believers — tengah-kanan atas. n=3 -->
+      <g>
+        <circle cx="556" cy="150" r="45" fill="var(--a-soft)" stroke="var(--a)" stroke-width="2"/>
+        <circle cx="556" cy="150" r="45" fill="var(--a)" opacity=".85"/>
+        <text class="bub-title" x="556" y="147" text-anchor="middle">A</text>
+        <text class="bub-sub"   x="556" y="164" text-anchor="middle">n=3 · 30%</text>
+      </g>
+
+      <!-- B: Hesitant Idealists — kiri-tengah, bubble terbesar. n=5 -->
+      <g>
+        <circle cx="230" cy="300" r="58" fill="var(--b-soft)" stroke="var(--b)" stroke-width="2"/>
+        <circle cx="230" cy="300" r="58" fill="var(--b)" opacity=".85"/>
+        <text class="bub-title" x="230" y="296" text-anchor="middle">B</text>
+        <text class="bub-sub"   x="230" y="312" text-anchor="middle">n=5 · 50%</text>
+      </g>
+
+      <!-- callout labels beside bubbles -->
+      <g font-family="var(--font)">
+        <text x="556" y="86"  text-anchor="middle" fill="var(--a)" font-size="12.5" font-weight="700">Ready Believers</text>
+        <text x="556" y="102" text-anchor="middle" fill="var(--ink-soft)" font-size="11.5">Siap konversi — effort rendah</text>
+
+        <text x="230" y="378" text-anchor="middle" fill="var(--b)" font-size="12.5" font-weight="700">Hesitant Idealists</text>
+        <text x="230" y="394" text-anchor="middle" fill="var(--ink-soft)" font-size="11.5">Potensial terbesar — butuh confidence</text>
+
+        <text x="672" y="410" text-anchor="middle" fill="var(--c)" font-size="12.5" font-weight="700">Competition Hoppers</text>
+        <text x="672" y="514" text-anchor="middle" fill="var(--ink-soft)" font-size="11.5">Sudah punya rumah lain</text>
+      </g>
+
+      <!-- ===== AXIS LABELS ===== -->
+      <!-- X axis -->
+      <text class="axis-label" x="434" y="588" text-anchor="middle">Kesiapan Startup →</text>
+      <text class="axis-end" x="96"  y="556" text-anchor="start">◂ Ideation</text>
+      <text class="axis-end" x="772" y="556" text-anchor="end">Pre-Seed / Validation ▸</text>
+
+      <!-- Y axis -->
+      <text class="axis-label" x="34" y="296" text-anchor="middle" transform="rotate(-90 34 296)">Kedekatan dengan PLN ICE →</text>
+      <text class="axis-end" x="70" y="66"  text-anchor="middle" transform="rotate(-90 70 66)">Tinggi ▸</text>
+      <text class="axis-end" x="70" y="528" text-anchor="middle" transform="rotate(-90 70 528)">◂ Rendah</text>
+    </svg>
+  </div>
+
+  <div class="grid">
+    <div class="card seg" style="--seg: var(--a)">
+      <span class="tag"><span class="dot"></span>SEGMEN A</span>
+      <h3>Ready Believers</h3>
+      <div class="n">n = 3 · 30% · matang &amp; dekat</div>
+      <p>Startup relatif matang dengan kedekatan tinggi ke PLN ICE — intent dan awareness sudah kuat.</p>
+      <div class="move">→ Siap konversi — effort rendah</div>
+    </div>
+
+    <div class="card seg" style="--seg: var(--b)">
+      <span class="tag"><span class="dot"></span>SEGMEN B</span>
+      <h3>Hesitant Idealists</h3>
+      <div class="n">n = 5 · 50% · segmen terbesar</div>
+      <p>Masih di fase ideation dengan kedekatan sedang — tertarik pada PLN ICE tapi masih ragu untuk melangkah.</p>
+      <div class="move">→ Potensial terbesar — butuh confidence</div>
+    </div>
+
+    <div class="card seg" style="--seg: var(--c)">
+      <span class="tag"><span class="dot"></span>SEGMEN C</span>
+      <h3>Competition Hoppers</h3>
+      <div class="n">n = 2 · 20% · matang, tapi jauh</div>
+      <p>Startup matang namun kedekatan dengan PLN ICE rendah — cenderung lebih dekat ke Pertamuda.</p>
+      <div class="move">→ Sudah punya rumah lain — butuh alasan pindah</div>
+    </div>
+  </div>
+
+  <p class="footnote">Catatan: Sumbu Y (kedekatan) dihitung dari kombinasi <strong>intent</strong> + <strong>awareness level</strong>.
+    Ukuran bubble sebanding dengan jumlah orang (area ∝ n): B (n=5) terbesar, A (n=3) sedang, C (n=2) terkecil. Total n = 10.</p>
+</div>
