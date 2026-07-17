@@ -621,6 +621,7 @@ export default function Overview() {
       <Card style={{ padding: 16 }}>
         <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>
           Pencapaian Salesperson vs Target {filters.year !== 'all' ? filters.year : ''}
+          <span style={{ fontSize: 11, fontWeight: 400, color: '#888', marginLeft: 6 }}>· Tim Inti Cabang 1.K25</span>
         </div>
         {loading ? <Skeleton height={160} /> : !salesTargets?.salespeople?.length ? (
           <div style={{ fontSize: 13, color: '#888' }}>Data target belum tersedia. Jalankan compute_cache.py.</div>
@@ -659,7 +660,7 @@ export default function Overview() {
           </div>
         )}
         <div style={{ marginTop: 8, fontSize: 10.5, color: '#aaa' }}>
-          ⚠ = revenue Rp 0 (nama belum cocok dengan kolom SlpName di data transaksi).
+          Revenue dihitung dari transaksi cabang 1.K25. ⚠ = belum ada revenue historis (mis. Ribka — staf baru 2026 pengganti Fajar).
         </div>
       </Card>
     </div>

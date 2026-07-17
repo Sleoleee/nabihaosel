@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from utils.db import get_client
 from utils.calculations import get_customer_tier
-from sales_targets import SALESPERSONS, TEAMS, match_salesperson
+from sales_targets import SALESPERSONS, TEAMS, match_salesperson, CORE_BRANCH
 
 ROW_LIMIT = 1_000_000
 MIN_YEAR = 2023           # abaikan data sebelum 2023 (mis. 2022) sesuai arahan
@@ -377,6 +377,8 @@ def build_sales_targets(rows):
     rev_by_group = defaultdict(float)          # group -> revenue
     unmatched = defaultdict(float)             # slpname mentah -> revenue (tak cocok)
     for r in rows:
+        if r.get("branch") != CORE_BRANCH:     # hanya tim inti cabang K25
+            continue
         rev = float(r.get("new_row_total") or 0)
         sp = match_salesperson(r.get("slp_name"))
         if sp:
@@ -510,19 +512,21 @@ def main():
                      f"__br__{safe(br)}", year_keys)
     print(f"  ✓ {len(branches)} branch")
 
-    # Per-SPV slices (matched via SlpName -> salesperson -> team)
+    # Per-SPV slices (tim inti K25; matched via SlpName -> salesperson -> team)
     print("Computing per-SPV caches...")
     for team in TEAMS:
         team_rows = [r for r in rows
-                     if (match_salesperson(r.get("slp_name")) or {}).get("team") == team]
+                     if r.get("branch") == CORE_BRANCH
+                     and (match_salesperson(r.get("slp_name")) or {}).get("team") == team]
         upsert_slice(db, team_rows, f"__spv__{safe(team)}", year_keys)
     print(f"  ✓ {len(TEAMS)} SPV")
 
-    # Per-salesperson slices
+    # Per-salesperson slices (tim inti K25)
     print("Computing per-salesperson caches...")
     for sp in SALESPERSONS:
         sp_rows = [r for r in rows
-                   if (match_salesperson(r.get("slp_name")) or {}).get("group") == sp["group"]]
+                   if r.get("branch") == CORE_BRANCH
+                   and (match_salesperson(r.get("slp_name")) or {}).get("group") == sp["group"]]
         upsert_slice(db, sp_rows, f"__sp__{safe(sp['name'])}", year_keys)
     print(f"  ✓ {len(SALESPERSONS)} salesperson")
 
