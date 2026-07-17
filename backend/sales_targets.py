@@ -3,9 +3,10 @@ Data target salesperson & SPV, hasil dari file:
   [SHARED] TPF - ALIGNMENT SALES & MARKETING (sheet "Salesperson & Target")
 
 CATATAN SKALA:
-  Nilai target di file sumber kelebihan 3 angka nol (mis. 34.800.000.000
-  seharusnya 34.800.000 = 34,8 juta). Maka setiap nilai target dikalikan
-  TARGET_SCALE (= 1/1000) agar setara dengan skala revenue aktual.
+  Nilai target dipakai APA ADANYA (TARGET_SCALE = 1.0). Setelah data penuh
+  2022-2025 dimuat, revenue aktual berada pada skala miliar sehingga target
+  asli (mis. 34.800.000.000 = 34,8 M untuk Sadarmawati) sudah setara. Tidak
+  ada pembagian ÷1000.
 
 CATATAN PENCOCOKAN NAMA:
   Revenue aktual per salesperson diambil dari kolom `SlpName` pada tabel
@@ -19,7 +20,7 @@ CATATAN PENCOCOKAN NAMA:
       Tetap didaftarkan; compute_cache akan melaporkan bila tak ada match.
 """
 
-TARGET_SCALE = 1.0 / 1000.0
+TARGET_SCALE = 1.0   # pakai nilai target apa adanya (tanpa ÷1000)
 
 # group, salesperson (mentah dari file), team/SPV, target mentah, match keys (token pertama SlpName, lowercase)
 _RAW_TARGETS = [

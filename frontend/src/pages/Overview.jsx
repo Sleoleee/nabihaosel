@@ -310,8 +310,18 @@ function DonutCard({ title, data, valueKey, nameKey, loading }) {
               cx="42%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={1}>
               {chartData.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />)}
             </Pie>
-            <Tooltip {...tooltipStyle}
-              formatter={(v) => [`${formatRupiah(v)} (${(v / total * 100).toFixed(1)}%)`, '']} />
+            <Tooltip content={({ active, payload }) => {
+              if (!active || !payload?.length) return null
+              const p = payload[0]
+              const name = p?.payload?.[nameKey] ?? p?.name ?? '-'
+              const v = p?.value || 0
+              return (
+                <div style={{ background: '#1a1a1a', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#fff', maxWidth: 220 }}>
+                  <div style={{ fontWeight: 700, marginBottom: 3 }}>{name}</div>
+                  <div>{formatRupiah(v)} · {(v / total * 100).toFixed(1)}%</div>
+                </div>
+              )
+            }} />
             <Legend layout="vertical" align="right" verticalAlign="middle"
               wrapperStyle={{ fontSize: 10.5, lineHeight: '15px' }}
               formatter={(val) => val.length > 14 ? val.slice(0, 13) + '…' : val} />
@@ -410,7 +420,8 @@ export default function Overview() {
     tier: t.tier.split(' — ')[0], revenue: t.revenue, count: t.count,
   }))
   const katData = (byKat || []).slice(0, 5)
-  const pairData = (pairings || []).slice(0, 8)
+  const pairData = (pairings || []).slice(0, 7)
+  const maxPairCount = pairData.length ? Math.max(...pairData.map(p => p.count)) : 0
 
   const YEAR_COLORS = { '2025': '#d31137', '2024': '#9aa7ba', '2023': '#c9d1dc' }
 
@@ -580,21 +591,28 @@ export default function Overview() {
         <DonutCard title="Kontribusi Revenue per Kategori" data={byKat} valueKey="revenue" nameKey="kategori" loading={loading} />
 
         <Card style={{ padding: 16 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Top Category Pairings</div>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Top Category Pairings</div>
+          <div style={{ fontSize: 10.5, color: '#aaa', marginBottom: 10 }}>Kategori yang sering dibeli bersamaan dalam 1 nota</div>
           {loading ? <Skeleton height={190} /> : !pairData.length ? (
             <div style={{ height: 190, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', fontSize: 13 }}>Tidak ada data</div>
           ) : (
-            <ResponsiveContainer width="100%" height={190}>
-              <BarChart data={pairData} layout="vertical" margin={{ left: 4, right: 12 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis type="number" tick={{ fontSize: 10, fill: '#888' }} />
-                <YAxis type="category" dataKey="pair" tick={{ fontSize: 9.5, fill: '#666' }} width={130} />
-                <Tooltip {...tooltipStyle} formatter={(v) => [`${v} nota`, 'Bersama']} />
-                <Bar dataKey="count" name="Nota" radius={[0, 3, 3, 0]}>
-                  {pairData.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+              {pairData.map((p, i) => (
+                <div key={i}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, marginBottom: 3 }}>
+                    <span style={{ fontSize: 11.5, color: '#333', fontWeight: 500, lineHeight: 1.25 }}>
+                      <span style={{ color: DONUT_COLORS[i % DONUT_COLORS.length], fontWeight: 700 }}>{p.kategori_a}</span>
+                      <span style={{ color: '#bbb' }}> + </span>
+                      <span style={{ color: DONUT_COLORS[i % DONUT_COLORS.length], fontWeight: 700 }}>{p.kategori_b}</span>
+                    </span>
+                    <span style={{ fontSize: 11, color: '#888', whiteSpace: 'nowrap' }}>{p.count.toLocaleString('id')} nota</span>
+                  </div>
+                  <div style={{ height: 6, background: '#f2f2f2', borderRadius: 3 }}>
+                    <div style={{ height: 6, width: `${maxPairCount ? (p.count / maxPairCount * 100) : 0}%`, background: DONUT_COLORS[i % DONUT_COLORS.length], borderRadius: 3 }} />
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </Card>
       </div>
@@ -641,7 +659,7 @@ export default function Overview() {
           </div>
         )}
         <div style={{ marginTop: 8, fontSize: 10.5, color: '#aaa' }}>
-          ⚠ = revenue Rp 0 (nama belum cocok dengan kolom SlpName di data transaksi). Target sudah diskala ÷1000.
+          ⚠ = revenue Rp 0 (nama belum cocok dengan kolom SlpName di data transaksi).
         </div>
       </Card>
     </div>
