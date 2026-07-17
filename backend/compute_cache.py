@@ -58,10 +58,14 @@ def fetch_year(db, year, cols):
 def fetch_all(db):
     cols = "customer_code,customer_name,new_row_total,document_number,posting_date,year,kategori,branch,slp_name"
     print("Detecting years...")
-    # Fetch a small sample to get year list (fast, no sort)
-    sample = db.table("transactions").select("year").range(0, 999).execute().data
-    years = sorted(set(r["year"] for r in sample if r.get("year")), reverse=True)
-    years = [y for y in years if int(y) >= MIN_YEAR]   # abaikan < 2023
+    # Cek tiap tahun kandidat via index (cepat & andal; tidak bias ke urutan insert)
+    current_year = date.today().year
+    years = []
+    for y in range(MIN_YEAR, current_year + 2):
+        exists = db.table("transactions").select("year").eq("year", y).limit(1).execute().data
+        if exists:
+            years.append(y)
+    years = sorted(years, reverse=True)
     print(f"  Years used (>= {MIN_YEAR}): {years}")
 
     all_rows = []
