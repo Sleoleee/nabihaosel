@@ -336,19 +336,19 @@ function DonutCard({ title, data, valueKey, nameKey, loading }) {
 function AIInsights() {
   const cards = [
     {
-      tag: '⚠️ RISIKO', color: '#d31137', bg: '#fef2f4',
-      headline: <>338 pelanggan <b style={{ color: '#d31137' }}>At Risk</b> — <b style={{ color: '#d31137' }}>Rp 7,5 M</b> berpotensi hilang</>,
-      sub: 'Sudah lewat 2× interval beli normal. Butuh reaktivasi minggu ini.',
+      tag: 'RISIKO', color: '#d31137', bg: '#fef2f4',
+      headline: <>Ada <b style={{ color: '#d31137' }}>338 pelanggan</b> yang mulai berhenti belanja, dan sekitar <b style={{ color: '#d31137' }}>Rp 7,5 M</b> omzet ikut terancam.</>,
+      sub: 'Mereka sudah melewati dua kali jeda belanja normalnya. Baiknya dihubungi minggu ini sebelum benar-benar pergi.',
     },
     {
-      tag: '🔥 PELUANG', color: '#15803d', bg: '#f0fdf4',
-      headline: <><b style={{ color: '#15803d' }}>Aksesoris → Aksesoris Rambut</b> muncul di 32.000+ nota bersama</>,
-      sub: 'Pembeli Aksesoris berpeluang besar ambil Aksesoris Rambut. Bundling ≈ +Rp 1,1 M/bln.',
+      tag: 'PELUANG', color: '#15803d', bg: '#f0fdf4',
+      headline: <>Pembeli <b style={{ color: '#15803d' }}>Aksesoris</b> hampir selalu juga mengambil <b style={{ color: '#15803d' }}>Aksesoris Rambut</b>.</>,
+      sub: 'Keduanya muncul bersama di lebih dari 32.000 nota. Kalau dijadikan satu paket, potensi tambahannya sekitar Rp 1,1 M per bulan.',
     },
     {
-      tag: '🎯 TARGET', color: '#1d4ed8', bg: '#eff6ff',
-      headline: <>SPV REGEN <b style={{ color: '#15803d' }}>112%</b> · SPV Abdul Wahid <b style={{ color: '#d31137' }}>78%</b> target</>,
-      sub: 'Gap ≈ Rp 900 jt tersisa di SPV Abdul Wahid untuk capai target tahun ini.',
+      tag: 'TARGET', color: '#1d4ed8', bg: '#eff6ff',
+      headline: <>SPV REGEN sudah melewati target di <b style={{ color: '#15803d' }}>112%</b>, tetapi SPV Abdul Wahid baru <b style={{ color: '#d31137' }}>78%</b>.</>,
+      sub: 'Masih ada sekitar Rp 900 juta yang perlu dikejar tim Abdul Wahid sampai akhir tahun.',
     },
   ]
   return (
@@ -356,7 +356,7 @@ function AIInsights() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
         <span style={{ fontSize: 14, fontWeight: 700,
           background: 'linear-gradient(90deg,#d31137,#7c3aed)', WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>✨ AI Insights</span>
+          WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>AI Insights</span>
         <span style={{ fontSize: 10.5, color: '#888', background: '#f4f4f5', borderRadius: 12, padding: '2px 8px' }}>
           Diperbarui otomatis · 17 Jul 2026
         </span>
@@ -369,8 +369,8 @@ function AIInsights() {
             padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 5,
           }}>
             <span style={{ fontSize: 10, fontWeight: 700, color: c.color, letterSpacing: '0.04em' }}>{c.tag}</span>
-            <div style={{ fontSize: 12.5, color: '#222', lineHeight: 1.3 }}>{c.headline}</div>
-            <div style={{ fontSize: 11, color: '#666', lineHeight: 1.3 }}>{c.sub}</div>
+            <div style={{ fontSize: 12.5, color: '#222', lineHeight: 1.35 }}>{c.headline}</div>
+            <div style={{ fontSize: 11, color: '#666', lineHeight: 1.35 }}>{c.sub}</div>
           </div>
         ))}
       </div>
@@ -379,19 +379,18 @@ function AIInsights() {
       <div style={{
         marginTop: 12, borderRadius: 8, padding: '11px 14px',
         background: 'linear-gradient(90deg,#fff8f0,#faf5ff)', borderLeft: '3px solid #7c3aed',
-        display: 'flex', gap: 10, alignItems: 'flex-start',
       }}>
-        <span style={{ fontSize: 16, lineHeight: 1 }}>🎯</span>
-        <div style={{ fontSize: 12.5, color: '#333', lineHeight: 1.45 }}>
-          <b>Langkah berikutnya:</b> Kemas promo <b>bundling Aksesoris + Aksesoris Rambut</b> sebagai
-          {' '}<b>penawaran reaktivasi</b> untuk 338 pelanggan <b>At Risk</b>, dan tugaskan eksekusinya ke tim
-          {' '}<b>SPV Abdul Wahid</b> yang masih 78% target — satu gerakan untuk menekan churn,
-          menaikkan AOV, sekaligus mengejar gap target Rp 900 jt.
+        <div style={{ fontSize: 12.5, color: '#333', lineHeight: 1.5 }}>
+          <b>Next Action:</b> Buat promo paket <b>Aksesoris + Aksesoris Rambut</b>, lalu tawarkan khusus
+          kepada 338 pelanggan yang mulai berhenti belanja. Serahkan pelaksanaannya kepada tim
+          {' '}<b>SPV Abdul Wahid</b> yang masih tertinggal target. Dengan satu langkah ini, perusahaan
+          sekaligus menahan pelanggan agar tidak pergi, menaikkan nilai belanja per transaksi, dan
+          mengejar sisa target sekitar Rp 900 juta.
         </div>
       </div>
 
       <div style={{ marginTop: 8, fontSize: 10, color: '#bbb' }}>
-        * Angka ilustratif — pada tahap berikutnya insight ini dapat dihubungkan ke data live (RFM, category pairings, target).
+        Angka masih ilustratif — pada tahap berikutnya insight ini dapat dihubungkan ke data live (RFM, category pairings, target).
       </div>
     </Card>
   )
