@@ -332,6 +332,71 @@ function DonutCard({ title, data, valueKey, nameKey, loading }) {
   )
 }
 
+// ===== AI Insights (mockup statis; siap di-upgrade ke data live) =====
+function AIInsights() {
+  const cards = [
+    {
+      tag: '⚠️ RISIKO', color: '#d31137', bg: '#fef2f4',
+      headline: <>338 pelanggan <b style={{ color: '#d31137' }}>At Risk</b> — <b style={{ color: '#d31137' }}>Rp 7,5 M</b> berpotensi hilang</>,
+      sub: 'Sudah lewat 2× interval beli normal. Butuh reaktivasi minggu ini.',
+    },
+    {
+      tag: '🔥 PELUANG', color: '#15803d', bg: '#f0fdf4',
+      headline: <><b style={{ color: '#15803d' }}>Aksesoris → Aksesoris Rambut</b> muncul di 32.000+ nota bersama</>,
+      sub: 'Pembeli Aksesoris berpeluang besar ambil Aksesoris Rambut. Bundling ≈ +Rp 1,1 M/bln.',
+    },
+    {
+      tag: '🎯 TARGET', color: '#1d4ed8', bg: '#eff6ff',
+      headline: <>SPV REGEN <b style={{ color: '#15803d' }}>112%</b> · SPV Abdul Wahid <b style={{ color: '#d31137' }}>78%</b> target</>,
+      sub: 'Gap ≈ Rp 900 jt tersisa di SPV Abdul Wahid untuk capai target tahun ini.',
+    },
+  ]
+  return (
+    <Card style={{ padding: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <span style={{ fontSize: 14, fontWeight: 700,
+          background: 'linear-gradient(90deg,#d31137,#7c3aed)', WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>✨ AI Insights</span>
+        <span style={{ fontSize: 10.5, color: '#888', background: '#f4f4f5', borderRadius: 12, padding: '2px 8px' }}>
+          Diperbarui otomatis · 17 Jul 2026
+        </span>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+        {cards.map((c, i) => (
+          <div key={i} style={{
+            background: c.bg, borderLeft: `3px solid ${c.color}`, borderRadius: 8,
+            padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 5,
+          }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: c.color, letterSpacing: '0.04em' }}>{c.tag}</span>
+            <div style={{ fontSize: 12.5, color: '#222', lineHeight: 1.3 }}>{c.headline}</div>
+            <div style={{ fontSize: 11, color: '#666', lineHeight: 1.3 }}>{c.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Sintesis: satu langkah menutup ketiga temuan */}
+      <div style={{
+        marginTop: 12, borderRadius: 8, padding: '11px 14px',
+        background: 'linear-gradient(90deg,#fff8f0,#faf5ff)', borderLeft: '3px solid #7c3aed',
+        display: 'flex', gap: 10, alignItems: 'flex-start',
+      }}>
+        <span style={{ fontSize: 16, lineHeight: 1 }}>🎯</span>
+        <div style={{ fontSize: 12.5, color: '#333', lineHeight: 1.45 }}>
+          <b>Langkah berikutnya:</b> Kemas promo <b>bundling Aksesoris + Aksesoris Rambut</b> sebagai
+          {' '}<b>penawaran reaktivasi</b> untuk 338 pelanggan <b>At Risk</b>, dan tugaskan eksekusinya ke tim
+          {' '}<b>SPV Abdul Wahid</b> yang masih 78% target — satu gerakan untuk menekan churn,
+          menaikkan AOV, sekaligus mengejar gap target Rp 900 jt.
+        </div>
+      </div>
+
+      <div style={{ marginTop: 8, fontSize: 10, color: '#bbb' }}>
+        * Angka ilustratif — pada tahap berikutnya insight ini dapat dihubungkan ke data live (RFM, category pairings, target).
+      </div>
+    </Card>
+  )
+}
+
 export default function Overview() {
   const [availFilters, setAvailFilters] = useState({})
   const [filters, setFilters] = useState(null)
@@ -446,6 +511,9 @@ export default function Overview() {
       )}
 
       <KPIRow kpi={kpi} targetInfo={targetInfo} prevYearLabel={prevYearLabel} loading={loading} />
+
+      {/* AI Insights strip (mockup) */}
+      <AIInsights />
 
       {/* Chart row 60/40 */}
       <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 12 }}>
