@@ -28,6 +28,8 @@ export const getRFM = (f) => api.get('/api/customers/rfm', { params: buildParams
 export const getTiers = (f) => api.get('/api/customers/tiers', { params: buildParams(f) }).then(r => r.data)
 export const getCustomerList = (f) => api.get('/api/customers/list', { params: f }).then(r => r.data)
 export const getRecency = (f) => api.get('/api/customers/recency', { params: buildParams(f) }).then(r => r.data)
+export const getCustomerSummary = (f) => api.get('/api/customers/summary', { params: f }).then(r => r.data)
+export const getRfmBubble = (f) => api.get('/api/customers/rfm-bubble', { params: buildParams(f) }).then(r => r.data)
 
 // Products
 export const getKategoriTrend = (f) => api.get('/api/products/kategori-trend', { params: buildParams(f) }).then(r => r.data)
