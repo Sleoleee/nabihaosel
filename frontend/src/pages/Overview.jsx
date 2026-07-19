@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import {
   LineChart, Line, BarChart, Bar, ComposedChart, PieChart, Pie,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -645,7 +646,7 @@ export default function Overview() {
                 </tbody>
               </table>
               <div style={{ marginTop: 8, fontSize: 12 }}>
-                <a href="/customers" style={{ color: '#d31137', textDecoration: 'none', fontWeight: 500 }}>Lihat semua →</a>
+                <Link to="/customers" style={{ color: '#d31137', textDecoration: 'none', fontWeight: 500 }}>Lihat semua →</Link>
               </div>
             </>
           )}
