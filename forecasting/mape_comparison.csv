@@ -1,0 +1,5 @@
+Metode,MAPE (%),MAE,RMSE
+Single Exp. Smoothing,16.5,6611.6,9398.6
+Triple Exp. Smoothing,17.36,6987.7,9858.2
+Double Exp. Smoothing,17.55,6992.9,9532.5
+Regression (Linear),19.3,7313.1,10125.5
