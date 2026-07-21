@@ -1,0 +1,172 @@
+<mxfile host="app.diagrams.net" agent="Claude" version="24.0.0">
+  <diagram id="sop-request-full" name="SOP Penerimaan Request Produk">
+    <mxGraphModel dx="1400" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1240" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- TITLE -->
+        <mxCell id="title" value="FLOW SOP PENERIMAAN REQUEST PRODUK" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D71920;strokeColor=#D71920;fontColor=#FFFFFF;fontStyle=1;fontSize=16;align=left;spacingLeft=16;" vertex="1" parent="1">
+          <mxGeometry x="0" y="0" width="840" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ===== MAIN FLOW ===== -->
+        <mxCell id="n1" value="MULAI" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#E2F0D9;strokeColor=#333333;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="336" y="63" width="168" height="36" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n2" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;REQUESTOR&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Mengajukan Product Request Form dan dokumen pendukung" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#E8F1FA;strokeColor=#333333;fontSize=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="246" y="116" width="348" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n3" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;RnD SUPPORT B2B/B2C&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Mencatat request, membuat Request ID, dan mengirim acknowledgement" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FCE8E8;strokeColor=#333333;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="252" y="186" width="336" height="48" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n4" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;RnD PROJECT OFFICER&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Memeriksa kelengkapan minimum brief dan dokumen pendukung" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FCE8E8;strokeColor=#333333;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="264" y="253" width="312" height="48" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n5" value="Apakah data lengkap?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#333333;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="321" y="320" width="198" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n6" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;RnD PROJECT OFFICER&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Mengklasifikasikan jenis request dan menentukan rute proses" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E8F1FA;strokeColor=#333333;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="258" y="410" width="324" height="48" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n7" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;TIM REVIEW LINTAS FUNGSI&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Melakukan feasibility review: bisnis, formula, proses, material, kualitas, biaya, kapasitas, resource, dan lead time" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F2F3F5;strokeColor=#333333;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="234" y="480" width="372" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n8" value="Apakah request layak?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#333333;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="315" y="565" width="210" height="72" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n9" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;RnD PROJECT OFFICER&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Menetapkan prioritas, scope awal, target waktu, risiko, kebutuhan resource, dan usulan PIC" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E8F1FA;strokeColor=#333333;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="258" y="665" width="324" height="52" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n10" value="Apakah request disetujui?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#333333;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="315" y="746" width="210" height="72" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n11" value="Apakah approval bersyarat?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#333333;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="318" y="837" width="204" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n12" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;RnD PROJECT OFFICER&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Mencatat kondisi approval, owner, dan due date" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#E8F1FA;strokeColor=#333333;fontSize=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="519" y="890" width="258" height="56" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n13" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;RnD PROJECT OFFICER&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Membuat Project ID, menunjuk PIC, menetapkan milestone, dan memperbarui Project Register" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E2F0D9;strokeColor=#333333;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="258" y="944" width="324" height="52" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n14" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;OUTPUT&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Handover ke SOP Product Development B2B/B2C atau Product Change &amp;amp; Improvement Control" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E2F0D9;strokeColor=#333333;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="246" y="1025" width="348" height="52" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n15" value="SELESAI — REQUEST MENJADI PROYEK RnD" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#E2F0D9;strokeColor=#333333;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="270" y="1105" width="300" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ===== CABANG: DATA TIDAK LENGKAP (kiri) ===== -->
+        <mxCell id="n16" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;RnD PROJECT OFFICER&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Mengirim permintaan klarifikasi dan daftar data yang harus dilengkapi" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FCE8E8;strokeColor=#333333;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="42" y="410" width="216" height="52" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n17" value="Dilengkapi sebelum batas waktu?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#333333;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="54" y="504" width="192" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n18" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;RnD PROJECT OFFICER&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Menutup request dengan status Cancelled atau Incomplete" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F2F3F5;strokeColor=#333333;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="42" y="605" width="216" height="52" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n19" value="SELESAI — REQUEST DITUTUP" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#FCE8E8;strokeColor=#333333;fontStyle=1;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="39" y="688" width="222" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ===== CABANG: REQUEST TIDAK LAYAK (kanan) ===== -->
+        <mxCell id="n20" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;TIM REVIEW&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Menetapkan rekomendasi Rejected atau On Hold beserta alasannya" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#333333;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="573" y="641" width="234" height="52" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n21" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;RnD MANAGER&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Mengesahkan dan mencatat keputusan akhir" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#E8F1FA;strokeColor=#333333;fontSize=9;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="573" y="719" width="234" height="56" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n22" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;RnD PROJECT OFFICER&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Mengomunikasikan keputusan dan memperbarui Request Log" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FCE8E8;strokeColor=#333333;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="573" y="797" width="234" height="52" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n23" value="SELESAI — ON HOLD / REJECTED" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#FCE8E8;strokeColor=#333333;fontStyle=1;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="576" y="877" width="228" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ===== CABANG: REQUEST BELUM DISETUJUI (kiri bawah) ===== -->
+        <mxCell id="n24" value="Apakah scope dapat direvisi?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#333333;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="54" y="750" width="192" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n25" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;RnD MANAGER&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Menetapkan status On Hold atau Rejected dan mencatat alasannya" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#333333;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="39" y="848" width="222" height="52" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n26" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;RnD PROJECT OFFICER&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Mengomunikasikan keputusan dan memperbarui Request Log" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FCE8E8;strokeColor=#333333;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="39" y="923" width="222" height="52" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n27" value="SELESAI — ON HOLD / REJECTED" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#FCE8E8;strokeColor=#333333;fontStyle=1;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="36" y="1003" width="228" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ===== EDGES: MAIN ===== -->
+        <mxCell id="m1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;" edge="1" parent="1" source="n1" target="n2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;" edge="1" parent="1" source="n2" target="n3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;" edge="1" parent="1" source="n3" target="n4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;" edge="1" parent="1" source="n4" target="n5"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m5" value="YA" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;" edge="1" parent="1" source="n5" target="n6"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;" edge="1" parent="1" source="n6" target="n7"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;" edge="1" parent="1" source="n7" target="n8"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m8" value="YA" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;" edge="1" parent="1" source="n8" target="n9"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;" edge="1" parent="1" source="n9" target="n10"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m10" value="YA" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;" edge="1" parent="1" source="n10" target="n11"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m11" value="TIDAK" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;" edge="1" parent="1" source="n11" target="n13"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;" edge="1" parent="1" source="n13" target="n14"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;" edge="1" parent="1" source="n14" target="n15"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ===== EDGES: DATA TIDAK LENGKAP ===== -->
+        <mxCell id="m14" value="TIDAK" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="n5" target="n16"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;" edge="1" parent="1" source="n16" target="n17"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m16" value="TIDAK" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;" edge="1" parent="1" source="n17" target="n18"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;" edge="1" parent="1" source="n18" target="n19"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m18" value="YA — PERIKSA ULANG" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#2E7D32;fontStyle=1;fontSize=9;fontColor=#2E7D32;dashed=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="n17" target="n4"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="20" y="539" /><mxPoint x="20" y="277" /></Array></mxGeometry></mxCell>
+
+        <!-- ===== EDGES: TIDAK LAYAK ===== -->
+        <mxCell id="m19" value="TIDAK" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="n8" target="n20"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;" edge="1" parent="1" source="n20" target="n21"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;" edge="1" parent="1" source="n21" target="n22"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;" edge="1" parent="1" source="n22" target="n23"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ===== EDGES: BELUM DISETUJUI ===== -->
+        <mxCell id="m23" value="TIDAK" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="n10" target="n24"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m24" value="YA — REVISI" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#2E7D32;fontStyle=1;fontSize=9;fontColor=#2E7D32;dashed=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="n24" target="n9"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="24" y="785" /><mxPoint x="24" y="691" /></Array></mxGeometry></mxCell>
+        <mxCell id="m25" value="TIDAK" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;" edge="1" parent="1" source="n24" target="n25"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m26" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;" edge="1" parent="1" source="n25" target="n26"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m27" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;" edge="1" parent="1" source="n26" target="n27"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ===== EDGES: APPROVAL BERSYARAT ===== -->
+        <mxCell id="m28" value="YA" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="n11" target="n12"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m29" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;" edge="1" parent="1" source="n12" target="n13"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- NOTE -->
+        <mxCell id="note" value="Catatan: Setiap cabang decision berakhir pada salah satu dari tiga kondisi: (1) kembali ke proses sebelumnya, (2) dilanjutkan ke proses berikutnya, atau (3) ditutup melalui simbol terminator." style="text;html=1;align=left;whiteSpace=wrap;fontSize=9;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="20" y="1155" width="800" height="40" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
