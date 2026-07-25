@@ -1,0 +1,218 @@
+<mxfile host="app.diagrams.net" agent="Claude" version="24.0.0">
+  <diagram id="sop-product-documentation" name="SOP Product Documentation &amp; Technical Data">
+    <mxGraphModel dx="1400" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1120" pageHeight="2800" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- TITLE -->
+        <mxCell id="title" value="FLOW SOP PRODUCT DOCUMENTATION &amp; TECHNICAL DATA" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D71920;fontColor=#D71920;fontStyle=1;fontSize=15;align=left;spacingLeft=16;" vertex="1" parent="1">
+          <mxGeometry x="0" y="20" width="1120" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ================= MAIN FLOW (center x=500) ================= -->
+        <mxCell id="n1" value="MULAI" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="380" y="80" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="n2" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;RnD PROJECT OFFICER / RnD SUPPORT&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Menerima approved source documents: Production Trial Report, formula freeze, BOM, specification, test result, packaging data, dan change reference bila berlaku" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="380" y="174" width="240" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="n3" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;RnD SUPPORT + RnD TECHNICAL&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Meregistrasikan documentation request dan menyusun Document Requirement List, owner, reviewer, approver, source reference, dependency, access, dan target use point" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="298" width="240" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="n4" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;SUPPORT + TECHNICAL + FORMULATION + QA/QC&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Memeriksa approval status, formula version, trial evidence, material/packaging code, specification, claim, regulatory data, dan commercial brief" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="422" width="240" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="n5" value="Apakah source document lengkap, approved, dan dapat ditelusuri?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="400" y="546" width="200" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="n6" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;DOCUMENT OWNER / FUNGSI TERKAIT&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Menyusun atau memperbarui master formula, BOM, specification, process parameter, manufacturing instruction, test method, quality plan, packaging/label data, dan dokumen teknis lain" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="692" width="240" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="n7" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;TECHNICAL + FORMULATION + QA/QC + SUPPORT&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Cross-document reconciliation terhadap hasil trial, actual process, material master, packaging, claim, storage, shelf life, dan user requirement" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="816" width="240" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="n8" value="Apakah seluruh data konsisten dan discrepancy terselesaikan?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="400" y="940" width="200" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="n9" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;PROJECT OFFICER + FUNGSI PENGGUNA&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Functional review oleh Production, PPIC, Purchasing, Warehouse, Commercial, Regulatory, Finance, dan fungsi pengguna sesuai kebutuhan" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="1086" width="240" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="n10" value="Apakah seluruh komentar functional review telah diselesaikan?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="400" y="1210" width="200" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="n11" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;FORMULATION + TECHNICAL + QA/QC + RnD MANAGER&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Technical, quality, regulatory, food safety, confidentiality, dan completeness review untuk approval" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="1356" width="240" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="n12" value="Apakah technical content disetujui?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="400" y="1480" width="200" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="n13" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;QA DOCUMENT CONTROL + RnD SUPPORT&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Memverifikasi template, document code, title, revision, status, effective date, approval, distribution, access, retention, dan superseded reference" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="1626" width="240" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="n14" value="Apakah persyaratan document control telah dipenuhi?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="400" y="1750" width="200" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="n15" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;QA DOCUMENT CONTROL&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Menerbitkan controlled/effective document, mengunci versi, menyimpan source file dan approval record, serta memperbarui master list" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="1896" width="240" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="n16" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;DOCUMENT CONTROL + PROJECT OFFICER + PROCESS OWNER&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Mendistribusikan controlled copy dan mengoordinasikan briefing, training, master-data update, system upload, serta acknowledgement" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="2020" width="240" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="n17" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;QA DOCUMENT CONTROL + PROCESS OWNER&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Menarik atau memblokir dokumen superseded/obsolete dari titik penggunaan dan mengarsipkannya sesuai retention" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="2144" width="240" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="n18" value="Apakah seluruh dokumen obsolete telah ditarik atau diblokir?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="400" y="2268" width="200" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="n19" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;RnD PROJECT OFFICER + RnD SUPPORT&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Memverifikasi package index, effective status, distribution, open action, dan menyerahkan Technical Documentation Handover Record ke SOP Product Release &amp;amp; Handover" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="380" y="2414" width="240" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="n20" value="SELESAI — TECHNICAL DATA PACKAGE EFFECTIVE" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontStyle=1;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="380" y="2538" width="240" height="44" as="geometry" />
+        </mxCell>
+
+        <!-- ============ CABANG A: SOURCE DOC BELUM LENGKAP (kiri, dari n5) ============ -->
+        <mxCell id="n21" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;RnD SUPPORT / PROJECT OFFICER&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Menerbitkan gap list dan meminta source document, approval, version clarification, atau evidence yang belum tersedia" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="557" width="240" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="n22" value="Apakah seluruh gap dapat diselesaikan?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="681" width="200" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="n23" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;PROJECT OFFICER + RnD MANAGER&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Menetapkan dokumentasi On Hold atau dikembalikan kepada process owner dan mencatat alasannya" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="827" width="240" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="n24" value="SELESAI — DOKUMENTASI DITUNDA" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontStyle=1;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="40" y="951" width="240" height="44" as="geometry" />
+        </mxCell>
+
+        <!-- ============ CABANG B: DATA TIDAK KONSISTEN (kanan, dari n8) ============ -->
+        <mxCell id="n25" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;TECHNICAL + FORMULATION + QA/QC&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Menganalisis discrepancy, menentukan source of truth, dan menyusun correction serta impact assessment" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="720" y="951" width="240" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="n26" value="Apakah koreksi memerlukan perubahan formula, proses, atau re-trial?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="740" y="1075" width="200" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="n27" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;RnD PROJECT OFFICER&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Membuat Return/Correction Record dan mengembalikan paket ke Product Development, Product Trial R&amp;amp;D, atau Trial Produksi" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="720" y="1221" width="240" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="n28" value="SELESAI — KEMBALI KE PROSES SEBELUMNYA" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontStyle=1;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="720" y="1345" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="n29" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;DOCUMENT OWNER + RnD SUPPORT&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Memperbaiki draft technical data package dan memperbarui version history" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="720" y="1439" width="240" height="74" as="geometry" />
+        </mxCell>
+
+        <!-- ============ CABANG C: FUNCTIONAL REVIEW (kiri, dari n10) ============ -->
+        <mxCell id="n30" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;DOCUMENT OWNER + PROJECT OFFICER&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Mengklarifikasi komentar, merevisi data, dan mencatat resolution serta reviewer response" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1221" width="240" height="74" as="geometry" />
+        </mxCell>
+
+        <!-- ============ CABANG D: TECHNICAL CONTENT (kiri, dari n12) ============ -->
+        <mxCell id="n31" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;DOCUMENT OWNER / REVIEWER TERKAIT&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Memperbaiki technical, quality, regulatory, confidentiality, atau completeness comment" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1491" width="240" height="74" as="geometry" />
+        </mxCell>
+
+        <!-- ============ CABANG E: DOCUMENT CONTROL (kiri, dari n14) ============ -->
+        <mxCell id="n32" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;RnD SUPPORT + DOCUMENT OWNER&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Memperbaiki template, numbering, revision, approval, effective date, access, distribution, retention, atau superseded reference" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1761" width="240" height="74" as="geometry" />
+        </mxCell>
+
+        <!-- ============ CABANG F: DOKUMEN OBSOLETE (kanan, dari n18) ============ -->
+        <mxCell id="n33" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;DOCUMENT CONTROL + PROCESS OWNER&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Menelusuri copy, memblokir akses, menarik dokumen, dan melakukan impact assessment atas penggunaan yang telah terjadi" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="720" y="2279" width="240" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="n34" value="Apakah masalah dapat diselesaikan sebelum handover?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="740" y="2403" width="200" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="n35" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;PROJECT OFFICER + QA DOCUMENT CONTROL&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Menahan handover, mencatat incident/open action, dan melakukan eskalasi" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="720" y="2549" width="240" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="n36" value="SELESAI — HANDOVER DITAHAN" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontStyle=1;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="720" y="2673" width="240" height="44" as="geometry" />
+        </mxCell>
+
+        <!-- ================= CONNECTORS ================= -->
+        <mxCell id="cA1" value="A" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="300" y="711" width="36" height="36" as="geometry" /></mxCell>
+        <mxCell id="cA2" value="A" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="320" y="441" width="36" height="36" as="geometry" /></mxCell>
+        <mxCell id="cB1" value="B" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1000" y="1458" width="36" height="36" as="geometry" /></mxCell>
+        <mxCell id="cB2" value="B" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="660" y="835" width="36" height="36" as="geometry" /></mxCell>
+        <mxCell id="cC1" value="C" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="142" y="1315" width="36" height="36" as="geometry" /></mxCell>
+        <mxCell id="cC2" value="C" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="320" y="835" width="36" height="36" as="geometry" /></mxCell>
+        <mxCell id="cD1" value="D" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="142" y="1585" width="36" height="36" as="geometry" /></mxCell>
+        <mxCell id="cD2" value="D" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="320" y="1105" width="36" height="36" as="geometry" /></mxCell>
+        <mxCell id="cE1" value="E" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="142" y="1855" width="36" height="36" as="geometry" /></mxCell>
+        <mxCell id="cE2" value="E" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="320" y="1645" width="36" height="36" as="geometry" /></mxCell>
+        <mxCell id="cF1" value="F" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1000" y="2433" width="36" height="36" as="geometry" /></mxCell>
+        <mxCell id="cF2" value="F" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="660" y="2163" width="36" height="36" as="geometry" /></mxCell>
+
+        <!-- ================= EDGES: MAIN ================= -->
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n1" target="n2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n2" target="n3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n3" target="n4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n4" target="n5"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e5" value="YA" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n5" target="n6"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n6" target="n7"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n7" target="n8"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e8" value="YA" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n8" target="n9"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n9" target="n10"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e10" value="YA" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n10" target="n11"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n11" target="n12"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e12" value="YA" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n12" target="n13"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n13" target="n14"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e14" value="YA" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n14" target="n15"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n15" target="n16"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n16" target="n17"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n17" target="n18"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e18" value="YA" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n18" target="n19"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n19" target="n20"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ============ EDGES CABANG A ============ -->
+        <mxCell id="eA0" value="TIDAK" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="n5" target="n21"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eA1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n21" target="n22"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eA2" value="YA" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n22" target="cA1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eA3" value="TIDAK" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n22" target="n23"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eA4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n23" target="n24"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eAret" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=0;entryX=0;entryY=0.5;" edge="1" parent="1" source="cA2" target="n4"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ============ EDGES CABANG B ============ -->
+        <mxCell id="eB0" value="TIDAK" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n8" target="n25"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eB1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n25" target="n26"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eB2" value="YA" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n26" target="n27"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eB3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n27" target="n28"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eB4" value="TIDAK" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=0;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n26" target="n29"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="670" y="1123" /><mxPoint x="670" y="1476" /></Array></mxGeometry></mxCell>
+        <mxCell id="eB5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n29" target="cB1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eBret" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=0;entryX=1;entryY=0.5;" edge="1" parent="1" source="cB2" target="n7"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ============ EDGES CABANG C ============ -->
+        <mxCell id="eC0" value="TIDAK" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="n10" target="n30"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eC1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n30" target="cC1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eCret" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=0;entryX=0;entryY=0.5;" edge="1" parent="1" source="cC2" target="n7"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ============ EDGES CABANG D ============ -->
+        <mxCell id="eD0" value="TIDAK" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="n12" target="n31"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eD1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n31" target="cD1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eDret" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=0;entryX=0;entryY=0.5;" edge="1" parent="1" source="cD2" target="n9"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ============ EDGES CABANG E ============ -->
+        <mxCell id="eE0" value="TIDAK" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="n14" target="n32"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eE1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n32" target="cE1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eEret" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=0;entryX=0;entryY=0.5;" edge="1" parent="1" source="cE2" target="n13"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ============ EDGES CABANG F ============ -->
+        <mxCell id="eF0" value="TIDAK" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n18" target="n33"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eF1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n33" target="n34"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eF2" value="YA" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n34" target="cF1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eF3" value="TIDAK" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n34" target="n35"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eF4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n35" target="n36"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eFret" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=0;entryX=1;entryY=0.5;" edge="1" parent="1" source="cF2" target="n17"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- NOTE -->
+        <mxCell id="note" value="Aturan alur: setiap decision memiliki cabang YA dan TIDAK. Setiap cabang menuju proses berikutnya, kembali melalui on-page connector (A–F), atau berakhir pada terminator." style="text;html=1;align=left;whiteSpace=wrap;fontSize=9;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="40" y="2740" width="900" height="40" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
