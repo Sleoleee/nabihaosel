@@ -132,8 +132,9 @@ print("chart 1 done")
 
 # ============================================================
 # CHART 2 (1.2.2) — Prioritization bubble matrix
+# 16:9 landscape for slide decks (PPT), with larger type.
 # ============================================================
-fig, ax = plt.subplots(figsize=(11, 7.4), dpi=200)
+fig, ax = plt.subplots(figsize=(12.8, 7.2), dpi=200)
 fig.patch.set_facecolor("white")
 ax.set_facecolor("white")
 
@@ -150,7 +151,7 @@ items = [
 xmid, ymid = 6.5, 6.5
 # target quadrant shading (top-right)
 ax.add_patch(Rectangle((xmid, ymid), 11-xmid, 11-ymid, facecolor=RED_TSEL, alpha=0.06, zorder=0))
-ax.text(10.75, 10.72, "TARGET ZONE", color=RED_TSEL, fontproperties=font(10.5, "SemiBold"),
+ax.text(10.75, 10.72, "TARGET ZONE", color=RED_TSEL, fontproperties=font(14, "SemiBold"),
         ha="right", va="top", alpha=0.85)
 
 # quadrant divider lines
@@ -164,9 +165,9 @@ def bsize(s):  # scalability -> area
     return (s ** 2) * 46
 
 # bubble radius (data units) from marker area, for placing labels clear of the edge.
-# ~50 pt per y data-unit given this figure size / axis range.
+# ~55.5 pt per y data-unit given this figure size / axis range.
 def r_data(s):
-    return math.sqrt(bsize(s) / math.pi) / 50.0
+    return math.sqrt(bsize(s) / math.pi) / 55.5
 
 LABEL_ABOVE = {"CPaaS", "IoT"}  # low bubbles: label above so it clears axis/source
 for name, xf, yr, sc, cat in items:
@@ -174,17 +175,17 @@ for name, xf, yr, sc, cat in items:
     ax.scatter([xf],[yr], s=bsize(sc), color=col, alpha=0.9,
                edgecolor=edge_map[cat], lw=1.6, zorder=5)
     # labels sit just OUTSIDE the bubble edge, dark ink, always fully legible
-    gap = r_data(sc) + 0.14
+    gap = r_data(sc) + 0.16
     if name in LABEL_ABOVE:
-        ax.text(xf, yr + gap, name, color=INK, fontproperties=font(10.5, "SemiBold"),
-                ha="center", va="bottom", zorder=8, linespacing=1.0)
+        ax.text(xf, yr + gap, name, color=INK, fontproperties=font(14, "SemiBold"),
+                ha="center", va="bottom", zorder=8, linespacing=1.05)
     else:
-        ax.text(xf, yr - gap, name, color=INK, fontproperties=font(10.5, "SemiBold"),
-                ha="center", va="top", zorder=8, linespacing=1.0)
+        ax.text(xf, yr - gap, name, color=INK, fontproperties=font(14, "SemiBold"),
+                ha="center", va="top", zorder=8, linespacing=1.05)
 
 # axis labels
-ax.set_xlabel("Strategic fit with 5G", fontproperties=font(12.5, "SemiBold"), color=INK, labelpad=10)
-ax.set_ylabel("Revenue potential", fontproperties=font(12.5, "SemiBold"), color=INK, labelpad=10)
+ax.set_xlabel("Strategic fit with 5G", fontproperties=font(16, "SemiBold"), color=INK, labelpad=10)
+ax.set_ylabel("Revenue potential", fontproperties=font(16, "SemiBold"), color=INK, labelpad=10)
 ax.set_xlim(2.5, 11); ax.set_ylim(3.2, 11)
 ax.set_xticks([]); ax.set_yticks([])
 # direction cues: small arrowheads at the high end of each axis (no → glyphs)
@@ -193,9 +194,9 @@ ax.annotate("", xy=(11.0, 3.2), xytext=(10.5, 3.2),
 ax.annotate("", xy=(2.5, 11.0), xytext=(2.5, 10.5),
             arrowprops=dict(arrowstyle="-|>", color=GRAY_MID, lw=1.4), zorder=2, clip_on=False)
 # low/high corner cues (slightly larger + semibold for legibility)
-ax.text(2.72, 3.34, "Low", color=GRAY_TXT, fontproperties=font(10.5, "SemiBold"), ha="left", va="bottom")
-ax.text(10.85, 3.34, "High", color=GRAY_TXT, fontproperties=font(10.5, "SemiBold"), ha="right", va="bottom")
-ax.text(2.68, 10.85, "High", color=GRAY_TXT, fontproperties=font(10.5, "SemiBold"), ha="left", va="top", rotation=90)
+ax.text(2.72, 3.34, "Low", color=GRAY_TXT, fontproperties=font(13, "SemiBold"), ha="left", va="bottom")
+ax.text(10.85, 3.34, "High", color=GRAY_TXT, fontproperties=font(13, "SemiBold"), ha="right", va="bottom")
+ax.text(2.68, 10.85, "High", color=GRAY_TXT, fontproperties=font(13, "SemiBold"), ha="left", va="top", rotation=90)
 
 for s in ["top","right"]:
     ax.spines[s].set_visible(False)
@@ -207,13 +208,13 @@ lx, ly = 3.35, 9.7
 for i,(s,lab) in enumerate([(6,"Low"),(8,"Med"),(9,"High")]):
     bx = lx + i*0.72
     ax.scatter([bx],[ly], s=bsize(s)*0.5, color=GRAY_LT, edgecolor="#9a9a9a", lw=1, zorder=3)
-    ax.text(bx, ly-0.62, lab, color=GRAY_TXT, fontproperties=font(8.5, "Medium"),
+    ax.text(bx, ly-0.68, lab, color=GRAY_TXT, fontproperties=font(11, "Medium"),
             ha="center", va="top", zorder=3)
-ax.text(lx-0.15, ly+0.78, "Bubble size = Scalability", color=GRAY_TXT,
-        fontproperties=font(9.5, "SemiBold"), ha="left")
+ax.text(lx-0.15, ly+0.82, "Bubble size = Scalability", color=GRAY_TXT,
+        fontproperties=font(12.5, "SemiBold"), ha="left")
 
 fig.text(0.055, 0.030, "Source: Team assessment (1\u201310 scale), aligned with the FMEA strategic-value scoring in Appendix A. Market context: MarketsandMarkets (2025); Mordor Intelligence (2025).",
-         fontproperties=font(8), color=GRAY_MID, ha="left")
+         fontproperties=font(9.5), color=GRAY_MID, ha="left")
 
 plt.subplots_adjust(left=0.075, right=0.945, top=0.955, bottom=0.12)
 fig.savefig(f"{OUT}/1_2_2_technology_prioritization_matrix.png", dpi=200, facecolor="white")
