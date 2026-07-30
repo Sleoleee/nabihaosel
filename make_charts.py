@@ -9,14 +9,23 @@ import math
 import os
 
 # ---------- Fonts ----------
-FONT_DIR = os.environ.get("FONT_DIR", "/home/claude/fonts")
-for f in ["Poppins-Regular.ttf", "Poppins-Medium.ttf", "Poppins-SemiBold.ttf", "Poppins-Bold.ttf"]:
+# Helvetica is proprietary and not installable; Liberation Sans is the standard
+# metric-compatible substitute (same metrics as Helvetica/Arial). Two real weights
+# (Regular, Bold); the intermediate weights map onto them.
+FONT_DIR = os.environ.get("FONT_DIR", "/usr/share/fonts/truetype/liberation")
+_FONT_FILE = {
+    "Regular":  "LiberationSans-Regular.ttf",
+    "Medium":   "LiberationSans-Regular.ttf",
+    "SemiBold": "LiberationSans-Bold.ttf",
+    "Bold":     "LiberationSans-Bold.ttf",
+}
+for f in set(_FONT_FILE.values()):
     fm.fontManager.addfont(os.path.join(FONT_DIR, f))
-plt.rcParams["font.family"] = "Poppins"
+plt.rcParams["font.family"] = "Liberation Sans"
 plt.rcParams["axes.unicode_minus"] = False
 
 def font(size, weight="Regular"):
-    return fm.FontProperties(fname=os.path.join(FONT_DIR, f"Poppins-{weight}.ttf"), size=size)
+    return fm.FontProperties(fname=os.path.join(FONT_DIR, _FONT_FILE[weight]), size=size)
 
 # ---------- Palette ----------
 RED_BRIGHT = "#fa0515"
@@ -56,11 +65,13 @@ b2b_here_x = 4.3; b2b_here_y = logistic(b2b_here_x, 6.6, 0.95, cap=96)
 ax.scatter([b2c_here_x], [b2c_here_y], s=150, color=GRAY_MID, edgecolor="white", lw=2, zorder=5)
 ax.scatter([b2b_here_x], [b2b_here_y], s=180, color=RED_BRIGHT, edgecolor="white", lw=2, zorder=6)
 
-# Curve labels
-ax.text(9.7, logistic(9.7,3.0,1.15)+1.5, "B2C  (Consumer)", color=GRAY_TXT,
+# Curve labels — B2C above its plateau; B2B in the clear gap between the two
+# curves near the right edge (no longer sitting on the red line).
+ax.text(9.7, logistic(9.7,3.0,1.15)+2.0, "B2C  (Consumer)", color=GRAY_TXT,
         fontproperties=font(14, "SemiBold"), ha="right", va="bottom")
-ax.text(9.7, logistic(9.7,6.6,0.95,96)-6.5, "B2B  (Enterprise)", color=RED_TSEL,
-        fontproperties=font(14, "SemiBold"), ha="right", va="top")
+ax.text(9.6, 95.5, "B2B  (Enterprise)", color=RED_TSEL,
+        fontproperties=font(14, "SemiBold"), ha="right", va="center",
+        path_effects=[pe.withStroke(linewidth=3, foreground="white")])
 
 # Annotation boxes \u2014 text placed in clear whitespace, connected to its marker
 # by a thin leader line. A fully opaque white stroke behind each glyph keeps any
@@ -89,33 +100,32 @@ anno(b2b_here_x, b2b_here_y, 6.6, 24, 6.75, 26,
 for xx, lab in [(1.2,"Emerging"),(5.0,"Growth"),(8.8,"Saturated")]:
     ax.text(xx, -6, lab, color=GRAY_MID, fontproperties=font(10.5, "Medium"), ha="center")
 
-# Axes cosmetics (MBB minimal)
+# Axes cosmetics \u2014 Y now carries an explicit 0\u2013100% penetration scale so the
+# reader can see what the vertical position means at each maturity stage.
 ax.set_xlim(0, 10); ax.set_ylim(0, 108)
-ax.set_yticks([]); ax.set_xticks([])
-for s in ["top","right","left"]:
+ax.set_xticks([])
+ax.set_yticks([0, 25, 50, 75, 100])
+ax.set_yticklabels(["0", "25", "50", "75", "100%"], fontproperties=font(10), color=GRAY_TXT)
+ax.tick_params(axis="y", length=0, pad=6)
+ax.grid(axis="y", color=GRID, lw=1.0, zorder=0)
+for s in ["top","right"]:
     ax.spines[s].set_visible(False)
+ax.spines["left"].set_color(GRAY_LT)
 ax.spines["bottom"].set_color(GRAY_LT)
 # axis arrow for maturity
 ax.annotate("", xy=(10.15, 0), xytext=(0, 0),
             arrowprops=dict(arrowstyle="-|>", color=GRAY_MID, lw=1.4))
-# axis title on its own row, centered under the x-axis, clear of stage labels
+# X-axis title on its own row, centered, clear of stage labels
 ax.text(5.0, -13, "Market maturity", color=GRAY_TXT, fontproperties=font(11, "Medium"),
         ha="center", va="center")
-ax.text(-0.15, 104, "Adoption /\npenetration", color=GRAY_TXT, fontproperties=font(11, "Medium"),
-        ha="left", va="top")
-
-# Titles (action title, left aligned)
-fig.text(0.055, 0.965, "B2C has matured into saturation; B2B is still on its steep growth curve",
-         fontproperties=font(17.5, "Bold"), color=INK, ha="left", va="top")
-fig.text(0.055, 0.915, "Market maturity of Telkomsel\u2019s consumer vs enterprise segments",
-         fontproperties=font(12), color=GRAY_TXT, ha="left", va="top")
-# top accent rule \u2014 clearly below the subtitle, in clean whitespace
-fig.add_artist(plt.Line2D([0.055,0.945],[0.865,0.865], color=RED_TSEL, lw=2.4, transform=fig.transFigure))
+# Y-axis title
+ax.set_ylabel("Adoption / penetration (% of addressable market)",
+              fontproperties=font(11, "SemiBold"), color=GRAY_TXT, labelpad=10)
 
 fig.text(0.055, 0.028, "Source: PT Telkom Indonesia (2025); The Jakarta Post (2025). Curve shape illustrative; annotated figures are actual FY2024 data.",
          fontproperties=font(8.5), color=GRAY_MID, ha="left")
 
-plt.subplots_adjust(left=0.055, right=0.945, top=0.85, bottom=0.16)
+plt.subplots_adjust(left=0.085, right=0.955, top=0.955, bottom=0.16)
 fig.savefig(f"{OUT}/1_2_1_market_maturity_b2c_vs_b2b.png", dpi=200, facecolor="white")
 plt.close(fig)
 print("chart 1 done")
@@ -163,8 +173,8 @@ for name, xf, yr, sc, cat in items:
     col = color_map[cat]
     ax.scatter([xf],[yr], s=bsize(sc), color=col, alpha=0.9,
                edgecolor=edge_map[cat], lw=1.6, zorder=5)
-    # labels sit OUTSIDE the bubble, dark ink, always fully legible
-    gap = r_data(sc) + 0.42
+    # labels sit just OUTSIDE the bubble edge, dark ink, always fully legible
+    gap = r_data(sc) + 0.14
     if name in LABEL_ABOVE:
         ax.text(xf, yr + gap, name, color=INK, fontproperties=font(10.5, "SemiBold"),
                 ha="center", va="bottom", zorder=8, linespacing=1.0)
@@ -202,18 +212,10 @@ for i,(s,lab) in enumerate([(6,"Low"),(8,"Med"),(9,"High")]):
 ax.text(lx-0.15, ly+0.78, "Bubble size = Scalability", color=GRAY_TXT,
         fontproperties=font(9.5, "SemiBold"), ha="left")
 
-# Titles
-fig.text(0.055, 0.965, "5G + MEC and Private 5G occupy the high-value, high-fit quadrant",
-         fontproperties=font(17.5, "Bold"), color=INK, ha="left", va="top")
-fig.text(0.055, 0.915, "B2B technology opportunities scored on revenue potential vs strategic fit with 5G",
-         fontproperties=font(12), color=GRAY_TXT, ha="left", va="top")
-# top accent rule — clearly below the subtitle, in clean whitespace
-fig.add_artist(plt.Line2D([0.055,0.945],[0.865,0.865], color=RED_TSEL, lw=2.4, transform=fig.transFigure))
-
 fig.text(0.055, 0.030, "Source: Team assessment (1\u201310 scale), aligned with the FMEA strategic-value scoring in Appendix A. Market context: MarketsandMarkets (2025); Mordor Intelligence (2025).",
          fontproperties=font(8), color=GRAY_MID, ha="left")
 
-plt.subplots_adjust(left=0.075, right=0.945, top=0.85, bottom=0.12)
+plt.subplots_adjust(left=0.075, right=0.945, top=0.955, bottom=0.12)
 fig.savefig(f"{OUT}/1_2_2_technology_prioritization_matrix.png", dpi=200, facecolor="white")
 plt.close(fig)
 print("chart 2 done")
