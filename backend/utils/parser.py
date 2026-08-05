@@ -27,6 +27,9 @@ COLUMN_MAP = {
     "SlpName": "slp_name",
     "Branch": "branch",
     "Status_payment": "status_payment",
+    # Varian nama kolom pada file AR (2026)
+    "Due_Date": "due_date",
+    "Disc% For Document": "disc_for_document",
 }
 
 NUMERIC_COLS = {"harga_awal", "disc_per_row", "harga_jual", "row_total",
@@ -73,19 +76,34 @@ def _to_date(val):
         return None
 
 
+def _sheet_year(sheet_name):
+    """Kembalikan (proses?, tahun_tetap).
+    - "sales detail YYYY"  -> (True, YYYY)   tahun dari nama sheet
+    - "AR"                 -> (True, None)   transaksi, tahun diambil per baris dari Posting Date
+    - lainnya (mis. "BP")  -> (False, None)  dilewati
+    """
+    m = re.match(r"sales detail (\d{4})", sheet_name, re.IGNORECASE)
+    if m:
+        return True, int(m.group(1))
+    if sheet_name.strip().upper() == "AR":
+        return True, None
+    return False, None
+
+
 def parse_excel(file_bytes: bytes) -> Dict[int, Tuple[List[dict], int]]:
     """
     Returns dict: {year: (records, skipped_count)}
     Streams rows without building a full DataFrame to minimize memory usage.
+    Mendukung sheet "sales detail YYYY" (tahun dari nama) maupun sheet "AR"
+    (tahun diambil per baris dari Posting Date). Sheet lain (mis. "BP") dilewati.
     """
     wb = openpyxl.load_workbook(filename=file_bytes, read_only=True, data_only=True)
-    results = {}
+    acc = {}  # year -> [records_list, skipped_count]
 
     for sheet_name in wb.sheetnames:
-        match = re.match(r"sales detail (\d{4})", sheet_name, re.IGNORECASE)
-        if not match:
+        process, fixed_year = _sheet_year(sheet_name)
+        if not process:
             continue
-        year = int(match.group(1))
 
         ws = wb[sheet_name]
         rows_iter = ws.iter_rows(values_only=True)
@@ -102,11 +120,8 @@ def parse_excel(file_bytes: bytes) -> Dict[int, Tuple[List[dict], int]]:
                 continue
             h_str = str(h).strip()
             db_name = COLUMN_MAP.get(h_str)
-            if db_name:
+            if db_name is not None and db_name not in col_index:
                 col_index[db_name] = i
-
-        records = []
-        skipped = 0
 
         def get_cell(row, col):
             idx = col_index.get(col)
@@ -115,21 +130,32 @@ def parse_excel(file_bytes: bytes) -> Dict[int, Tuple[List[dict], int]]:
             return row[idx]
 
         for row in rows_iter:
+            posting = _to_date(get_cell(row, "posting_date"))
+            # Tentukan tahun: dari nama sheet, atau dari Posting Date (sheet AR)
+            year = fixed_year if fixed_year is not None else (
+                int(posting[:4]) if posting and len(posting) >= 4 else None)
+            if year is None:
+                continue  # tak bisa ditentukan tahunnya, lewati diam-diam
+            bucket = acc.setdefault(year, [[], 0])
+
             # Filter: skip canceled rows
             canceled_val = get_cell(row, "canceled")
             if canceled_val is not None and str(canceled_val).strip().upper() != "N":
-                skipped += 1
+                bucket[1] += 1
                 continue
 
             # Filter: skip zero/negative new_row_total
             nrt = _to_float(get_cell(row, "new_row_total"))
             if nrt <= 0:
-                skipped += 1
+                bucket[1] += 1
                 continue
 
             rec = {"year": year}
             for col in OUTPUT_COLS:
                 if col == "year":
+                    continue
+                if col == "posting_date":
+                    rec[col] = posting
                     continue
                 val = get_cell(row, col)
                 if col in INT_COLS:
@@ -141,9 +167,7 @@ def parse_excel(file_bytes: bytes) -> Dict[int, Tuple[List[dict], int]]:
                 else:
                     rec[col] = str(val).strip() if val is not None else None
 
-            records.append(rec)
-
-        results[year] = (records, skipped)
+            bucket[0].append(rec)
 
     wb.close()
-    return results
+    return {y: (v[0], v[1]) for y, v in acc.items()}
