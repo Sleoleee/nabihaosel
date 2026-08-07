@@ -37,21 +37,25 @@ TIER_ORDER = [
 BATCH_SIZE = 1000
 
 def fetch_year(db, year, cols):
-    """Fetch all rows for one year in small batches (no ORDER BY = no sort timeout)."""
+    """Fetch semua baris satu tahun via keyset pagination (id > last_id).
+    Menghindari OFFSET dalam yang lambat & memicu statement timeout pada tabel besar."""
+    sel = cols if "id" in [c.strip() for c in cols.split(",")] else cols + ",id"
     rows = []
-    start = 0
+    last_id = 0
     while True:
         batch = (db.table("transactions")
-                 .select(cols)
+                 .select(sel)
                  .eq("year", year)
-                 .range(start, start + BATCH_SIZE - 1)
+                 .gt("id", last_id)
+                 .order("id")
+                 .limit(BATCH_SIZE)
                  .execute().data)
         if not batch:
             break
         rows.extend(batch)
+        last_id = batch[-1]["id"]
         if len(batch) < BATCH_SIZE:
             break
-        start += BATCH_SIZE
     return rows
 
 
