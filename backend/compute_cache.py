@@ -59,27 +59,37 @@ def fetch_year(db, year, cols):
     return rows
 
 
+SWEEP_SIZE = 5000
+
 def fetch_all(db):
-    cols = "customer_code,customer_name,new_row_total,document_number,posting_date,year,kategori,branch,slp_name"
-    print("Detecting years...")
-    # Cek tiap tahun kandidat via index (cepat & andal; tidak bias ke urutan insert)
-    current_year = date.today().year
-    years = []
-    for y in range(MIN_YEAR, current_year + 2):
-        exists = db.table("transactions").select("year").eq("year", y).limit(1).execute().data
-        if exists:
-            years.append(y)
-    years = sorted(years, reverse=True)
-    print(f"  Years used (>= {MIN_YEAR}): {years}")
-
+    """Sapu seluruh tabel via keyset id (hanya pakai primary key -> tak pernah timeout),
+    lalu saring tahun >= MIN_YEAR di Python. Tidak bergantung index tahun."""
+    cols = "customer_code,customer_name,new_row_total,document_number,posting_date,year,kategori,branch,slp_name,id"
+    print(f"Fetching all rows via keyset id (menyaring tahun >= {MIN_YEAR})...")
     all_rows = []
-    for y in years:
-        print(f"  Fetching year {y}...", end=" ")
-        yr_rows = fetch_year(db, y, cols)
-        all_rows.extend(yr_rows)
-        print(f"{len(yr_rows)} rows")
+    scanned = 0
+    last_id = 0
+    while True:
+        batch = (db.table("transactions")
+                 .select(cols)
+                 .gt("id", last_id)
+                 .order("id")
+                 .limit(SWEEP_SIZE)
+                 .execute().data)
+        if not batch:
+            break
+        scanned += len(batch)
+        for r in batch:
+            y = r.get("year")
+            if y is not None and int(y) >= MIN_YEAR:
+                all_rows.append(r)
+        last_id = batch[-1]["id"]
+        print(f"  ...{scanned} baris disisir, {len(all_rows)} dipakai", end="\r")
+        if len(batch) < SWEEP_SIZE:
+            break
 
-    print(f"Total: {len(all_rows)} rows fetched.")
+    years = sorted(set(int(r["year"]) for r in all_rows if r.get("year")), reverse=True)
+    print(f"\nTotal dipakai (>= {MIN_YEAR}): {len(all_rows)} baris. Tahun: {years}")
     return all_rows
 
 
