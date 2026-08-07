@@ -33,8 +33,9 @@ COLUMN_MAP = {
 }
 
 NUMERIC_COLS = {"harga_awal", "disc_per_row", "harga_jual", "row_total",
-                "disc_for_document", "new_row_total", "quantity"}
-INT_COLS = {"document_number"}
+                "disc_for_document", "new_row_total"}
+# quantity kolom DB bertipe INTEGER -> harus dikirim sebagai int, bukan 1.0
+INT_COLS = {"document_number", "quantity"}
 DATE_COLS = {"posting_date", "due_date"}
 OUTPUT_COLS = [
     "document_number", "posting_date", "due_date", "customer_code",
