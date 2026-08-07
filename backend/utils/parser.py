@@ -77,35 +77,26 @@ def _to_date(val):
         return None
 
 
-def _sheet_year(sheet_name):
-    """Kembalikan (proses?, tahun_tetap).
-    - "sales detail YYYY"  -> (True, YYYY)   tahun dari nama sheet
-    - "AR"                 -> (True, None)   transaksi, tahun diambil per baris dari Posting Date
-    - lainnya (mis. "BP")  -> (False, None)  dilewati
-    """
+def _fixed_year_from_name(sheet_name):
+    """Tahun dari nama sheet 'sales detail YYYY', atau None (tahun diambil per baris)."""
     m = re.match(r"sales detail (\d{4})", sheet_name, re.IGNORECASE)
-    if m:
-        return True, int(m.group(1))
-    if sheet_name.strip().upper() == "AR":
-        return True, None
-    return False, None
+    return int(m.group(1)) if m else None
 
 
 def parse_excel(file_bytes: bytes) -> Dict[int, Tuple[List[dict], int]]:
     """
     Returns dict: {year: (records, skipped_count)}
     Streams rows without building a full DataFrame to minimize memory usage.
-    Mendukung sheet "sales detail YYYY" (tahun dari nama) maupun sheet "AR"
-    (tahun diambil per baris dari Posting Date). Sheet lain (mis. "BP") dilewati.
+    Sebuah sheet dianggap sheet transaksi bila header-nya memuat kolom inti
+    (Posting Date + New_Row_Total) — jadi robust untuk nama sheet apa pun
+    (sales detail YYYY, AR, labeled_data, Sheet1, ...). Tahun diambil dari nama
+    sheet bila cocok "sales detail YYYY", selain itu dari Posting Date per baris.
+    Sheet ringkasan (mis. subkategori_summary) & master (BP) otomatis dilewati.
     """
     wb = openpyxl.load_workbook(filename=file_bytes, read_only=True, data_only=True)
     acc = {}  # year -> [records_list, skipped_count]
 
     for sheet_name in wb.sheetnames:
-        process, fixed_year = _sheet_year(sheet_name)
-        if not process:
-            continue
-
         ws = wb[sheet_name]
         rows_iter = ws.iter_rows(values_only=True)
 
@@ -123,6 +114,11 @@ def parse_excel(file_bytes: bytes) -> Dict[int, Tuple[List[dict], int]]:
             db_name = COLUMN_MAP.get(h_str)
             if db_name is not None and db_name not in col_index:
                 col_index[db_name] = i
+
+        # Hanya proses sheet transaksi (punya kolom inti); lainnya dilewati
+        if "posting_date" not in col_index or "new_row_total" not in col_index:
+            continue
+        fixed_year = _fixed_year_from_name(sheet_name)
 
         def get_cell(row, col):
             idx = col_index.get(col)

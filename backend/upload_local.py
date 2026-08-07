@@ -15,7 +15,8 @@ from utils.parser import parse_excel
 CHUNK_SIZE = 2000
 
 
-def upload_file(filepath: str, mode: str = "upsert", chunk_size: int = CHUNK_SIZE):
+def upload_file(filepath: str, mode: str = "upsert", chunk_size: int = CHUNK_SIZE,
+                branch: str = None, only_year: int = None):
     print(f"Membaca file: {filepath}")
     with open(filepath, "rb") as f:
         import io
@@ -25,8 +26,19 @@ def upload_file(filepath: str, mode: str = "upsert", chunk_size: int = CHUNK_SIZ
     parsed = parse_excel(file_bytes)
 
     if not parsed:
-        print("ERROR: Tidak ada sheet 'sales detail YYYY' yang valid.")
+        print("ERROR: Tidak ada sheet transaksi yang valid (butuh kolom Posting Date + New_Row_Total).")
         return
+
+    # Filter hanya tahun tertentu bila diminta
+    if only_year is not None:
+        parsed = {only_year: parsed.get(only_year, ([], 0))}
+        if not parsed[only_year][0]:
+            print(f"ERROR: Tidak ada baris tahun {only_year} di file ini. Cek lagi filenya.")
+            return
+        print(f"Filter: hanya mengambil tahun {only_year}.")
+
+    if branch:
+        print(f"Override branch: semua baris di-set ke '{branch}'.")
 
     db = get_client()
     total_imported = 0
@@ -34,6 +46,9 @@ def upload_file(filepath: str, mode: str = "upsert", chunk_size: int = CHUNK_SIZ
     years_covered = []
 
     for year, (records, skipped) in parsed.items():
+        if branch:
+            for r in records:
+                r["branch"] = branch
         print(f"Tahun {year}: {len(records)} baris valid, {skipped} dilewati")
         years_covered.append(year)
         total_skipped += skipped
@@ -82,10 +97,15 @@ if __name__ == "__main__":
     parser.add_argument("--chunk", type=int, default=CHUNK_SIZE,
                         help=f"Jumlah baris per batch insert (default: {CHUNK_SIZE}). "
                              f"Makin besar makin cepat, tapi kalau error 'payload too large' turunkan lagi.")
+    parser.add_argument("--branch", default=None,
+                        help="Paksa semua baris memakai nilai branch ini (mis. \"1.BLOOMIE\").")
+    parser.add_argument("--only-year", type=int, default=None,
+                        help="Hanya impor baris tahun tertentu (mis. 2025).")
     args = parser.parse_args()
 
     if not os.path.exists(args.filepath):
         print(f"ERROR: File tidak ditemukan: {args.filepath}")
         sys.exit(1)
 
-    upload_file(args.filepath, mode=args.mode, chunk_size=args.chunk)
+    upload_file(args.filepath, mode=args.mode, chunk_size=args.chunk,
+                branch=args.branch, only_year=args.only_year)
