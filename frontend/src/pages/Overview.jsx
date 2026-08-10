@@ -127,7 +127,7 @@ function FilterBar({ filters, onChange, availFilters, target, onTargetChange }) 
       {branchList.length > 0 && (
         <select style={selStyle} value={filters.branch || 'all'}
           onChange={e => pickSlice('branch', e.target.value)}>
-          <option value="all">Semua Cabang</option>
+          <option value="all">Semua Channel</option>
           {branchList.map(b => <option key={b} value={b}>{b}</option>)}
         </select>
       )}
@@ -655,7 +655,7 @@ export default function Overview() {
 
       {/* Third row — Donut Branch | Donut Kategori | Top Category Pairings */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-        <DonutCard title="Kontribusi Revenue per Cabang" data={byBranch} valueKey="revenue" nameKey="branch" loading={loading} />
+        <DonutCard title="Kontribusi Revenue per Channel" data={byBranch} valueKey="revenue" nameKey="branch" loading={loading} />
         <DonutCard title="Kontribusi Revenue per Kategori" data={byKat} valueKey="revenue" nameKey="kategori" loading={loading} />
 
         <Card style={{ padding: 16 }}>

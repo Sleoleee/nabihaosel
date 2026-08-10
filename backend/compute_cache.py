@@ -5,7 +5,7 @@ Jalankan dari folder backend/ setelah setiap upload data:
 Membaca semua transaksi dari Supabase, menghitung semua agregasi lokal,
 lalu menyimpan hasil ke tabel dashboard_cache.
 """
-import sys, os, json
+import sys, os, json, re
 from collections import defaultdict
 from datetime import date
 from dotenv import load_dotenv
@@ -25,6 +25,33 @@ MONTHS = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des
 def safe(v):
     """Sanitasi nilai untuk dipakai sebagai bagian cache key (samakan dengan backend)."""
     return str(v).replace("/", "_").replace(" ", "_") if v is not None else v
+
+
+# Urutan tampil kelompok cabang (channel)
+BRANCH_GROUP_ORDER = ["E-Commerce", "SUKSES JAYA", "NAMI", "BLOOMIE", "K25", "OTHER CHANNEL"]
+
+_ECOMMERCE   = {"SHOPEE", "TIKTOK", "TKPD", "BLIBLI", "LAZADA"}
+_SUKSES_JAYA = {"ASEMKA", "TENGSE", "DOMPET"}
+
+
+def branch_group(branch):
+    """Petakan nilai branch mentah (mis. '1.ASEMKA', '1. ATLAS', '1.NAMI A', NULL)
+    ke salah satu kelompok channel. Sisanya -> 'OTHER CHANNEL'."""
+    if not branch:
+        return "OTHER CHANNEL"
+    b = str(branch).strip().upper()
+    core = re.sub(r"^\d+\.\s*", "", b).strip()   # buang awalan "1." / "1. "
+    if core in _ECOMMERCE:
+        return "E-Commerce"
+    if core in _SUKSES_JAYA:
+        return "SUKSES JAYA"
+    if core.startswith("NAMI"):
+        return "NAMI"
+    if core == "BLOOMIE":
+        return "BLOOMIE"
+    if core == "K25":
+        return "K25"
+    return "OTHER CHANNEL"
 
 TIER_ORDER = [
     "Tier 1 — ≥30jt","Tier 2 — 20–30jt","Tier 3 — 15–20jt","Tier 4 — 10–15jt",
@@ -116,7 +143,7 @@ def compute_all(rows):
         pd_s  = r.get("posting_date") or ""
         month = int(pd_s[5:7]) if len(pd_s) >= 7 else None
         k     = r.get("kategori") or "Lainnya"
-        br    = r.get("branch") or "Lainnya"
+        br    = branch_group(r.get("branch"))
 
         # KPI
         for yk in (("all", "all"), (y, "all"), ("all", month), (y, month)):
@@ -459,7 +486,9 @@ def main():
 
     years = sorted(set(str(r["year"]) for r in rows if r.get("year")), reverse=True)
     kategori_list = sorted(set(r["kategori"] for r in rows if r.get("kategori")))
-    branches = sorted(set(r["branch"] for r in rows if r.get("branch")))
+    # Branch dikelompokkan jadi channel; hanya tampilkan kelompok yang ada datanya
+    present_groups = set(branch_group(r.get("branch")) for r in rows)
+    branches = [g for g in BRANCH_GROUP_ORDER if g in present_groups]
     print("✓ filters (will be saved at end with safe key mappings)")
 
     print("Computing aggregations...")
@@ -522,7 +551,7 @@ def main():
     # Per-branch slices
     print("Computing per-branch caches...")
     for br in branches:
-        upsert_slice(db, [r for r in rows if (r.get("branch") or "Lainnya") == br],
+        upsert_slice(db, [r for r in rows if branch_group(r.get("branch")) == br],
                      f"__br__{safe(br)}", year_keys)
     print(f"  ✓ {len(branches)} branch")
 
