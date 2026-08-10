@@ -1,0 +1,18 @@
+# Ganti "app" ke nama unik Anda sendiri bila "nabihaosel-backend" sudah dipakai.
+app = "nabihaosel-backend"
+primary_region = "sin"   # Singapore, paling dekat ke Indonesia
+
+[build]
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # always-on: tidak tidur, tidak ada delay "bangun"
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512
