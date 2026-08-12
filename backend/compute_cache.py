@@ -15,7 +15,8 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from utils.db import get_client
 from utils.calculations import get_customer_tier
-from sales_targets import SALESPERSONS, TEAMS, match_salesperson, CORE_BRANCH
+from sales_targets import SALESPERSONS, TEAMS, match_salesperson
+from config import branch_group, BRANCH_GROUP_ORDER, CORE_BRANCH
 
 ROW_LIMIT = 1_000_000
 MIN_YEAR = 2023           # abaikan data sebelum 2023 (mis. 2022) sesuai arahan
@@ -27,31 +28,7 @@ def safe(v):
     return str(v).replace("/", "_").replace(" ", "_") if v is not None else v
 
 
-# Urutan tampil kelompok cabang (channel)
-BRANCH_GROUP_ORDER = ["E-Commerce", "SUKSES JAYA", "NAMI", "BLOOMIE", "K25", "OTHER CHANNEL"]
-
-_ECOMMERCE   = {"SHOPEE", "TIKTOK", "TKPD", "BLIBLI", "LAZADA"}
-_SUKSES_JAYA = {"ASEMKA", "TENGSE", "DOMPET"}
-
-
-def branch_group(branch):
-    """Petakan nilai branch mentah (mis. '1.ASEMKA', '1. ATLAS', '1.NAMI A', NULL)
-    ke salah satu kelompok channel. Sisanya -> 'OTHER CHANNEL'."""
-    if not branch:
-        return "OTHER CHANNEL"
-    b = str(branch).strip().upper()
-    core = re.sub(r"^\d+\.\s*", "", b).strip()   # buang awalan "1." / "1. "
-    if core in _ECOMMERCE:
-        return "E-Commerce"
-    if core in _SUKSES_JAYA:
-        return "SUKSES JAYA"
-    if core.startswith("NAMI"):
-        return "NAMI"
-    if core == "BLOOMIE":
-        return "BLOOMIE"
-    if core == "K25":
-        return "K25"
-    return "OTHER CHANNEL"
+# branch_group, BRANCH_GROUP_ORDER, CORE_BRANCH sekarang dari config.py (single source).
 
 TIER_ORDER = [
     "Tier 1 — ≥30jt","Tier 2 — 20–30jt","Tier 3 — 15–20jt","Tier 4 — 10–15jt",
