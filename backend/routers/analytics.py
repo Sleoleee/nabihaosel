@@ -112,5 +112,13 @@ def overview(years: Optional[str] = Query(None), channels: Optional[str] = Query
     by_kategori = sorted(({"kategori": k, "revenue": round(v)} for k, v in by_kat.items()),
                         key=lambda x: -x["revenue"])
 
+    # Bills vs AOV per bulan (gabungan tahun terpilih)
+    ba = defaultdict(lambda: {"bills": 0, "rev": 0.0})
+    for r in sel_rows:
+        b = ba[int(r["bulan"])]; b["bills"] += int(r.get("bills") or 0); b["rev"] += float(r.get("revenue") or 0)
+    bills_aov = [{"month": MONTHS[m-1], "bills": ba[m]["bills"],
+                  "aov": round(ba[m]["rev"]/ba[m]["bills"]) if ba[m]["bills"] else 0}
+                 for m in range(1, 13)]
+
     return {"kpi": kpi, "trend": {"data": trend, "years": years_in, "primary": primary},
-            "by_channel": by_channel, "by_kategori": by_kategori}
+            "bills_aov": bills_aov, "by_channel": by_channel, "by_kategori": by_kategori}
