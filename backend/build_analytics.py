@@ -19,7 +19,7 @@ import config
 from utils.calculations import get_customer_tier
 from sales_targets import match_salesperson
 
-SWEEP = 5000
+SWEEP = 2000
 TOL = 0.0001   # 0.01%
 PLACEHOLDER_SLP = "-No Sales Employee-"
 
