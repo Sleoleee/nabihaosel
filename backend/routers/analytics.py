@@ -214,6 +214,87 @@ def sales_performance(years: Optional[str] = Query(None)):
 
 
 RFM_ORDER = ["At Risk","Lost","Need Attention","Promising","Loyal","Champions"]
+TIER_ORDER = ["Tier 1 — ≥30jt","Tier 2 — 20–30jt","Tier 3 — 15–20jt","Tier 4 — 10–15jt","Tier 5 — 7–10jt","Tier 6 — 6–7jt","Tier 7 — 5–6jt","Tier 8 — 4–5jt","Tier 9 — 3–4jt","Tier 10 — 2–3jt","Tier 11 — 1–2jt","Tier 12 — 500rb–1jt","Tier 13 — <500rb"]
+
+
+@router.get("/product")
+def product(years: Optional[str] = Query(None), channels: Optional[str] = Query(None),
+            core_only: bool = Query(True)):
+    yrs = [int(y) for y in _csv(years)]
+    if not yrs:
+        yrs = sorted({int(r["tahun"]) for r in _fetch_all_rows("agg_category_month","tahun")}) or [2026]
+    prev = {y-1 for y in yrs}; selset = set(yrs)
+    fy = [str(y) for y in sorted(selset | prev)]
+    rows = _fetch("agg_category_month", "kategori,tahun,channel,revenue", years=fy, channels=_csv(channels))
+    cat = defaultdict(lambda: {"rev":0.0,"prev":0.0})
+    chan = defaultdict(lambda: defaultdict(float))
+    for r in rows:
+        k = r.get("kategori") or "Lainnya"
+        if core_only and not config.is_produk_inti(k): continue
+        y = int(r["tahun"]); rev = float(r.get("revenue") or 0)
+        if y in selset: cat[k]["rev"] += rev; chan[k][r.get("channel") or "OTHER CHANNEL"] += rev
+        elif y in prev: cat[k]["prev"] += rev
+    total = sum(v["rev"] for v in cat.values()) or 1
+    matrix = [{"kategori":k,"revenue":round(v["rev"]),"share":round(v["rev"]/total*100,1),
+               "growth_yoy":_pct(v["rev"],v["prev"])} for k,v in cat.items() if v["rev"] > 0]
+    movers = sorted(({"kategori":k,"delta":round(v["rev"]-v["prev"]),"growth":_pct(v["rev"],v["prev"]),
+                      "revenue":round(v["rev"])} for k,v in cat.items() if v["rev"] or v["prev"]),
+                    key=lambda x: x["delta"])
+    cat_channel = [{"kategori":k, **{ch:round(rv) for ch,rv in chan[k].items()}} for k in chan]
+    biggest = max(matrix, key=lambda x:x["revenue"]) if matrix else None
+    tg = [m for m in matrix if m["growth_yoy"] is not None]
+    top_growth = max(tg, key=lambda x:x["growth_yoy"]) if tg else None
+    return {"kpi":{"n_kategori":len(matrix),"biggest":biggest,"top_growth":top_growth},
+            "matrix":matrix, "movers":{"up":movers[-10:][::-1],"down":movers[:10]},
+            "cat_channel":cat_channel,
+            "channels_present":[c for c in config.BRANCH_GROUP_ORDER if any(c in cc for cc in chan.values())]}
+
+
+@router.get("/product-pairing")
+def product_pairing(years: Optional[str] = Query(None)):
+    yrs = set(int(y) for y in _csv(years))
+    rows = _fetch_all_rows("agg_category_pairing",
+        "kategori_a,kategori_b,tahun,jumlah_nota_bersama,support,confidence,lift")
+    agg = defaultdict(lambda: {"cnt":0,"lift":0.0,"conf":0.0,"n":0})
+    for r in rows:
+        if yrs and int(r["tahun"]) not in yrs: continue
+        k = (r["kategori_a"], r["kategori_b"]); a = agg[k]
+        a["cnt"] += int(r.get("jumlah_nota_bersama") or 0)
+        a["lift"] += float(r.get("lift") or 0); a["conf"] += float(r.get("confidence") or 0); a["n"] += 1
+    out = [{"kategori_a":a,"kategori_b":b,"count":v["cnt"],
+            "lift":round(v["lift"]/v["n"],2) if v["n"] else 0,
+            "confidence":round(v["conf"]/v["n"],3) if v["n"] else 0} for (a,b),v in agg.items()]
+    out.sort(key=lambda x:-x["lift"])
+    return out[:40]
+
+
+@router.get("/product-penetration")
+def product_penetration(channels: Optional[str] = Query(None), core_only: bool = Query(True)):
+    chs = _csv(channels)
+    dc = _fetch_all_rows("dim_customer", "customer_code,tier,channel_utama")
+    if chs: dc = [c for c in dc if c.get("channel_utama") in chs]
+    tier_of = {c["customer_code"]: c.get("tier") for c in dc}
+    tier_total = defaultdict(set)
+    for c in dc:
+        if c.get("tier"): tier_total[c["tier"]].add(c["customer_code"])
+    acc = _fetch_all_rows("agg_customer_category", "customer_code,kategori")
+    buyers = defaultdict(set)   # (tier,kat) -> customers
+    kats = set()
+    for r in acc:
+        code = r["customer_code"]; kat = r.get("kategori") or "Lainnya"
+        if core_only and not config.is_produk_inti(kat): continue
+        t = tier_of.get(code)
+        if not t: continue
+        buyers[(t,kat)].add(code); kats.add(kat)
+    tiers = [t for t in TIER_ORDER if t in tier_total]
+    kat_list = sorted(kats)
+    cells = []
+    for t in tiers:
+        tot = len(tier_total[t]) or 1
+        for k in kat_list:
+            b = len(buyers[(t,k)])
+            cells.append({"tier":t.split(" — ")[0],"kategori":k,"pct":round(b/tot*100,1),"buyers":b,"total":tot})
+    return {"tiers":[t.split(" — ")[0] for t in tiers], "kategori":kat_list, "cells":cells}
 
 @router.get("/customer-analytics")
 def customer_analytics(channels: Optional[str] = Query(None)):
