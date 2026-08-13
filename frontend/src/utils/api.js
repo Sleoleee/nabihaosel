@@ -22,6 +22,8 @@ export const getByBranch = (f) => api.get('/api/overview/by-branch', { params: b
 export const getAlerts = (f) => api.get('/api/overview/alerts', { params: buildParams(f) }).then(r => r.data)
 export const getCategoryPairings = (f) => api.get('/api/overview/category-pairings', { params: buildParams(f) }).then(r => r.data)
 export const getSalesTargets = (f) => api.get('/api/overview/sales-targets', { params: buildParams(f) }).then(r => r.data)
+export const getAnalyticsFilters = () => api.get('/api/analytics/filters').then(r => r.data)
+export const getAnalyticsOverview = (p) => api.get('/api/analytics/overview', { params: p }).then(r => r.data)
 
 // Customers
 export const getRFM = (f) => api.get('/api/customers/rfm', { params: buildParams(f) }).then(r => r.data)

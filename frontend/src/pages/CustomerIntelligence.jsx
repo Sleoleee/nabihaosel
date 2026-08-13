@@ -202,7 +202,7 @@ export default function CustomerIntelligence() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* Filter bar */}
       <div style={{
-        position: 'sticky', top: 54, zIndex: 90, background: '#fff',
+        position: 'sticky', top: 108, zIndex: 90, background: '#fff',
         borderBottom: '1px solid #e5e7eb', padding: '0 32px', height: 48,
         display: 'flex', alignItems: 'center', gap: 10, marginLeft: -32, marginRight: -32,
       }}>
