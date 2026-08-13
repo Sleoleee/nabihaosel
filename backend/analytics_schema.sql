@@ -157,3 +157,7 @@ CREATE INDEX IF NOT EXISTS idx_askum_item   ON agg_sku_month(item_no, tahun, bul
 CREATE INDEX IF NOT EXISTS idx_acustm_cust  ON agg_customer_month(customer_code, tahun, bulan);
 CREATE INDEX IF NOT EXISTS idx_acustcat_cust ON agg_customer_category(customer_code);
 CREATE INDEX IF NOT EXISTS idx_adcm_kat     ON agg_discount_category_month(kategori, tahun, bulan);
+
+-- ---------- Hak akses: service_role (dipakai build_analytics.py & backend) ----------
+GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
