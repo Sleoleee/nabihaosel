@@ -87,9 +87,10 @@ def build_all(rows):
 
     asp   = defaultdict(lambda: {"rev":0.0,"docs":set(),"custs":set()})   # (slp,y,m)
     ascm  = defaultdict(lambda: {"rev":0.0,"docs":set()})                 # (slp,kat,y,m)
-    acm   = defaultdict(lambda: {"rev":0.0,"docs":set(),"custs":set()})   # (kat,y,m)
+    acm   = defaultdict(lambda: {"rev":0.0,"docs":set(),"custs":set()})   # (kat,y,m,ch)
     askum = defaultdict(lambda: {"rev":0.0,"qty":0.0,"unit":"","custs":set()})  # (item,y,m)
-    acustm= defaultdict(lambda: {"rev":0.0,"docs":set()})                 # (code,y,m)
+    acustm= defaultdict(lambda: {"rev":0.0,"docs":set()})                 # (code,y,m,ch)
+    cm_rev = defaultdict(float)                                           # (code,y,m) -> rev (semua channel)
     acc_cat = defaultdict(lambda: {"rev":0.0,"docs":set(),"last":""})     # (code,kat)
     disc  = defaultdict(lambda: {"gross":0.0,"net":0.0})                  # (kat,y,m)
 
@@ -137,12 +138,13 @@ def build_all(rows):
         if doc: a["docs"].add(doc)
         s2 = ascm[(slp,kat,y,mo)]; s2["rev"]+=rev
         if doc: s2["docs"].add(doc)
-        k = acm[(kat,y,mo)]; k["rev"]+=rev; k["custs"].add(code)
+        k = acm[(kat,y,mo,ch)]; k["rev"]+=rev; k["custs"].add(code)
         if doc: k["docs"].add(doc)
         if item:
             sk = askum[(item,y,mo)]; sk["rev"]+=rev; sk["qty"]+=qty; sk["unit"]=r.get("unit") or sk["unit"]; sk["custs"].add(code)
-        cmm = acustm[(code,y,mo)]; cmm["rev"]+=rev
+        cmm = acustm[(code,y,mo,ch)]; cmm["rev"]+=rev
         if doc: cmm["docs"].add(doc)
+        cm_rev[(code,y,mo)] += rev
         cc = acc_cat[(code,kat)]; cc["rev"]+=rev
         if doc: cc["docs"].add(doc)
         if pd_s > cc["last"]: cc["last"] = pd_s
@@ -214,26 +216,28 @@ def build_all(rows):
         seg_shift_old[d["customer_code"]] = rfm_segment(ro, fo, mo_)
     moved = sum(1 for k in seg_shift_new if seg_shift_new[k] != seg_shift_old.get(k))
 
-    # ---------- agg_customer_month + status lifecycle ----------
-    agg_customer_month = []
-    for (code,y,mo), v in acustm.items():
-        ym = f"{y}-{mo:02d}"
-        d = dim_customer.get(code, {})
-        interval = d.get("interval_normal_hari")
-        months_sorted = sorted(cm_firstdate[code].items())        # [(ym, firstdate)]
-        idx = [i for i,(m,_) in enumerate(months_sorted) if m==ym]
-        status = "repeat"
-        if idx:
-            i = idx[0]
+    # ---------- status lifecycle per (customer, tahun, bulan) ----------
+    cm_status = {}
+    for code, mdict in cm_firstdate.items():
+        interval = dim_customer.get(code, {}).get("interval_normal_hari")
+        months_sorted = sorted(mdict.items())                     # [(ym, firstdate)]
+        for i, (ym, fd) in enumerate(months_sorted):
+            y2, mo2 = int(ym[:4]), int(ym[5:7])
             if i == 0:
-                status = "new"
+                st = "new"
             elif interval:
-                prev_date = months_sorted[i-1][1]
-                gap = (date.fromisoformat(months_sorted[i][1]) - date.fromisoformat(prev_date)).days
-                status = "reactivated" if gap >= config.REACTIVATE_MULTIPLIER*interval else "repeat"
-        agg_customer_month.append({"customer_code":code,"tahun":y,"bulan":mo,
-            "revenue":round(v["rev"]),"bills":len(v["docs"]),"status_lifecycle":status})
-    lifecycle_by_cm = {(r["customer_code"],r["tahun"],r["bulan"]): r["status_lifecycle"] for r in agg_customer_month}
+                gap = (date.fromisoformat(fd) - date.fromisoformat(months_sorted[i-1][1])).days
+                st = "reactivated" if gap >= config.REACTIVATE_MULTIPLIER*interval else "repeat"
+            else:
+                st = "repeat"
+            cm_status[(code, y2, mo2)] = st
+    lifecycle_by_cm = cm_status
+
+    # ---------- agg_customer_month (per channel) ----------
+    agg_customer_month = [{"customer_code":code,"tahun":y,"bulan":mo,"channel":ch,
+        "revenue":round(v["rev"]),"bills":len(v["docs"]),
+        "status_lifecycle":cm_status.get((code,y,mo),"repeat")}
+        for (code,y,mo,ch),v in acustm.items()]
 
     # ---------- agg_salesperson_month (+ lifecycle via slp dominan customer-bulan) ----------
     asp_life = defaultdict(lambda: {"new":0,"repeat":0,"react":0,"rev_new":0.0,"rev_repeat":0.0,"rev_react":0.0})
@@ -259,8 +263,8 @@ def build_all(rows):
     # ---------- agg lain ----------
     agg_salesperson_category_month = [{"slp_name":s,"kategori":k,"tahun":y,"bulan":mo,
         "revenue":round(v["rev"]),"bills":len(v["docs"])} for (s,k,y,mo),v in ascm.items()]
-    agg_category_month = [{"kategori":k,"tahun":y,"bulan":mo,"revenue":round(v["rev"]),
-        "bills":len(v["docs"]),"customer_aktif":len(v["custs"])} for (k,y,mo),v in acm.items()]
+    agg_category_month = [{"kategori":k,"tahun":y,"bulan":mo,"channel":ch,"revenue":round(v["rev"]),
+        "bills":len(v["docs"]),"customer_aktif":len(v["custs"])} for (k,y,mo,ch),v in acm.items()]
     agg_sku_month = [{"item_no":it,"tahun":y,"bulan":mo,"revenue":round(v["rev"]),
         "quantity":round(v["qty"],2),"unit":v["unit"],"jumlah_customer":len(v["custs"]),
         "harga_rata2":round(v["rev"]/v["qty"]) if v["qty"] else 0} for (it,y,mo),v in askum.items()]
@@ -301,7 +305,7 @@ def build_all(rows):
         for ym in c["months"]:
             n = _month_diff(cohort_ym, ym)
             cohort[(cohort_ym,n)]["custs"].add(code)
-            cohort[(cohort_ym,n)]["rev"] += acustm[(code, int(ym[:4]), int(ym[5:7]))]["rev"]
+            cohort[(cohort_ym,n)]["rev"] += cm_rev[(code, int(ym[:4]), int(ym[5:7]))]
     agg_cohort_retention = []
     for (cym,n), v in cohort.items():
         size = len(cohort_size[cym]) or 1
@@ -368,8 +372,8 @@ PK = {
     "dim_customer":"customer_code", "dim_salesperson":"slp_name",
     "agg_salesperson_month":"slp_name,tahun,bulan",
     "agg_salesperson_category_month":"slp_name,kategori,tahun,bulan",
-    "agg_category_month":"kategori,tahun,bulan", "agg_sku_month":"item_no,tahun,bulan",
-    "agg_customer_month":"customer_code,tahun,bulan",
+    "agg_category_month":"kategori,tahun,bulan,channel", "agg_sku_month":"item_no,tahun,bulan",
+    "agg_customer_month":"customer_code,tahun,bulan,channel",
     "agg_customer_category":"customer_code,kategori",
     "agg_category_pairing":"kategori_a,kategori_b,tahun",
     "agg_cohort_retention":"cohort_bulan,bulan_ke_n",

@@ -102,10 +102,11 @@ CREATE TABLE IF NOT EXISTS agg_salesperson_category_month (
   PRIMARY KEY (slp_name, kategori, tahun, bulan)
 );
 
+DROP TABLE IF EXISTS agg_category_month CASCADE;
 CREATE TABLE IF NOT EXISTS agg_category_month (
-  kategori TEXT, tahun INT, bulan INT,
+  kategori TEXT, tahun INT, bulan INT, channel TEXT,
   revenue NUMERIC, bills INT, customer_aktif INT,
-  PRIMARY KEY (kategori, tahun, bulan)
+  PRIMARY KEY (kategori, tahun, bulan, channel)
 );
 
 CREATE TABLE IF NOT EXISTS agg_sku_month (
@@ -114,10 +115,11 @@ CREATE TABLE IF NOT EXISTS agg_sku_month (
   PRIMARY KEY (item_no, tahun, bulan)
 );
 
+DROP TABLE IF EXISTS agg_customer_month CASCADE;
 CREATE TABLE IF NOT EXISTS agg_customer_month (
-  customer_code TEXT, tahun INT, bulan INT,
+  customer_code TEXT, tahun INT, bulan INT, channel TEXT,
   revenue NUMERIC, bills INT, status_lifecycle TEXT,
-  PRIMARY KEY (customer_code, tahun, bulan)
+  PRIMARY KEY (customer_code, tahun, bulan, channel)
 );
 
 CREATE TABLE IF NOT EXISTS agg_customer_category (
@@ -153,6 +155,8 @@ CREATE INDEX IF NOT EXISTS idx_dc_channel   ON dim_customer(channel_utama);
 CREATE INDEX IF NOT EXISTS idx_aspm_slp     ON agg_salesperson_month(slp_name, tahun, bulan);
 CREATE INDEX IF NOT EXISTS idx_ascm_slp     ON agg_salesperson_category_month(slp_name, tahun, bulan);
 CREATE INDEX IF NOT EXISTS idx_acm_kat      ON agg_category_month(kategori, tahun, bulan);
+CREATE INDEX IF NOT EXISTS idx_acm_channel  ON agg_category_month(channel, tahun, bulan);
+CREATE INDEX IF NOT EXISTS idx_acustm_ch    ON agg_customer_month(channel, tahun, bulan);
 CREATE INDEX IF NOT EXISTS idx_askum_item   ON agg_sku_month(item_no, tahun, bulan);
 CREATE INDEX IF NOT EXISTS idx_acustm_cust  ON agg_customer_month(customer_code, tahun, bulan);
 CREATE INDEX IF NOT EXISTS idx_acustcat_cust ON agg_customer_category(customer_code);
