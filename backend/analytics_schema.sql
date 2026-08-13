@@ -88,19 +88,29 @@ CREATE TABLE IF NOT EXISTS dim_salesperson (
 );
 
 -- ---------- Agregasi bulanan ----------
+DROP TABLE IF EXISTS agg_salesperson_month CASCADE;
 CREATE TABLE IF NOT EXISTS agg_salesperson_month (
-  slp_name TEXT, tahun INT, bulan INT,
+  slp_name TEXT, tahun INT, bulan INT, channel TEXT,
   revenue NUMERIC, bills INT, aov NUMERIC, customer_aktif INT,
   customer_new INT, customer_repeat INT, customer_reactivated INT, customer_lost INT,
   revenue_new NUMERIC, revenue_repeat NUMERIC, revenue_reactivated NUMERIC, revenue_lost NUMERIC,
-  PRIMARY KEY (slp_name, tahun, bulan)
+  PRIMARY KEY (slp_name, tahun, bulan, channel)
 );
 
+DROP TABLE IF EXISTS agg_salesperson_category_month CASCADE;
 CREATE TABLE IF NOT EXISTS agg_salesperson_category_month (
-  slp_name TEXT, kategori TEXT, tahun INT, bulan INT,
+  slp_name TEXT, kategori TEXT, tahun INT, bulan INT, channel TEXT,
   revenue NUMERIC, bills INT,
-  PRIMARY KEY (slp_name, kategori, tahun, bulan)
+  PRIMARY KEY (slp_name, kategori, tahun, bulan, channel)
 );
+
+CREATE TABLE IF NOT EXISTS agg_sku_year (
+  item_no TEXT, tahun INT,
+  revenue NUMERIC, quantity NUMERIC, unit TEXT, jumlah_customer INT, harga_rata2 NUMERIC,
+  PRIMARY KEY (item_no, tahun)
+);
+CREATE INDEX IF NOT EXISTS idx_skuyear_item ON agg_sku_year(item_no);
+CREATE INDEX IF NOT EXISTS idx_skuyear_th   ON agg_sku_year(tahun);
 
 DROP TABLE IF EXISTS agg_category_month CASCADE;
 CREATE TABLE IF NOT EXISTS agg_category_month (

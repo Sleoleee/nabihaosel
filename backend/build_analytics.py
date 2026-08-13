@@ -98,8 +98,10 @@ def build_all(rows):
     cm_firstdate = defaultdict(dict)                 # code -> {ym -> min tanggal}
     cm_slp_rev   = defaultdict(lambda: defaultdict(float))  # (code,y,m) -> slp -> rev
 
-    asp   = defaultdict(lambda: {"rev":0.0,"docs":set(),"custs":set()})   # (slp,y,m)
-    ascm  = defaultdict(lambda: {"rev":0.0,"docs":set()})                 # (slp,kat,y,m)
+    asp   = defaultdict(lambda: {"rev":0.0,"docs":set(),"custs":set()})   # (slp,y,m,ch)
+    ascm  = defaultdict(lambda: {"rev":0.0,"docs":set()})                 # (slp,kat,y,m,ch)
+    askum_year = defaultdict(lambda: {"rev":0.0,"qty":0.0,"unit":"","custs":set()})  # (item,y)
+    cm_ch_rev = defaultdict(lambda: defaultdict(float))                   # (code,y,m) -> ch -> rev
     acm   = defaultdict(lambda: {"rev":0.0,"docs":set(),"custs":set()})   # (kat,y,m,ch)
     askum = defaultdict(lambda: {"rev":0.0,"qty":0.0,"unit":"","custs":set()})  # (item,y,m)
     acustm= defaultdict(lambda: {"rev":0.0,"docs":set()})                 # (code,y,m,ch)
@@ -147,14 +149,16 @@ def build_all(rows):
         cm_slp_rev[(code,y,mo)][slp] += rev
 
         slp_total[slp] += rev
-        a = asp[(slp,y,mo)]; a["rev"]+=rev; a["custs"].add(code)
+        cm_ch_rev[(code,y,mo)][ch] += rev
+        a = asp[(slp,y,mo,ch)]; a["rev"]+=rev; a["custs"].add(code)
         if doc: a["docs"].add(doc)
-        s2 = ascm[(slp,kat,y,mo)]; s2["rev"]+=rev
+        s2 = ascm[(slp,kat,y,mo,ch)]; s2["rev"]+=rev
         if doc: s2["docs"].add(doc)
         k = acm[(kat,y,mo,ch)]; k["rev"]+=rev; k["custs"].add(code)
         if doc: k["docs"].add(doc)
         if item:
             sk = askum[(item,y,mo)]; sk["rev"]+=rev; sk["qty"]+=qty; sk["unit"]=r.get("unit") or sk["unit"]; sk["custs"].add(code)
+            sy = askum_year[(item,y)]; sy["rev"]+=rev; sy["qty"]+=qty; sy["unit"]=r.get("unit") or sy["unit"]; sy["custs"].add(code)
         cmm = acustm[(code,y,mo,ch)]; cmm["rev"]+=rev
         if doc: cmm["docs"].add(doc)
         cm_rev[(code,y,mo)] += rev
@@ -256,16 +260,18 @@ def build_all(rows):
     asp_life = defaultdict(lambda: {"new":0,"repeat":0,"react":0,"rev_new":0.0,"rev_repeat":0.0,"rev_react":0.0})
     for (code,y,mo), slp_rev in cm_slp_rev.items():
         dom = max(slp_rev.items(), key=lambda x:x[1])[0]
+        chrev = cm_ch_rev[(code,y,mo)]
+        dom_ch = max(chrev.items(), key=lambda x:x[1])[0] if chrev else "OTHER CHANNEL"
         st = lifecycle_by_cm.get((code,y,mo), "repeat")
         rev = sum(slp_rev.values())
-        L = asp_life[(dom,y,mo)]
+        L = asp_life[(dom,y,mo,dom_ch)]
         if st=="new": L["new"]+=1; L["rev_new"]+=rev
         elif st=="reactivated": L["react"]+=1; L["rev_react"]+=rev
         else: L["repeat"]+=1; L["rev_repeat"]+=rev
     agg_salesperson_month = []
-    for (slp,y,mo), v in asp.items():
-        bills = len(v["docs"]); L = asp_life.get((slp,y,mo), {})
-        agg_salesperson_month.append({"slp_name":slp,"tahun":y,"bulan":mo,
+    for (slp,y,mo,ch), v in asp.items():
+        bills = len(v["docs"]); L = asp_life.get((slp,y,mo,ch), {})
+        agg_salesperson_month.append({"slp_name":slp,"tahun":y,"bulan":mo,"channel":ch,
             "revenue":round(v["rev"]),"bills":bills,
             "aov":round(v["rev"]/bills) if bills else 0,"customer_aktif":len(v["custs"]),
             "customer_new":L.get("new",0),"customer_repeat":L.get("repeat",0),
@@ -274,8 +280,11 @@ def build_all(rows):
             "revenue_reactivated":round(L.get("rev_react",0)),"revenue_lost":0})
 
     # ---------- agg lain ----------
-    agg_salesperson_category_month = [{"slp_name":s,"kategori":k,"tahun":y,"bulan":mo,
-        "revenue":round(v["rev"]),"bills":len(v["docs"])} for (s,k,y,mo),v in ascm.items()]
+    agg_salesperson_category_month = [{"slp_name":s,"kategori":k,"tahun":y,"bulan":mo,"channel":ch,
+        "revenue":round(v["rev"]),"bills":len(v["docs"])} for (s,k,y,mo,ch),v in ascm.items()]
+    agg_sku_year = [{"item_no":it,"tahun":y,"revenue":round(v["rev"]),"quantity":round(v["qty"],2),
+        "unit":v["unit"],"jumlah_customer":len(v["custs"]),
+        "harga_rata2":round(v["rev"]/v["qty"]) if v["qty"] else 0} for (it,y),v in askum_year.items()]
     agg_category_month = [{"kategori":k,"tahun":y,"bulan":mo,"channel":ch,"revenue":round(v["rev"]),
         "bills":len(v["docs"]),"customer_aktif":len(v["custs"])} for (k,y,mo,ch),v in acm.items()]
     agg_sku_month = [{"item_no":it,"tahun":y,"bulan":mo,"revenue":round(v["rev"]),
@@ -341,6 +350,7 @@ def build_all(rows):
         "agg_salesperson_category_month": agg_salesperson_category_month,
         "agg_category_month": agg_category_month,
         "agg_sku_month": agg_sku_month,
+        "agg_sku_year": agg_sku_year,
         "agg_customer_month": agg_customer_month,
         "agg_customer_category": agg_customer_category,
         "agg_category_pairing": agg_category_pairing,
@@ -383,9 +393,10 @@ def validate(rows, tables, report):
 # ============================ WRITE ============================
 PK = {
     "dim_customer":"customer_code", "dim_salesperson":"slp_name",
-    "agg_salesperson_month":"slp_name,tahun,bulan",
-    "agg_salesperson_category_month":"slp_name,kategori,tahun,bulan",
+    "agg_salesperson_month":"slp_name,tahun,bulan,channel",
+    "agg_salesperson_category_month":"slp_name,kategori,tahun,bulan,channel",
     "agg_category_month":"kategori,tahun,bulan,channel", "agg_sku_month":"item_no,tahun,bulan",
+    "agg_sku_year":"item_no,tahun",
     "agg_customer_month":"customer_code,tahun,bulan,channel",
     "agg_customer_category":"customer_code,kategori",
     "agg_category_pairing":"kategori_a,kategori_b,tahun",

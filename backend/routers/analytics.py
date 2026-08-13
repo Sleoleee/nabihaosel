@@ -136,19 +136,22 @@ def _fetch_all_rows(table, cols, years=None):
 
 
 @router.get("/sales-performance")
-def sales_performance(years: Optional[str] = Query(None)):
+def sales_performance(years: Optional[str] = Query(None), channels: Optional[str] = Query(None)):
     """Metrik per salesperson dari agg_salesperson_month + dim_customer + target.
     Selalu hitung YoY (tahun terpilih vs tahun-1). Frontend menyaring per scope."""
     yrs = [int(y) for y in _csv(years)]
     if not yrs:
         rows0 = _fetch_all_rows("agg_salesperson_month", "tahun")
         yrs = sorted({int(r["tahun"]) for r in rows0}) or [2026]
+    chs = _csv(channels)
     prev = {y - 1 for y in yrs}
     fetch_years = [str(y) for y in sorted(set(yrs) | prev)]
 
     asp = _fetch_all_rows("agg_salesperson_month",
-        "slp_name,tahun,revenue,bills,customer_new,customer_repeat,customer_reactivated,"
+        "slp_name,tahun,channel,revenue,bills,customer_new,customer_repeat,customer_reactivated,"
         "revenue_new,revenue_repeat,revenue_reactivated", years=fetch_years)
+    if chs:
+        asp = [r for r in asp if r.get("channel") in chs]
 
     sel = set(yrs)
     agg = defaultdict(lambda: {"rev":0.0,"rev_prev":0.0,"bills":0,
@@ -417,11 +420,149 @@ def customer_list(segment: Optional[str] = Query(None), tier: Optional[str] = Qu
     return {"data": rows[start:start+limit], "total": total}
 
 
+@router.get("/product-sku")
+def product_sku(years: Optional[str] = Query(None), core_only: bool = Query(True)):
+    """Pareto SKU (ABC) + efek volume vs harga, dari agg_sku_year."""
+    yrs = [int(y) for y in _csv(years)]
+    if not yrs:
+        yrs = sorted({int(r["tahun"]) for r in _fetch_all_rows("agg_sku_year","tahun")}) or [2026]
+    prev = {y-1 for y in yrs}; selset = set(yrs)
+    fy = [str(y) for y in sorted(selset | prev)]
+    rows = _fetch_all_rows("agg_sku_year", "item_no,tahun,revenue,quantity,harga_rata2,unit,jumlah_customer", years=fy)
+    di = {d["item_no"]: d for d in _fetch_all_rows("dim_item", "item_no,item_desc,kategori,is_produk_inti")}
+    agg = defaultdict(lambda: {"rev":0.,"prev":0.,"qty":0.,"qtyp":0.,"pr":0.,"prp":0.,"ns":0,"np":0,"unit":"","cust":0})
+    for r in rows:
+        it = r["item_no"]; y = int(r["tahun"]); d = di.get(it, {})
+        if core_only and not d.get("is_produk_inti", True): continue
+        a = agg[it]; a["unit"] = r.get("unit") or a["unit"]
+        if y in selset:
+            a["rev"]+=float(r.get("revenue") or 0); a["qty"]+=float(r.get("quantity") or 0)
+            a["pr"]+=float(r.get("harga_rata2") or 0); a["ns"]+=1; a["cust"]=max(a["cust"], int(r.get("jumlah_customer") or 0))
+        elif y in prev:
+            a["prev"]+=float(r.get("revenue") or 0); a["qtyp"]+=float(r.get("quantity") or 0)
+            a["prp"]+=float(r.get("harga_rata2") or 0); a["np"]+=1
+    items = []
+    for it, a in agg.items():
+        if a["rev"] <= 0: continue
+        price = a["pr"]/a["ns"] if a["ns"] else 0; pricep = a["prp"]/a["np"] if a["np"] else 0
+        d = di.get(it, {})
+        items.append({"item_no":it,"item_desc":d.get("item_desc"),"kategori":d.get("kategori"),
+            "revenue":round(a["rev"]),"qty":round(a["qty"],1),"unit":a["unit"],"customers":a["cust"],
+            "growth":_pct(a["rev"],a["prev"]),"delta":round(a["rev"]-a["prev"]),
+            "vol_effect":round((a["qty"]-a["qtyp"])*pricep),"price_effect":round(a["qty"]*(price-pricep))})
+    items.sort(key=lambda x:-x["revenue"])
+    total = sum(i["revenue"] for i in items) or 1
+    cum = 0
+    for it in items:
+        cum += it["revenue"]; it["cum_pct"] = round(cum/total*100,1)
+        it["abc"] = "A" if it["cum_pct"]<=80 else "B" if it["cum_pct"]<=95 else "C"
+    movers = sorted(items, key=lambda x:x["delta"])
+    return {"pareto":items[:150], "n_sku":len(items),
+            "a_count":sum(1 for it in items if it["abc"]=="A"),
+            "movers":{"up":movers[-10:][::-1],"down":movers[:10]}}
+
+
+@router.get("/discount")
+def discount(years: Optional[str] = Query(None), core_only: bool = Query(True)):
+    """PROMPT 6 — Diskon & Harga (agg_discount_category_month). Tanpa margin/HPP."""
+    yrs = [int(y) for y in _csv(years)]
+    prev = {y-1 for y in yrs}; selset = set(yrs)
+    fy = [str(y) for y in sorted(selset | prev)] if yrs else None
+    rows = _fetch_all_rows("agg_discount_category_month",
+        "kategori,tahun,revenue_gross,revenue_net,disc_amount", years=fy)
+    cat = defaultdict(lambda: {"gross":0.,"net":0.,"disc":0.,"netp":0.})
+    tot = {"gross":0.,"net":0.,"disc":0.,"netp":0.}
+    for r in rows:
+        k = r["kategori"]; y = int(r["tahun"])
+        if core_only and not config.is_produk_inti(k): continue
+        gr=float(r.get("revenue_gross") or 0); nt=float(r.get("revenue_net") or 0); ds=float(r.get("disc_amount") or 0)
+        c = cat[k]
+        if (not yrs) or (y in selset):
+            c["gross"]+=gr; c["net"]+=nt; c["disc"]+=ds; tot["gross"]+=gr; tot["net"]+=nt; tot["disc"]+=ds
+        elif y in prev:
+            c["netp"]+=nt; tot["netp"]+=nt
+    by_cat = sorted(({"kategori":k,"disc_pct":round(v["disc"]/v["gross"]*100,1) if v["gross"] else 0,
+                      "revenue":round(v["net"]),"disc_amount":round(v["disc"]),
+                      "growth":_pct(v["net"],v["netp"])} for k,v in cat.items() if v["gross"]>0),
+                     key=lambda x:-x["disc_pct"])
+    kpi = {"revenue_gross":round(tot["gross"]),"revenue_net":round(tot["net"]),
+           "disc_amount":round(tot["disc"]),
+           "disc_pct":round(tot["disc"]/tot["gross"]*100,1) if tot["gross"] else 0,
+           "disc_pct_prev": None,
+           "net_growth":_pct(tot["net"],tot["netp"]) if tot["netp"] else None}
+    return {"kpi":kpi, "by_cat":by_cat}
+
+
+@router.get("/qa-reconcile")
+def qa_reconcile():
+    """PROMPT 7 — rekonsiliasi revenue lintas sumber agregat untuk beberapa filter."""
+    out = []
+    combos = [("2024 full",["2024"]),("2025 full",["2025"]),("2026 YTD",["2026"]),("Semua",None)]
+    for label, yrs in combos:
+        cat  = sum(float(r.get("revenue") or 0) for r in _fetch("agg_category_month","revenue",years=yrs))
+        cust = sum(float(r.get("revenue") or 0) for r in _fetch("agg_customer_month","revenue",years=yrs))
+        slp  = sum(float(r.get("revenue") or 0) for r in _fetch("agg_salesperson_month","revenue",years=yrs))
+        base = cust or 1
+        diff = max(abs(cat-base), abs(slp-base))/base
+        out.append({"filter":label,"category":round(cat),"customer":round(cust),"salesperson":round(slp),
+                    "max_diff_pct":round(diff*100,4),"status":"LOLOS" if diff<=0.0001 else "GAGAL"})
+    return out
+
+
+@router.get("/customer-detail")
+def customer_detail(code: str = Query(...)):
+    db = get_client()
+    dc = db.table("dim_customer").select("*").eq("customer_code", code).limit(1).execute().data
+    cats = db.table("agg_customer_category").select("kategori,revenue,qty_bills,last_purchase_date").eq("customer_code", code).execute().data or []
+    months = db.table("agg_customer_month").select("tahun,bulan,revenue").eq("customer_code", code).execute().data or []
+    mmap = defaultdict(float)
+    for m in months: mmap[(int(m["tahun"]),int(m["bulan"]))] += float(m.get("revenue") or 0)
+    timeline = [{"label":f"{y}-{mo:02d}","revenue":round(v)} for (y,mo),v in sorted(mmap.items())]
+    return {"customer": dc[0] if dc else None,
+            "categories": sorted(cats, key=lambda x:-(x.get("revenue") or 0)),
+            "timeline": timeline}
+
+
+@router.get("/customer-bridge")
+def customer_bridge(years: Optional[str] = Query(None), channels: Optional[str] = Query(None)):
+    """Revenue Bridge (waterfall) + Net Customer Growth (New - Lost)."""
+    yrs = [int(y) for y in _csv(years)]
+    if not yrs:
+        yrs = sorted({int(r["tahun"]) for r in _fetch_all_rows("agg_customer_month","tahun")})[-1:] or [2026]
+    prev = {y-1 for y in yrs}; selset = set(yrs)
+    chs = _csv(channels)
+    rows = _fetch("agg_customer_month", "tahun,bulan,channel,customer_code,revenue,status_lifecycle",
+                  years=[str(y) for y in sorted(selset|prev)], channels=chs)
+    cur_total=prev_total=new_rev=react_rev=0.0
+    cur_cust=set(); prev_cust=set(); new_cust=set()
+    for r in rows:
+        y=int(r["tahun"]); rev=float(r.get("revenue") or 0); code=r.get("customer_code"); st=r.get("status_lifecycle")
+        if y in selset:
+            cur_total+=rev; cur_cust.add(code)
+            if st=="new": new_rev+=rev; new_cust.add(code)
+            elif st=="reactivated": react_rev+=rev
+        elif y in prev:
+            prev_total+=rev; prev_cust.add(code)
+    repeat_churn_net = cur_total - prev_total - new_rev - react_rev
+    bridge = [
+        {"label":"Periode lalu","value":round(prev_total),"type":"base"},
+        {"label":"Customer baru","value":round(new_rev),"type":"pos"},
+        {"label":"Reactivated","value":round(react_rev),"type":"pos"},
+        {"label":"Repeat & churn (net)","value":round(repeat_churn_net),"type":"net"},
+        {"label":"Periode ini","value":round(cur_total),"type":"base"},
+    ]
+    lost = len(prev_cust - cur_cust)
+    return {"bridge":bridge,
+            "net_growth":{"new":len(new_cust),"lost":lost,"net":len(new_cust)-lost}}
+
+
 @router.get("/sales-trend")
-def sales_trend(years: Optional[str] = Query(None)):
+def sales_trend(years: Optional[str] = Query(None), channels: Optional[str] = Query(None)):
     """Revenue bulanan per salesperson (dijumlah lintas tahun terpilih) -> 12 nilai."""
-    yrs = _csv(years)
-    rows = _fetch_all_rows("agg_salesperson_month", "slp_name,bulan,revenue", years=yrs or None)
+    yrs = _csv(years); chs = _csv(channels)
+    rows = _fetch_all_rows("agg_salesperson_month", "slp_name,bulan,channel,revenue", years=yrs or None)
+    if chs:
+        rows = [r for r in rows if r.get("channel") in chs]
     series = defaultdict(lambda: [0.0] * 12)
     for r in rows:
         b = int(r.get("bulan") or 0)
@@ -433,11 +574,13 @@ def sales_trend(years: Optional[str] = Query(None)):
 
 
 @router.get("/sales-mix")
-def sales_mix(years: Optional[str] = Query(None)):
+def sales_mix(years: Optional[str] = Query(None), channels: Optional[str] = Query(None)):
     """Mix kategori per salesperson (100% stacked)."""
-    yrs = _csv(years)
-    rows = _fetch_all_rows("agg_salesperson_category_month", "slp_name,kategori,revenue",
+    yrs = _csv(years); chs = _csv(channels)
+    rows = _fetch_all_rows("agg_salesperson_category_month", "slp_name,kategori,channel,revenue",
                            years=yrs or None)
+    if chs:
+        rows = [r for r in rows if r.get("channel") in chs]
     mix = defaultdict(lambda: defaultdict(float))
     for r in rows:
         mix[r["slp_name"]][r.get("kategori") or "Lainnya"] += float(r.get("revenue") or 0)
