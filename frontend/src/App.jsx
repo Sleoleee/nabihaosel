@@ -6,6 +6,7 @@ import Overview from './pages/Overview'
 import CustomerIntelligence from './pages/CustomerIntelligence'
 import ScaffoldPage from './pages/ScaffoldPage'
 import SalesPerformancePage from './pages/SalesPerformancePage'
+import ProductOpportunityPage from './pages/ProductOpportunityPage'
 import Upload from './pages/Upload'
 
 export default function App() {
@@ -23,7 +24,7 @@ export default function App() {
               <Route path="/" element={<Overview />} />
               <Route path="/sales" element={<SalesPerformancePage />} />
               <Route path="/customers" element={<CustomerIntelligence />} />
-              <Route path="/products" element={<ScaffoldPage title="Product Opportunity" question="Produk mana tumbuh, peluang apa yang belum digarap?" prompt="PROMPT 5" />} />
+              <Route path="/products" element={<ProductOpportunityPage />} />
               <Route path="/upload" element={<Upload />} />
             </Routes>
           </div>
