@@ -1,13 +1,22 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
-  BarChart, Bar, ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid,
+  BarChart, Bar, ComposedChart, Line, LineChart, ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid,
   Tooltip, ReferenceLine, ResponsiveContainer, Cell, Legend,
 } from 'recharts'
 import Card from '../components/Card'
 import Skeleton, { SkeletonCard } from '../components/Skeleton'
 import { formatRupiah, formatRupiahShort, formatNumber } from '../utils/format'
 import { useGlobalFilters } from '../context/GlobalFilters'
-import { getSalesPerformance, getSalesMix } from '../utils/api'
+import { getSalesPerformance, getSalesMix, getSalesTrend } from '../utils/api'
+
+const MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des']
+function momOf(series) {
+  if (!series) return null
+  let last = -1
+  for (let i = 11; i >= 0; i--) { if (series[i] > 0) { last = i; break } }
+  if (last <= 0 || !(series[last-1] > 0)) return null
+  return Math.round((series[last] - series[last-1]) / series[last-1] * 1000) / 10
+}
 
 const SPV_LIST = ['SPV REGEN', 'SPV ARI', 'SPV ABDUL WAHID']
 const MIX_COLORS = ['#d31137','#5b6b82','#f096a6','#a8b3c4','#3d4a5c','#fbbfc9']
@@ -42,6 +51,7 @@ export default function SalesPerformancePage() {
   const g = useGlobalFilters()
   const [data, setData] = useState(null)
   const [mix, setMix] = useState(null)
+  const [trend, setTrend] = useState(null)
   const [loading, setLoading] = useState(true)
   const [scope, setScope] = useState('core')       // core | all | unassigned
   const [spvSel, setSpvSel] = useState([])          // multi
@@ -54,8 +64,8 @@ export default function SalesPerformancePage() {
   useEffect(() => {
     if (!g?.ready) return
     setLoading(true)
-    Promise.all([getSalesPerformance({ years }), getSalesMix({ years })])
-      .then(([d, m]) => { setData(d); setMix(m) }).catch(()=>{}).finally(()=>setLoading(false))
+    Promise.all([getSalesPerformance({ years }), getSalesMix({ years }), getSalesTrend({ years })])
+      .then(([d, m, t]) => { setData(d); setMix(m); setTrend(t) }).catch(()=>{}).finally(()=>setLoading(false))
   }, [g?.ready, years])
 
   const all = data?.salespeople || []
@@ -87,6 +97,13 @@ export default function SalesPerformancePage() {
 
   const quadrantData = scoped.filter(s=>s.pct!=null && s.growth_yoy!=null)
     .map(s=>({ ...s, x:s.pct, y:s.growth_yoy, z:s.revenue }))
+
+  // Pareto kontribusi
+  const byRev = [...scoped].sort((a,b)=>b.revenue-a.revenue)
+  const ptot = byRev.reduce((s,x)=>s+x.revenue,0) || 1
+  let _cum = 0
+  const paretoData = byRev.map(s=>{ _cum += s.revenue; return { name:s.name, revenue:s.revenue, cum:Math.round(_cum/ptot*1000)/10 } })
+  const n80 = (paretoData.findIndex(d=>d.cum>=80)+1) || paretoData.length
 
   const sel = (v) => <span onClick={()=>{ setSortKey(v); setSortDir(d=>sortKey===v&&d==='desc'?'asc':'desc') }} style={{cursor:'pointer'}}>⇅</span>
   const th = { padding:'6px 8px', textAlign:'right', fontSize:10.5, color:'#888', fontWeight:600, whiteSpace:'nowrap' }
@@ -185,7 +202,7 @@ export default function SalesPerformancePage() {
               <thead><tr style={{ borderBottom:'2px solid #f0f0f0' }}>
                 <th style={{ ...th, textAlign:'left' }}>Nama</th><th style={{...th,textAlign:'left'}}>SPV</th>
                 <th style={th}>Revenue {sel('revenue')}</th><th style={th}>% Ach {sel('pct')}</th><th style={th}>Gap</th>
-                <th style={th}>Growth YoY {sel('growth_yoy')}</th><th style={th}>Bills {sel('bills')}</th><th style={th}>AOV</th>
+                <th style={th}>Growth YoY {sel('growth_yoy')}</th><th style={th}>MoM</th><th style={th}>Bills {sel('bills')}</th><th style={th}>AOV</th>
                 <th style={th}>Cust</th><th style={th}>New</th><th style={th}>At Risk</th>
               </tr></thead>
               <tbody>
@@ -197,6 +214,7 @@ export default function SalesPerformancePage() {
                     <td style={{ ...td, color:pctColor(s.pct), fontWeight:600 }}>{s.pct!=null?`${s.pct}%`:'-'}</td>
                     <td style={{ ...td, color:'#888' }}>{s.gap!=null?formatRupiahShort(s.gap):'-'}</td>
                     <td style={{ ...td, color:growthColor(s.growth_yoy), fontWeight:600 }}>{s.growth_yoy!=null?`${s.growth_yoy>0?'▲':'▼'}${Math.abs(s.growth_yoy)}%`:'-'}</td>
+                    {(()=>{ const mom=momOf(trend?.[s.name]); return <td style={{ ...td, color:growthColor(mom), fontWeight:600 }}>{mom!=null?`${mom>0?'▲':'▼'}${Math.abs(mom)}%`:'-'}</td> })()}
                     <td style={td}>{formatNumber(s.bills)}</td><td style={td}>{formatRupiahShort(s.aov)}</td>
                     <td style={td}>{s.customers}</td><td style={td}>{s.customer_new}</td>
                     <td style={{ ...td, color:s.revenue_at_risk>0?'#d31137':'#888' }}>{formatRupiahShort(s.revenue_at_risk)}</td>
@@ -207,6 +225,49 @@ export default function SalesPerformancePage() {
           </div>
         )}
       </Card>
+
+      {/* Baris 5 — Pareto + Sparklines 12 bulan */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+        <Card style={{ padding:16 }}>
+          <div style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Pareto Kontribusi Revenue</div>
+          <div style={{ fontSize:10.5, color:'#aaa', marginBottom:8 }}>
+            {byRev.length ? <><b>{n80}</b> orang menyumbang 80% revenue dari total {byRev.length} salesperson.</> : '—'}
+          </div>
+          {loading ? <Skeleton height={220}/> : !paretoData.length ? <div style={{height:220,display:'flex',alignItems:'center',justifyContent:'center',color:'#888',fontSize:13}}>Tidak ada data</div> : (
+            <ResponsiveContainer width="100%" height={230}>
+              <ComposedChart data={paretoData.slice(0,20)}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
+                <XAxis dataKey="name" tick={false} height={6}/>
+                <YAxis yAxisId="l" tickFormatter={formatRupiahShort} tick={{fontSize:10,fill:'#888'}} width={54}/>
+                <YAxis yAxisId="r" orientation="right" domain={[0,100]} tickFormatter={v=>v+'%'} tick={{fontSize:10,fill:'#888'}} width={38}/>
+                <Tooltip {...tt} formatter={(v,n)=>n==='cum'?`${v}%`:formatRupiah(v)}/>
+                <Bar yAxisId="l" dataKey="revenue" name="Revenue" fill="#fc93a6"/>
+                <Line yAxisId="r" type="monotone" dataKey="cum" name="cum" stroke="#d31137" strokeWidth={2} dot={false}/>
+                <ReferenceLine yAxisId="r" y={80} stroke="#bbb" strokeDasharray="4 4"/>
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
+        </Card>
+        <Card style={{ padding:16 }}>
+          <div style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Tren 12 Bulan per Salesperson</div>
+          <div style={{ fontSize:10.5, color:'#aaa', marginBottom:8 }}>Bentuk tren revenue tiap salesperson (top 9).</div>
+          {loading ? <Skeleton height={220}/> : (
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
+              {byRev.slice(0,9).map((s,i)=>{
+                const ser=(trend?.[s.name]||[]).map((v,m)=>({m:MONTHS[m],v}))
+                return (
+                  <div key={i} style={{ border:'1px solid #f0f0f0', borderRadius:6, padding:'6px 8px' }}>
+                    <div style={{ fontSize:10.5, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{s.name}</div>
+                    <ResponsiveContainer width="100%" height={40}>
+                      <LineChart data={ser}><Line type="monotone" dataKey="v" stroke="#d31137" strokeWidth={1.5} dot={false}/></LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </Card>
+      </div>
 
       {/* Baris 6 & 7 — Portfolio quality + Mix kategori */}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>

@@ -213,6 +213,21 @@ def sales_performance(years: Optional[str] = Query(None)):
             "grand_total_revenue": round(sum(s["revenue"] for s in salespeople))}
 
 
+@router.get("/sales-trend")
+def sales_trend(years: Optional[str] = Query(None)):
+    """Revenue bulanan per salesperson (dijumlah lintas tahun terpilih) -> 12 nilai."""
+    yrs = _csv(years)
+    rows = _fetch_all_rows("agg_salesperson_month", "slp_name,bulan,revenue", years=yrs or None)
+    series = defaultdict(lambda: [0.0] * 12)
+    for r in rows:
+        b = int(r.get("bulan") or 0)
+        if 1 <= b <= 12:
+            m = match_salesperson(r["slp_name"])
+            name = m["name"] if m else r["slp_name"]
+            series[name][b-1] += float(r.get("revenue") or 0)
+    return {k: [round(x) for x in v] for k, v in series.items()}
+
+
 @router.get("/sales-mix")
 def sales_mix(years: Optional[str] = Query(None)):
     """Mix kategori per salesperson (100% stacked)."""
