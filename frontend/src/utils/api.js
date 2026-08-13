@@ -24,6 +24,8 @@ export const getCategoryPairings = (f) => api.get('/api/overview/category-pairin
 export const getSalesTargets = (f) => api.get('/api/overview/sales-targets', { params: buildParams(f) }).then(r => r.data)
 export const getAnalyticsFilters = () => api.get('/api/analytics/filters').then(r => r.data)
 export const getAnalyticsOverview = (p) => api.get('/api/analytics/overview', { params: p }).then(r => r.data)
+export const getSalesPerformance = (p) => api.get('/api/analytics/sales-performance', { params: p }).then(r => r.data)
+export const getSalesMix = (p) => api.get('/api/analytics/sales-mix', { params: p }).then(r => r.data)
 
 // Customers
 export const getRFM = (f) => api.get('/api/customers/rfm', { params: buildParams(f) }).then(r => r.data)

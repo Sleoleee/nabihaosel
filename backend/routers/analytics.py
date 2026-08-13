@@ -10,6 +10,7 @@ from collections import defaultdict
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.db import get_client
 import config
+from sales_targets import SALESPERSONS, TEAMS, match_salesperson
 
 router = APIRouter()
 MONTHS = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"]
@@ -122,3 +123,109 @@ def overview(years: Optional[str] = Query(None), channels: Optional[str] = Query
 
     return {"kpi": kpi, "trend": {"data": trend, "years": years_in, "primary": primary},
             "bills_aov": bills_aov, "by_channel": by_channel, "by_kategori": by_kategori}
+
+
+# ============================ SALES PERFORMANCE ============================
+def _fetch_all_rows(table, cols, years=None):
+    """Fetch tabel kecil sekaligus (db_max_rows tinggi)."""
+    db = get_client()
+    q = db.table(table).select(cols)
+    if years:
+        q = q.in_("tahun", [int(y) for y in years])
+    return q.execute().data or []
+
+
+@router.get("/sales-performance")
+def sales_performance(years: Optional[str] = Query(None)):
+    """Metrik per salesperson dari agg_salesperson_month + dim_customer + target.
+    Selalu hitung YoY (tahun terpilih vs tahun-1). Frontend menyaring per scope."""
+    yrs = [int(y) for y in _csv(years)]
+    if not yrs:
+        rows0 = _fetch_all_rows("agg_salesperson_month", "tahun")
+        yrs = sorted({int(r["tahun"]) for r in rows0}) or [2026]
+    prev = {y - 1 for y in yrs}
+    fetch_years = [str(y) for y in sorted(set(yrs) | prev)]
+
+    asp = _fetch_all_rows("agg_salesperson_month",
+        "slp_name,tahun,revenue,bills,customer_new,customer_repeat,customer_reactivated,"
+        "revenue_new,revenue_repeat,revenue_reactivated", years=fetch_years)
+
+    sel = set(yrs)
+    agg = defaultdict(lambda: {"rev":0.0,"rev_prev":0.0,"bills":0,
+                               "new":0,"repeat":0,"react":0,"rev_new":0.0})
+    for r in asp:
+        y = int(r["tahun"]); s = r["slp_name"]; a = agg[s]
+        rev = float(r.get("revenue") or 0)
+        if y in sel:
+            a["rev"] += rev; a["bills"] += int(r.get("bills") or 0)
+            a["new"] += int(r.get("customer_new") or 0)
+            a["repeat"] += int(r.get("customer_repeat") or 0)
+            a["react"] += int(r.get("customer_reactivated") or 0)
+            a["rev_new"] += float(r.get("revenue_new") or 0)
+        elif y in prev:
+            a["rev_prev"] += rev
+
+    # Portfolio dari dim_customer (customer utama per salesperson)
+    dc = _fetch_all_rows("dim_customer", "salesperson_utama,status,revenue_at_risk,total_revenue")
+    port = defaultdict(lambda: {"custs":0,"overdue":0,"at_risk":0.0})
+    for c in dc:
+        s = c.get("salesperson_utama")
+        if not s: continue
+        p = port[s]; p["custs"] += 1
+        if c.get("status") == "Overdue":
+            p["overdue"] += 1; p["at_risk"] += float(c.get("revenue_at_risk") or 0)
+
+    tgt = {sp["name"]: sp for sp in SALESPERSONS}
+
+    salespeople = []
+    for s, a in agg.items():
+        m = match_salesperson(s)
+        core = bool(m)
+        name = m["name"] if m else s
+        target = tgt[name]["target"] if (core and name in tgt) else 0
+        rev = round(a["rev"])
+        pf = port.get(s, {"custs":0,"overdue":0,"at_risk":0.0})
+        salespeople.append({
+            "slp_name": s, "name": name, "spv": m["team"] if m else None,
+            "is_core": core, "is_non_person": config.is_non_person_slp(s),
+            "revenue": rev, "revenue_prev": round(a["rev_prev"]),
+            "growth_yoy": _pct(rev, a["rev_prev"]),
+            "bills": a["bills"], "aov": round(rev/a["bills"]) if a["bills"] else 0,
+            "customers": pf["custs"], "customer_new": a["new"],
+            "customer_repeat": a["repeat"], "customer_reactivated": a["react"],
+            "revenue_new": round(a["rev_new"]),
+            "overdue_customers": pf["overdue"], "revenue_at_risk": round(pf["at_risk"]),
+            "target": target, "pct": round(rev/target*100, 1) if target else None,
+            "gap": round(target - rev) if target else None,
+        })
+    salespeople.sort(key=lambda x: -x["revenue"])
+
+    teams = []
+    for t in TEAMS:
+        members = [s for s in salespeople if s["spv"] == t]
+        trev = sum(m["revenue"] for m in members)
+        ttgt = sum(m["target"] for m in members)
+        teams.append({"team": t, "revenue": round(trev), "target": round(ttgt),
+                      "pct": round(trev/ttgt*100, 1) if ttgt else None,
+                      "gap": round(ttgt - trev), "members": len(members)})
+
+    return {"salespeople": salespeople, "teams": teams,
+            "grand_total_revenue": round(sum(s["revenue"] for s in salespeople))}
+
+
+@router.get("/sales-mix")
+def sales_mix(years: Optional[str] = Query(None)):
+    """Mix kategori per salesperson (100% stacked)."""
+    yrs = _csv(years)
+    rows = _fetch_all_rows("agg_salesperson_category_month", "slp_name,kategori,revenue",
+                           years=yrs or None)
+    mix = defaultdict(lambda: defaultdict(float))
+    for r in rows:
+        mix[r["slp_name"]][r.get("kategori") or "Lainnya"] += float(r.get("revenue") or 0)
+    out = {}
+    for slp, kats in mix.items():
+        m = match_salesperson(slp)
+        name = m["name"] if m else slp
+        top = sorted(kats.items(), key=lambda x: -x[1])[:5]
+        out[name] = [{"kategori": k, "revenue": round(v)} for k, v in top]
+    return out
