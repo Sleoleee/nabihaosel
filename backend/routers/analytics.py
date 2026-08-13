@@ -213,6 +213,129 @@ def sales_performance(years: Optional[str] = Query(None)):
             "grand_total_revenue": round(sum(s["revenue"] for s in salespeople))}
 
 
+RFM_ORDER = ["At Risk","Lost","Need Attention","Promising","Loyal","Champions"]
+
+@router.get("/customer-analytics")
+def customer_analytics(channels: Optional[str] = Query(None)):
+    """KPI, tier, RFM bubble, segmen, konsentrasi, reorder — dari dim_customer (lifetime).
+    Filter channel via channel_utama. (RFM/tier bersifat lifetime, tak difilter tahun.)"""
+    chs = _csv(channels)
+    dc = _fetch_all_rows("dim_customer",
+        "customer_code,total_revenue,monetary,interval_normal_hari,days_since_last_order,"
+        "recency_ratio,frequency,tier,segmen_rfm,status,channel_utama,jumlah_bills,revenue_at_risk")
+    if chs:
+        dc = [c for c in dc if c.get("channel_utama") in chs]
+    n = len(dc)
+    total_rev = sum(float(c.get("total_revenue") or 0) for c in dc)
+    ints = [float(c["interval_normal_hari"]) for c in dc if c.get("interval_normal_hari")]
+    with_ratio = [c for c in dc if c.get("recency_ratio") is not None]
+    overdue = [c for c in with_ratio if float(c["recency_ratio"]) >= 1.0]
+    kpi = {
+        "total_customers": n,
+        "avg_rev_per_customer": round(total_rev/n) if n else 0,
+        "avg_retention_days": round(sum(ints)/len(ints),1) if ints else 0,
+        "revenue_at_risk": round(sum(float(c.get("revenue_at_risk") or 0) for c in dc)),
+        "overdue_rate": round(len(overdue)/len(with_ratio)*100,1) if with_ratio else 0,
+    }
+    # Tier distribution
+    tier = defaultdict(lambda: {"count":0,"revenue":0.0,"mon":0.0})
+    for c in dc:
+        t = tier[c.get("tier") or "-"]; t["count"]+=1
+        t["revenue"]+=float(c.get("total_revenue") or 0); t["mon"]+=float(c.get("monetary") or 0)
+    tier_dist = [{"tier":k,"count":v["count"],"revenue":round(v["revenue"]),
+                  "avg_monthly":round(v["mon"]/v["count"]) if v["count"] else 0,
+                  "pct_rev":round(v["revenue"]/total_rev*100,1) if total_rev else 0}
+                 for k,v in tier.items()]
+    # RFM bubble + segmen
+    seg = defaultdict(lambda: {"count":0,"revenue":0.0,"rec":0.0,"freq":0.0})
+    for c in dc:
+        s = c.get("segmen_rfm")
+        if not s: continue
+        v = seg[s]; v["count"]+=1; v["revenue"]+=float(c.get("total_revenue") or 0)
+        v["rec"]+=float(c.get("days_since_last_order") or 0); v["freq"]+=float(c.get("frequency") or 0)
+    rfm_bubble = [{"segment":k,"count":v["count"],"revenue":round(v["revenue"]),
+                   "avg_recency_days":round(v["rec"]/v["count"]) if v["count"] else 0,
+                   "avg_frequency":round(v["freq"]/v["count"],1) if v["count"] else 0}
+                  for k,v in seg.items()]
+    # Konsentrasi (pareto customer)
+    revs = sorted((float(c.get("total_revenue") or 0) for c in dc), reverse=True)
+    top10 = round(sum(revs[:10])/total_rev*100,1) if total_rev else 0
+    cum=0; pareto=[]
+    for i,r in enumerate(revs[:50]):
+        cum+=r; pareto.append({"rank":i+1,"cum":round(cum/total_rev*100,1) if total_rev else 0})
+    # Reorder behaviour
+    bills_dist = defaultdict(int)
+    for c in dc:
+        b = int(c.get("jumlah_bills") or 0)
+        key = "1" if b<=1 else "2-3" if b<=3 else "4-6" if b<=6 else "7-12" if b<=12 else "13+"
+        bills_dist[key]+=1
+    repeat_rate = round(sum(1 for c in dc if int(c.get("jumlah_bills") or 0)>1)/n*100,1) if n else 0
+    interval_dist = defaultdict(int)
+    for iv in ints:
+        key = "<7h" if iv<7 else "7-14h" if iv<14 else "15-30h" if iv<30 else "31-60h" if iv<60 else "61-90h" if iv<90 else ">90h"
+        interval_dist[key]+=1
+
+    return {"kpi":kpi, "tier_dist":tier_dist, "rfm_bubble":rfm_bubble,
+            "concentration":{"top10_pct":top10,"pareto":pareto},
+            "reorder":{"repeat_rate":repeat_rate,
+                       "bills_dist":[{"k":k,"v":bills_dist[k]} for k in ["1","2-3","4-6","7-12","13+"]],
+                       "interval_dist":[{"k":k,"v":interval_dist[k]} for k in ["<7h","7-14h","15-30h","31-60h","61-90h",">90h"]]}}
+
+
+@router.get("/customer-lifecycle")
+def customer_lifecycle(years: Optional[str] = Query(None), channels: Optional[str] = Query(None)):
+    """Lifecycle flow bulanan (New/Repeat/Reactivated + Net) dari agg_customer_month."""
+    yrs = _csv(years); chs = _csv(channels)
+    rows = _fetch("agg_customer_month", "tahun,bulan,channel,customer_code,revenue,status_lifecycle",
+                  years=yrs or None, channels=chs)
+    by_m = defaultdict(lambda: {"new":set(),"repeat":set(),"react":set(),
+                                "rev_new":0.0,"rev_repeat":0.0,"rev_react":0.0})
+    for r in rows:
+        key = (int(r["tahun"]), int(r["bulan"])); st = r.get("status_lifecycle") or "repeat"
+        code = r.get("customer_code"); rev = float(r.get("revenue") or 0)
+        m = by_m[key]
+        if st=="new": m["new"].add(code); m["rev_new"]+=rev
+        elif st=="reactivated": m["react"].add(code); m["rev_react"]+=rev
+        else: m["repeat"].add(code); m["rev_repeat"]+=rev
+    MONTHS_ = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"]
+    out = []
+    for (y,mo) in sorted(by_m):
+        m = by_m[(y,mo)]
+        out.append({"label":f"{MONTHS_[mo-1]} {str(y)[2:]}", "tahun":y, "bulan":mo,
+                    "New":len(m["new"]),"Repeat":len(m["repeat"]),"Reactivated":len(m["react"]),
+                    "net":len(m["new"])+len(m["repeat"])+len(m["react"]),
+                    "rev_new":round(m["rev_new"]),"rev_repeat":round(m["rev_repeat"]),"rev_react":round(m["rev_react"])})
+    return out
+
+
+@router.get("/customer-cohort")
+def customer_cohort():
+    rows = _fetch_all_rows("agg_cohort_retention", "cohort_bulan,bulan_ke_n,customer_aktif,pct_retained")
+    return sorted(rows, key=lambda r:(r["cohort_bulan"], r["bulan_ke_n"]))
+
+
+@router.get("/customer-list")
+def customer_list(segment: Optional[str] = Query(None), tier: Optional[str] = Query(None),
+                  status: Optional[str] = Query(None), channel: Optional[str] = Query(None),
+                  search: Optional[str] = Query(None), page: int = Query(1), limit: int = Query(25)):
+    dc = _fetch_all_rows("dim_customer",
+        "customer_code,customer_name,tier,segmen_rfm,status,total_revenue,avg_spending_per_month_active,"
+        "jumlah_bills,last_order_date,interval_normal_hari,days_since_last_order,recency_ratio,"
+        "revenue_at_risk,salesperson_utama,channel_utama")
+    def keep(c):
+        if segment and segment!="all" and c.get("segmen_rfm")!=segment: return False
+        if tier and tier!="all" and c.get("tier")!=tier: return False
+        if status and status!="all" and c.get("status")!=status: return False
+        if channel and channel!="all" and c.get("channel_utama")!=channel: return False
+        if search and search.lower() not in (c.get("customer_name") or "").lower(): return False
+        return True
+    rows = [c for c in dc if keep(c)]
+    rows.sort(key=lambda c: -(float(c.get("revenue_at_risk") or 0)))
+    total = len(rows)
+    start = (page-1)*limit
+    return {"data": rows[start:start+limit], "total": total}
+
+
 @router.get("/sales-trend")
 def sales_trend(years: Optional[str] = Query(None)):
     """Revenue bulanan per salesperson (dijumlah lintas tahun terpilih) -> 12 nilai."""

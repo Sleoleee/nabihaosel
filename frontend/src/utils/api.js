@@ -27,6 +27,10 @@ export const getAnalyticsOverview = (p) => api.get('/api/analytics/overview', { 
 export const getSalesPerformance = (p) => api.get('/api/analytics/sales-performance', { params: p }).then(r => r.data)
 export const getSalesMix = (p) => api.get('/api/analytics/sales-mix', { params: p }).then(r => r.data)
 export const getSalesTrend = (p) => api.get('/api/analytics/sales-trend', { params: p }).then(r => r.data)
+export const getCustomerAnalytics = (p) => api.get('/api/analytics/customer-analytics', { params: p }).then(r => r.data)
+export const getCustomerLifecycle = (p) => api.get('/api/analytics/customer-lifecycle', { params: p }).then(r => r.data)
+export const getCustomerCohort = () => api.get('/api/analytics/customer-cohort').then(r => r.data)
+export const getCustomerListNew = (p) => api.get('/api/analytics/customer-list', { params: p }).then(r => r.data)
 
 // Customers
 export const getRFM = (f) => api.get('/api/customers/rfm', { params: buildParams(f) }).then(r => r.data)
