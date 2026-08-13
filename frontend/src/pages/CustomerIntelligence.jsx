@@ -9,6 +9,7 @@ import { formatRupiah, formatRupiahShort, formatNumber } from '../utils/format'
 import { useGlobalFilters } from '../context/GlobalFilters'
 import {
   getCustomerAnalytics, getCustomerLifecycle, getCustomerCohort, getCustomerListNew,
+  getCustomerBridge, getCustomerDetail,
 } from '../utils/api'
 
 const RFM_COLORS = {
@@ -35,6 +36,8 @@ export default function CustomerIntelligence() {
   const [cohort, setCohort] = useState(null)
   const [list, setList] = useState(null)
   const [attention, setAttention] = useState(null)
+  const [bridge, setBridge] = useState(null)
+  const [detail, setDetail] = useState(null)
   const [loading, setLoading] = useState(true)
   const [seg, setSeg] = useState('all'); const [tier, setTier] = useState('all')
   const [status, setStatus] = useState('all'); const [search, setSearch] = useState(''); const [page, setPage] = useState(1)
@@ -51,7 +54,8 @@ export default function CustomerIntelligence() {
       getCustomerLifecycle({ years, channels }),
       getCustomerCohort(),
       getCustomerListNew({ page:1, limit:6, status:'Overdue', channel: g.channels?.length===1?g.channels[0]:undefined }),
-    ]).then(([a,l,c,at])=>{ setAn(a); setLife(l); setCohort(c); setAttention(at?.data||[]) })
+      getCustomerBridge({ years, channels }),
+    ]).then(([a,l,c,at,b])=>{ setAn(a); setLife(l); setCohort(c); setAttention(at?.data||[]); setBridge(b) })
       .catch(()=>{}).finally(()=>setLoading(false))
   }, [g?.ready, years, channels])
 
@@ -82,7 +86,9 @@ export default function CustomerIntelligence() {
     { t:'AVG RETENTION DAYS', v:`${kpi.avg_retention_days} hari` },
     { t:'REVENUE AT RISK', v:formatRupiahShort(kpi.revenue_at_risk), accent:'#d31137' },
     { t:'OVERDUE RATE', v:`${kpi.overdue_rate}%`, accent:'#f97316', sub:`retensi ${(100-kpi.overdue_rate).toFixed(1)}%` },
-    { t:'CUSTOMER BARU (PERIODE)', v:formatNumber(newCust), accent:'#15803d' },
+    { t:'NET CUSTOMER GROWTH', v: bridge?`${bridge.net_growth.net>=0?'+':''}${formatNumber(bridge.net_growth.net)}`:'—',
+      accent: bridge && bridge.net_growth.net<0?'#d31137':'#15803d',
+      sub: bridge?`New ${bridge.net_growth.new} · Lost ${bridge.net_growth.lost}`:'' },
   ] : []
 
   return (
@@ -126,6 +132,29 @@ export default function CustomerIntelligence() {
               <Line type="monotone" dataKey="net" name="Total aktif" stroke="#d31137" strokeWidth={2} dot={false}/>
             </ComposedChart>
           </ResponsiveContainer>
+        )}
+      </Card>
+
+      {/* Baris 3 — Revenue Bridge */}
+      <Card style={{ padding:16 }}>
+        <div style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Revenue Bridge</div>
+        <div style={{ fontSize:10.5, color:'#aaa', marginBottom:10 }}>Pertumbuhan revenue datang dari mana (periode lalu → periode ini).</div>
+        {loading || !bridge ? <Skeleton height={90}/> : (
+          <div style={{ display:'flex', alignItems:'stretch', gap:6, flexWrap:'wrap' }}>
+            {bridge.bridge.map((b,i)=>{
+              const pos = b.value>=0
+              const color = b.type==='base' ? '#1a1a1a' : b.type==='net' ? (pos?'#15803d':'#d31137') : '#15803d'
+              return (
+                <div key={i} style={{ display:'flex', alignItems:'center', gap:6 }}>
+                  <div style={{ minWidth:120, background:b.type==='base'?'#f4f4f5':pos?'#f0fdf4':'#fef2f4', border:`1px solid ${color}22`, borderRadius:8, padding:'8px 12px', textAlign:'center' }}>
+                    <div style={{ fontSize:10.5, color:'#888' }}>{b.label}</div>
+                    <div style={{ fontSize:14, fontWeight:700, color }}>{b.type!=='base'&&pos?'+':''}{formatRupiahShort(b.value)}</div>
+                  </div>
+                  {i<bridge.bridge.length-1 && <span style={{ color:'#ccc', fontSize:16 }}>→</span>}
+                </div>
+              )
+            })}
+          </div>
         )}
       </Card>
 
@@ -255,7 +284,8 @@ export default function CustomerIntelligence() {
                   {list.data.map((c,i)=>{ const rowBg=c.status==='Lost'?'#f1f5f9':c.status==='Overdue'?'#fff8e1':'transparent'
                     return (
                     <tr key={i} style={{ background:rowBg, borderBottom:'1px solid #f5f5f5' }}>
-                      <td style={{ padding:'6px 8px', fontWeight:600, maxWidth:150, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.customer_name}</td>
+                      <td onClick={()=>{ setDetail({loading:true}); getCustomerDetail(c.customer_code).then(setDetail).catch(()=>setDetail(null)) }}
+                        style={{ padding:'6px 8px', fontWeight:600, maxWidth:150, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'#d31137', cursor:'pointer' }}>{c.customer_name}</td>
                       <td style={{ padding:'6px 8px', fontSize:11 }}><span style={{ background:'#f1f5f9', color:'#475569', padding:'2px 6px', borderRadius:4 }}>{String(c.tier||'').split(' — ')[0]}</span></td>
                       <td style={{ padding:'6px 8px' }}>{c.segmen_rfm&&<span style={{ background:RFM_COLORS[c.segmen_rfm]?.bg, color:RFM_COLORS[c.segmen_rfm]?.text, fontSize:11, padding:'2px 8px', borderRadius:10, fontWeight:600 }}>{c.segmen_rfm}</span>}</td>
                       <td style={{ padding:'6px 8px', whiteSpace:'nowrap' }}>{formatRupiahShort(c.total_revenue)}</td>
@@ -279,6 +309,43 @@ export default function CustomerIntelligence() {
           </>
         )}
       </Card>
+
+      {/* Customer Detail Drawer */}
+      {detail && (
+        <div onClick={()=>setDetail(null)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.25)', zIndex:300 }}>
+          <div onClick={e=>e.stopPropagation()} style={{ position:'absolute', top:0, right:0, bottom:0, width:400, maxWidth:'90vw', background:'#fff', boxShadow:'-4px 0 20px rgba(0,0,0,0.15)', padding:20, overflowY:'auto' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+              <div style={{ fontSize:15, fontWeight:700 }}>Detail Customer</div>
+              <button onClick={()=>setDetail(null)} style={{ border:'none', background:'none', fontSize:18, cursor:'pointer', color:'#999' }}>✕</button>
+            </div>
+            {detail.loading ? <Skeleton height={200}/> : !detail.customer ? <div style={{color:'#888'}}>Data tidak ditemukan.</div> : (()=>{ const c=detail.customer; return (
+              <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+                <div>
+                  <div style={{ fontSize:16, fontWeight:700 }}>{c.customer_name}</div>
+                  <div style={{ fontSize:11.5, color:'#888' }}>{c.customer_code} · {c.channel_utama} · SP: {c.salesperson_utama||'-'}</div>
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, fontSize:12 }}>
+                  {[['Total Revenue',formatRupiahShort(c.total_revenue)],['Tier',String(c.tier||'').split(' — ')[0]],['Segmen',c.segmen_rfm],['Status',c.status],['Bills',c.jumlah_bills],['Interval normal',`${c.interval_normal_hari??'-'} hari`],['Terakhir beli',c.last_order_date],['Revenue at risk',formatRupiahShort(c.revenue_at_risk)]].map((x,i)=>(
+                    <div key={i} style={{ background:'#f8f8f8', borderRadius:6, padding:'6px 8px' }}><div style={{ fontSize:10, color:'#888' }}>{x[0]}</div><div style={{ fontWeight:600 }}>{x[1]}</div></div>
+                  ))}
+                </div>
+                <div>
+                  <div style={{ fontSize:12, fontWeight:600, marginBottom:6 }}>Tren revenue bulanan</div>
+                  <ResponsiveContainer width="100%" height={90}>
+                    <BarChart data={detail.timeline}><XAxis dataKey="label" tick={{fontSize:8,fill:'#aaa'}} interval={Math.max(0,Math.floor((detail.timeline?.length||1)/6))}/><YAxis hide/><Tooltip {...tt} formatter={(v)=>formatRupiah(v)}/><Bar dataKey="revenue" fill="#d31137"/></BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div>
+                  <div style={{ fontSize:12, fontWeight:600, marginBottom:6 }}>Kategori yang pernah dibeli</div>
+                  <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                    {(detail.categories||[]).map((k,i)=><span key={i} style={{ background:'#fdecef', color:'#d31137', fontSize:11, padding:'2px 8px', borderRadius:10 }}>{k.kategori} · {formatRupiahShort(k.revenue)}</span>)}
+                  </div>
+                </div>
+              </div>
+            )})()}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

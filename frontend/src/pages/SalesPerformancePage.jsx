@@ -60,13 +60,14 @@ export default function SalesPerformancePage() {
   const [sortDir, setSortDir] = useState('desc')
 
   const years = g?.years?.join(',') || undefined
+  const channels = g?.channels?.join(',') || undefined
 
   useEffect(() => {
     if (!g?.ready) return
     setLoading(true)
-    Promise.all([getSalesPerformance({ years }), getSalesMix({ years }), getSalesTrend({ years })])
+    Promise.all([getSalesPerformance({ years, channels }), getSalesMix({ years, channels }), getSalesTrend({ years, channels })])
       .then(([d, m, t]) => { setData(d); setMix(m); setTrend(t) }).catch(()=>{}).finally(()=>setLoading(false))
-  }, [g?.ready, years])
+  }, [g?.ready, years, channels])
 
   const all = data?.salespeople || []
   const scoped = useMemo(() => {

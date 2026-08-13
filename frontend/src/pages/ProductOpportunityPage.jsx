@@ -7,7 +7,7 @@ import Card from '../components/Card'
 import Skeleton, { SkeletonCard } from '../components/Skeleton'
 import { formatRupiah, formatRupiahShort } from '../utils/format'
 import { useGlobalFilters } from '../context/GlobalFilters'
-import { getProduct, getProductPairing, getProductPenetration } from '../utils/api'
+import { getProduct, getProductPairing, getProductPenetration, getProductSku, getDiscount } from '../utils/api'
 
 const CH_COLORS = { 'E-Commerce':'#d31137','SUKSES JAYA':'#5b6b82','NAMI':'#f096a6','BLOOMIE':'#a8b3c4','K25':'#3d4a5c','OTHER CHANNEL':'#c9d1dc' }
 const tt = { contentStyle:{background:'#1a1a1a',border:'none',borderRadius:8,color:'#fff',fontSize:12}, itemStyle:{color:'#fff'}, cursor:{fill:'rgba(255,255,255,0.06)'} }
@@ -18,6 +18,8 @@ export default function ProductOpportunityPage() {
   const [prod, setProd] = useState(null)
   const [pair, setPair] = useState(null)
   const [pen, setPen] = useState(null)
+  const [sku, setSku] = useState(null)
+  const [disc, setDisc] = useState(null)
   const [loading, setLoading] = useState(true)
   const [coreOnly, setCoreOnly] = useState(true)
 
@@ -31,7 +33,9 @@ export default function ProductOpportunityPage() {
       getProduct({ years, channels, core_only: coreOnly }),
       getProductPairing({ years }),
       getProductPenetration({ channels, core_only: coreOnly }),
-    ]).then(([p, pr, pe]) => { setProd(p); setPair(pr); setPen(pe) }).catch(()=>{}).finally(()=>setLoading(false))
+      getProductSku({ years, core_only: coreOnly }),
+      getDiscount({ years, core_only: coreOnly }),
+    ]).then(([p, pr, pe, sk, dd]) => { setProd(p); setPair(pr); setPen(pe); setSku(sk); setDisc(dd) }).catch(()=>{}).finally(()=>setLoading(false))
   }, [g?.ready, years, channels, coreOnly])
 
   if (!g) return null
@@ -170,7 +174,102 @@ export default function ProductOpportunityPage() {
         )}
       </Card>
 
-      <div style={{ fontSize:10.5, color:'#bbb' }}>Baris SKU-level (Pareto SKU, efek volume vs harga) & Customer×Category matrix menyusul — perlu tabel agregat SKU-tahunan.</div>
+      {/* Baris 4 — Pareto SKU (ABC) + efek Volume vs Harga */}
+      <div style={{ display:'grid', gridTemplateColumns:'1.4fr 1fr', gap:12 }}>
+        <Card style={{ padding:16 }}>
+          <div style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Pareto SKU (80/20)</div>
+          <div style={{ fontSize:10.5, color:'#aaa', marginBottom:8 }}>{sku ? <><b>{sku.a_count}</b> SKU (kelas A) menyumbang 80% revenue dari {sku.n_sku} SKU.</> : '—'}</div>
+          {loading ? <Skeleton height={230}/> : !sku?.pareto?.length ? <div style={{color:'#888',fontSize:13}}>Perlu tabel agg_sku_year — jalankan rebuild.</div> : (
+            <div style={{ maxHeight:260, overflowY:'auto' }}>
+              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11.5 }}>
+                <thead><tr style={{ borderBottom:'2px solid #f0f0f0', position:'sticky', top:0, background:'#fff' }}>{['SKU','Kategori','Revenue','Qty','Cust','ABC'].map(h=><th key={h} style={{ padding:'5px 6px', textAlign:h==='SKU'||h==='Kategori'?'left':'right', color:'#888', fontSize:10.5, fontWeight:600 }}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {sku.pareto.slice(0,60).map((s,i)=>(
+                    <tr key={i} style={{ borderBottom:'1px solid #f5f5f5' }}>
+                      <td style={{ padding:'4px 6px', maxWidth:150, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={s.item_desc}>{s.item_desc||s.item_no}</td>
+                      <td style={{ padding:'4px 6px', fontSize:10.5, color:'#888' }}>{s.kategori}</td>
+                      <td style={{ padding:'4px 6px', textAlign:'right' }}>{formatRupiahShort(s.revenue)}</td>
+                      <td style={{ padding:'4px 6px', textAlign:'right' }}>{s.qty} {s.unit}</td>
+                      <td style={{ padding:'4px 6px', textAlign:'right' }}>{s.customers}</td>
+                      <td style={{ padding:'4px 6px', textAlign:'right', fontWeight:700, color:s.abc==='A'?'#15803d':s.abc==='B'?'#f59e0b':'#bbb' }}>{s.abc}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+        <Card style={{ padding:16 }}>
+          <div style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Growth Movers SKU — Volume vs Harga</div>
+          <div style={{ fontSize:10.5, color:'#aaa', marginBottom:8 }}>Tumbuh karena laku lebih banyak (volume) atau harga berubah?</div>
+          {loading ? <Skeleton height={230}/> : !sku?.movers?.up?.length ? <div style={{color:'#888',fontSize:13}}>—</div> : (
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={[...sku.movers.up.slice(0,5),...sku.movers.down.slice(0,5)].map(s=>({name:(s.item_desc||s.item_no).slice(0,14),Volume:s.vol_effect,Harga:s.price_effect}))} layout="vertical" margin={{left:6,right:20}}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
+                <XAxis type="number" tickFormatter={formatRupiahShort} tick={{fontSize:9,fill:'#888'}}/>
+                <YAxis type="category" dataKey="name" width={92} tick={{fontSize:9,fill:'#666'}}/>
+                <Tooltip {...tt} formatter={(v)=>formatRupiah(v)}/>
+                <ReferenceLine x={0} stroke="#bbb"/>
+                <Bar dataKey="Volume" stackId="a" fill="#5b6b82"/><Bar dataKey="Harga" stackId="a" fill="#f096a6"/>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </Card>
+      </div>
+
+      {/* ===== SECTION: DISKON & HARGA (PROMPT 6) ===== */}
+      <div id="diskon" style={{ borderTop:'3px solid #d31137', paddingTop:14, marginTop:6 }}>
+        <div style={{ fontSize:15, fontWeight:700, marginBottom:2 }}>Diskon & Harga</div>
+        <div style={{ fontSize:11, color:'#888', marginBottom:10 }}>Tanpa margin/HPP (data biaya tidak tersedia) — hanya diskon dari harga_awal vs harga_jual.</div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:12 }}>
+          {loading||!disc ? [1,2,3,4].map(i=><SkeletonCard key={i} style={{height:80}}/>) : [
+            {t:'REVENUE GROSS',v:formatRupiahShort(disc.kpi.revenue_gross)},
+            {t:'REVENUE NET',v:formatRupiahShort(disc.kpi.revenue_net), sub: disc.kpi.net_growth!=null?`${disc.kpi.net_growth>0?'▲':'▼'} ${Math.abs(disc.kpi.net_growth)}% YoY`:''},
+            {t:'TOTAL DISKON',v:formatRupiahShort(disc.kpi.disc_amount), accent:'#d31137'},
+            {t:'DISKON RATA2 (TERTIMBANG)',v:`${disc.kpi.disc_pct}%`, accent:'#f97316'},
+          ].map((c,i)=>(
+            <div key={i} style={{ background:'#fff', borderRadius:10, padding:14, boxShadow:'0 1px 4px rgba(0,0,0,0.07)', border:'1px solid #f0f0f0', borderTop:c.accent?`3px solid ${c.accent}`:'1px solid #f0f0f0' }}>
+              <div style={{ fontSize:10, color:'#888', fontWeight:600 }}>{c.t}</div>
+              <div style={{ fontSize:18, fontWeight:700, color:c.accent||'#1a1a1a' }}>{c.v}</div>
+              <div style={{ fontSize:10, color:'#999' }}>{c.sub||' '}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+          <Card style={{ padding:16 }}>
+            <div style={{ fontSize:13, fontWeight:600, marginBottom:8 }}>Diskon Rata-rata % per Kategori</div>
+            {loading ? <Skeleton height={220}/> : !disc?.by_cat?.length ? <div style={{color:'#888',fontSize:13}}>Tidak ada data</div> : (
+              <ResponsiveContainer width="100%" height={Math.max(200,disc.by_cat.slice(0,12).length*24)}>
+                <BarChart data={disc.by_cat.slice(0,12)} layout="vertical" margin={{left:6,right:30}}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
+                  <XAxis type="number" tickFormatter={v=>v+'%'} tick={{fontSize:10,fill:'#888'}}/>
+                  <YAxis type="category" dataKey="kategori" width={100} tick={{fontSize:10,fill:'#666'}}/>
+                  <Tooltip {...tt} formatter={(v)=>`${v}%`}/>
+                  <Bar dataKey="disc_pct" fill="#fc617e" radius={[0,3,3,0]}/>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </Card>
+          <Card style={{ padding:16 }}>
+            <div style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Diskon % vs Growth Revenue</div>
+            <div style={{ fontSize:10.5, color:'#aaa', marginBottom:8 }}>Kanan-bawah: diskon tinggi tapi revenue tidak tumbuh.</div>
+            {loading ? <Skeleton height={220}/> : !disc?.by_cat?.length ? <div style={{color:'#888',fontSize:13}}>Tidak ada data</div> : (
+              <ResponsiveContainer width="100%" height={220}>
+                <ScatterChart margin={{top:6,right:16,bottom:20,left:4}}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
+                  <XAxis type="number" dataKey="disc_pct" name="Diskon" unit="%" tick={{fontSize:10,fill:'#888'}} label={{value:'Diskon %',position:'insideBottom',offset:-10,fontSize:10,fill:'#aaa'}}/>
+                  <YAxis type="number" dataKey="growth" name="Growth" unit="%" tick={{fontSize:10,fill:'#888'}} width={36}/>
+                  <ZAxis type="number" dataKey="revenue" range={[80,800]}/>
+                  <ReferenceLine y={0} stroke="#bbb" strokeDasharray="4 4"/>
+                  <Tooltip content={({active,payload})=>{ if(!active||!payload?.length) return null; const d=payload[0].payload
+                    return <div style={{background:'#1a1a1a',borderRadius:8,padding:'8px 12px',fontSize:12,color:'#fff'}}><div style={{fontWeight:700}}>{d.kategori}</div><div>Diskon {d.disc_pct}% · Growth {d.growth ?? '-'}%</div></div> }}/>
+                  <Scatter data={disc.by_cat.filter(d=>d.growth!=null)}>{disc.by_cat.filter(d=>d.growth!=null).map((d,i)=><Cell key={i} fill={d.disc_pct>15&&d.growth<0?'#d31137':'#5b6b82'} fillOpacity={0.7}/>)}</Scatter>
+                </ScatterChart>
+              </ResponsiveContainer>
+            )}
+          </Card>
+        </div>
+      </div>
     </div>
   )
 }

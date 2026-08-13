@@ -7,6 +7,7 @@ import CustomerIntelligence from './pages/CustomerIntelligence'
 import ScaffoldPage from './pages/ScaffoldPage'
 import SalesPerformancePage from './pages/SalesPerformancePage'
 import ProductOpportunityPage from './pages/ProductOpportunityPage'
+import QaPage from './pages/QaPage'
 import Upload from './pages/Upload'
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
               <Route path="/customers" element={<CustomerIntelligence />} />
               <Route path="/products" element={<ProductOpportunityPage />} />
               <Route path="/upload" element={<Upload />} />
+              <Route path="/qa" element={<QaPage />} />
             </Routes>
           </div>
         </main>

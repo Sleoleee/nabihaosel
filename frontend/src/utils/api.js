@@ -34,6 +34,11 @@ export const getCustomerListNew = (p) => api.get('/api/analytics/customer-list',
 export const getProduct = (p) => api.get('/api/analytics/product', { params: p }).then(r => r.data)
 export const getProductPairing = (p) => api.get('/api/analytics/product-pairing', { params: p }).then(r => r.data)
 export const getProductPenetration = (p) => api.get('/api/analytics/product-penetration', { params: p }).then(r => r.data)
+export const getProductSku = (p) => api.get('/api/analytics/product-sku', { params: p }).then(r => r.data)
+export const getDiscount = (p) => api.get('/api/analytics/discount', { params: p }).then(r => r.data)
+export const getQaReconcile = () => api.get('/api/analytics/qa-reconcile').then(r => r.data)
+export const getCustomerDetail = (code) => api.get('/api/analytics/customer-detail', { params: { code } }).then(r => r.data)
+export const getCustomerBridge = (p) => api.get('/api/analytics/customer-bridge', { params: p }).then(r => r.data)
 
 // Customers
 export const getRFM = (f) => api.get('/api/customers/rfm', { params: buildParams(f) }).then(r => r.data)
