@@ -6,7 +6,7 @@ Jalankan dari folder backend/ SETELAH menjalankan analytics_schema.sql di Supaba
 Alur: fetch transaksi bersih -> build semua dim_/agg_ di Python -> validasi
 rekonsiliasi (gagal bila selisih revenue > 0.01%) -> upsert ke tabel.
 """
-import sys, os
+import sys, os, time
 import statistics
 from datetime import date
 from collections import defaultdict
@@ -29,12 +29,25 @@ COLS = ("id,document_number,posting_date,year,customer_code,customer_name,item_n
 
 
 # ============================ FETCH ============================
+def _retry(fn, tries=5):
+    """Ulangi operasi jaringan dengan backoff (2,4,8,16s) — tahan kedip koneksi."""
+    delay = 2
+    for i in range(tries):
+        try:
+            return fn()
+        except Exception as e:
+            if i == tries - 1:
+                raise
+            print(f"\n  (koneksi error, retry {i+1}/{tries-1} setelah {delay}s: {str(e)[:70]})")
+            time.sleep(delay); delay *= 2
+
+
 def fetch_clean(db):
     print(f"Fetching transaksi (tahun >= {config.MIN_YEAR}) via keyset id...")
     rows, last_id, scanned = [], 0, 0
     while True:
-        batch = (db.table("transactions").select(COLS)
-                 .gt("id", last_id).order("id").limit(SWEEP).execute().data)
+        batch = _retry(lambda: db.table("transactions").select(COLS)
+                       .gt("id", last_id).order("id").limit(SWEEP).execute().data)
         if not batch:
             break
         scanned += len(batch)
@@ -385,7 +398,8 @@ def write_tables(db, tables):
     for name, recs in tables.items():
         print(f"  {name}: {len(recs)} baris...", end=" ")
         for i in range(0, len(recs), CHUNK):
-            db.table(name).upsert(recs[i:i+CHUNK], on_conflict=PK[name]).execute()
+            chunk = recs[i:i+CHUNK]
+            _retry(lambda: db.table(name).upsert(chunk, on_conflict=PK[name]).execute())
         print("ok")
 
 
