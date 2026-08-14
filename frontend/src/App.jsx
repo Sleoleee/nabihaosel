@@ -9,8 +9,13 @@ import SalesPerformancePage from './pages/SalesPerformancePage'
 import ProductOpportunityPage from './pages/ProductOpportunityPage'
 import QaPage from './pages/QaPage'
 import Upload from './pages/Upload'
+import LockPage from './pages/LockPage'
+import { useAuth } from './context/Auth'
 
 export default function App() {
+  const { user, ready } = useAuth()
+  if (!ready) return null
+  if (!user) return <LockPage />
   return (
     <BrowserRouter>
       <GlobalFilterProvider>

@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { useAuth } from '../context/Auth'
 
 const NAV = [
   { to: '/', label: 'Overview' },
@@ -8,6 +9,7 @@ const NAV = [
 ]
 
 export default function Topbar() {
+  const { user, logout } = useAuth()
   return (
     <header style={{
       position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
@@ -37,6 +39,15 @@ export default function Topbar() {
       })}>
         📤 Upload Data
       </NavLink>
+      {user && (
+        <button onClick={logout} title={`Keluar (${user.username})`} style={{
+          marginLeft: 10, padding: '6px 12px', borderRadius: 7, fontSize: 12.5,
+          color: 'rgba(255,255,255,0.55)', background: 'transparent', cursor: 'pointer',
+          border: '1px solid rgba(255,255,255,0.15)',
+        }}>
+          Keluar
+        </button>
+      )}
     </header>
   )
 }
