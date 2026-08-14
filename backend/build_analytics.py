@@ -6,7 +6,7 @@ Jalankan dari folder backend/ SETELAH menjalankan analytics_schema.sql di Supaba
 Alur: fetch transaksi bersih -> build semua dim_/agg_ di Python -> validasi
 rekonsiliasi (gagal bila selisih revenue > 0.01%) -> upsert ke tabel.
 """
-import sys, os, time
+import sys, os, time, pickle
 import statistics
 from datetime import date
 from collections import defaultdict
@@ -42,7 +42,15 @@ def _retry(fn, tries=5):
             time.sleep(delay); delay *= 2
 
 
-def fetch_clean(db):
+CACHE_FILE = os.path.join(os.path.dirname(__file__), ".rows_cache.pkl")
+
+def fetch_clean(db, use_cache=False):
+    if use_cache and os.path.exists(CACHE_FILE):
+        print(f"Memuat baris dari cache lokal ({CACHE_FILE}) — lewati fetch jaringan.")
+        with open(CACHE_FILE, "rb") as f:
+            rows = pickle.load(f)
+        print(f"{len(rows)} baris dari cache.")
+        return rows
     print(f"Fetching transaksi (tahun >= {config.MIN_YEAR}) via keyset id...")
     rows, last_id, scanned = [], 0, 0
     while True:
@@ -60,6 +68,13 @@ def fetch_clean(db):
         if len(batch) < SWEEP:
             break
     print(f"\n{len(rows)} baris siap diproses.")
+    if use_cache:
+        try:
+            with open(CACHE_FILE, "wb") as f:
+                pickle.dump(rows, f)
+            print(f"Baris disimpan ke cache ({CACHE_FILE}). Hapus file itu setelah upload data baru.")
+        except Exception as e:
+            print(f"(gagal simpan cache: {e})")
     return rows
 
 
@@ -418,7 +433,8 @@ def write_tables(db, tables):
 def main():
     from utils.db import get_client
     db = get_client()
-    rows = fetch_clean(db)
+    use_cache = "--cache" in sys.argv
+    rows = fetch_clean(db, use_cache=use_cache)
     if not rows:
         print("Tidak ada data."); return
     print("Membangun agregasi...")
