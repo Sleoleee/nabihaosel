@@ -7,5 +7,5 @@ export const CREDENTIALS = [
 ]
 
 export const AUTH_KEY = 'nabihaosel_auth'
-export const BRAND_NAME = 'Nabiha Osel'
+export const BRAND_NAME = 'Selamat Datang'
 export const BRAND_TAGLINE = 'Sales Analytics Dashboard'
