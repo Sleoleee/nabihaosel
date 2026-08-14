@@ -32,6 +32,43 @@ export default function handler(
   const password =
     body?.password || ''
 
+  console.log('LOGIN DEBUG', {
+    hasUsernameEnv:
+      Boolean(
+        process.env.DASHBOARD_USERNAME
+      ),
+
+    hasPasswordEnv:
+      Boolean(
+        process.env.DASHBOARD_PASSWORD
+      ),
+
+    hasSecretEnv:
+      Boolean(
+        process.env.DASHBOARD_SESSION_SECRET
+      ),
+
+    usernameMatches:
+      username ===
+      process.env.DASHBOARD_USERNAME,
+
+    usernameLengthReceived:
+      username.length,
+
+    usernameLengthExpected:
+      process.env
+        .DASHBOARD_USERNAME
+        ?.length || 0,
+
+    passwordLengthReceived:
+      password.length,
+
+    passwordLengthExpected:
+      process.env
+        .DASHBOARD_PASSWORD
+        ?.length || 0,
+  })
+
   const valid =
     validateCredentials(
       username,
@@ -56,7 +93,9 @@ export default function handler(
     Boolean(process.env.VERCEL)
 
   const secureFlag =
-    isSecure ? '; Secure' : ''
+    isSecure
+      ? '; Secure'
+      : ''
 
   response.setHeader(
     'Set-Cookie',
