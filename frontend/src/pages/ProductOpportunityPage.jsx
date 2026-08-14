@@ -21,11 +21,13 @@ export default function ProductOpportunityPage() {
   const [sku, setSku] = useState(null)
   const [disc, setDisc] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [skuLoading, setSkuLoading] = useState(true)
   const [coreOnly, setCoreOnly] = useState(true)
 
   const years = g?.years?.join(',') || undefined
   const channels = g?.channels?.join(',') || undefined
 
+  // Bagian ringan (tampil duluan)
   useEffect(() => {
     if (!g?.ready) return
     setLoading(true)
@@ -33,10 +35,16 @@ export default function ProductOpportunityPage() {
       getProduct({ years, channels, core_only: coreOnly }),
       getProductPairing({ years }),
       getProductPenetration({ channels, core_only: coreOnly }),
-      getProductSku({ years, core_only: coreOnly }),
       getDiscount({ years, core_only: coreOnly }),
-    ]).then(([p, pr, pe, sk, dd]) => { setProd(p); setPair(pr); setPen(pe); setSku(sk); setDisc(dd) }).catch(()=>{}).finally(()=>setLoading(false))
+    ]).then(([p, pr, pe, dd]) => { setProd(p); setPair(pr); setPen(pe); setDisc(dd) }).catch(()=>{}).finally(()=>setLoading(false))
   }, [g?.ready, years, channels, coreOnly])
+
+  // Bagian SKU (berat — dimuat terpisah agar tak memblokir page)
+  useEffect(() => {
+    if (!g?.ready) return
+    setSkuLoading(true); setSku(null)
+    getProductSku({ years, core_only: coreOnly }).then(setSku).catch(()=>setSku(null)).finally(()=>setSkuLoading(false))
+  }, [g?.ready, years, coreOnly])
 
   if (!g) return null
   const kpi = prod?.kpi
@@ -179,7 +187,7 @@ export default function ProductOpportunityPage() {
         <Card style={{ padding:16 }}>
           <div style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Pareto SKU (80/20)</div>
           <div style={{ fontSize:10.5, color:'#aaa', marginBottom:8 }}>{sku ? <><b>{sku.a_count}</b> SKU (kelas A) menyumbang 80% revenue dari {sku.n_sku} SKU.</> : '—'}</div>
-          {loading ? <Skeleton height={230}/> : !sku?.pareto?.length ? <div style={{color:'#888',fontSize:13}}>Perlu tabel agg_sku_year — jalankan rebuild.</div> : (
+          {skuLoading ? <Skeleton height={230}/> : !sku?.pareto?.length ? <div style={{color:'#888',fontSize:13}}>SKU sedang dimuat / belum tersedia (jalankan rebuild bila kosong).</div> : (
             <div style={{ maxHeight:260, overflowY:'auto' }}>
               <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11.5 }}>
                 <thead><tr style={{ borderBottom:'2px solid #f0f0f0', position:'sticky', top:0, background:'#fff' }}>{['SKU','Kategori','Revenue','Qty','Cust','ABC'].map(h=><th key={h} style={{ padding:'5px 6px', textAlign:h==='SKU'||h==='Kategori'?'left':'right', color:'#888', fontSize:10.5, fontWeight:600 }}>{h}</th>)}</tr></thead>
@@ -202,7 +210,7 @@ export default function ProductOpportunityPage() {
         <Card style={{ padding:16 }}>
           <div style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Growth Movers SKU — Volume vs Harga</div>
           <div style={{ fontSize:10.5, color:'#aaa', marginBottom:8 }}>Tumbuh karena laku lebih banyak (volume) atau harga berubah?</div>
-          {loading ? <Skeleton height={230}/> : !sku?.movers?.up?.length ? <div style={{color:'#888',fontSize:13}}>—</div> : (
+          {skuLoading ? <Skeleton height={230}/> : !sku?.movers?.up?.length ? <div style={{color:'#888',fontSize:13}}>—</div> : (
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={[...sku.movers.up.slice(0,5),...sku.movers.down.slice(0,5)].map(s=>({name:(s.item_desc||s.item_no).slice(0,14),Volume:s.vol_effect,Harga:s.price_effect}))} layout="vertical" margin={{left:6,right:20}}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
