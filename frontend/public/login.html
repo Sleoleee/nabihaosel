@@ -38,17 +38,17 @@
       background:
         radial-gradient(
           circle at 20% 0%,
-          rgba(37, 99, 235, 0.25),
+          rgba(220, 38, 38, 0.30),
           transparent 35%
         ),
         radial-gradient(
           circle at 100% 100%,
-          rgba(30, 41, 59, 0.8),
-          transparent 40%
+          rgba(127, 29, 29, 0.40),
+          transparent 42%
         ),
-        #020617;
+        #090202;
 
-      color: white;
+      color: #ffffff;
     }
 
     .container {
@@ -63,16 +63,18 @@
 
       border:
         1px solid
-        rgba(255,255,255,0.09);
+        rgba(248, 113, 113, 0.14);
 
       background:
-        rgba(15,23,42,0.9);
+        rgba(24, 7, 7, 0.92);
 
       backdrop-filter: blur(20px);
 
       box-shadow:
         0 35px 90px
-        rgba(0,0,0,0.5);
+        rgba(0, 0, 0, 0.55),
+        0 0 60px
+        rgba(220, 38, 38, 0.08);
     }
 
     .lock {
@@ -88,11 +90,15 @@
       border-radius: 17px;
 
       background:
-        rgba(59,130,246,0.12);
+        rgba(220, 38, 38, 0.14);
 
       border:
         1px solid
-        rgba(96,165,250,0.20);
+        rgba(248, 113, 113, 0.24);
+
+      box-shadow:
+        inset 0 0 20px
+        rgba(239, 68, 68, 0.06);
 
       font-size: 26px;
     }
@@ -100,7 +106,7 @@
     .eyebrow {
       margin-bottom: 8px;
 
-      color: #60a5fa;
+      color: #f87171;
 
       font-size: 11px;
       font-weight: 700;
@@ -120,7 +126,7 @@
       margin:
         12px 0 32px;
 
-      color: #94a3b8;
+      color: #a1a1aa;
 
       font-size: 14px;
       line-height: 1.6;
@@ -135,7 +141,7 @@
 
       margin-bottom: 8px;
 
-      color: #cbd5e1;
+      color: #e4e4e7;
 
       font-size: 13px;
       font-weight: 500;
@@ -148,32 +154,40 @@
         14px 15px;
 
       border:
-        1px solid #334155;
+        1px solid #3f1d1d;
 
       border-radius: 11px;
 
       outline: none;
 
-      background: #0f172a;
+      background: #120606;
 
-      color: white;
+      color: #ffffff;
 
       font-size: 14px;
 
-      transition: 0.15s;
+      transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease,
+        background 0.15s ease;
     }
 
     input::placeholder {
-      color: #475569;
+      color: #6b5252;
+    }
+
+    input:hover {
+      border-color: #6b2a2a;
     }
 
     input:focus {
-      border-color:
-        #3b82f6;
+      border-color: #ef4444;
+
+      background: #160707;
 
       box-shadow:
         0 0 0 3px
-        rgba(59,130,246,0.12);
+        rgba(239, 68, 68, 0.14);
     }
 
     button {
@@ -190,23 +204,44 @@
 
       cursor: pointer;
 
-      background: #f8fafc;
+      background:
+        linear-gradient(
+          135deg,
+          #ef4444,
+          #b91c1c
+        );
 
-      color: #020617;
+      color: #ffffff;
 
       font-size: 14px;
       font-weight: 700;
 
-      transition: 0.15s;
+      box-shadow:
+        0 10px 30px
+        rgba(220, 38, 38, 0.22);
+
+      transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease,
+        opacity 0.15s ease;
     }
 
     button:hover {
-      opacity: 0.92;
+      transform: translateY(-1px);
+
+      box-shadow:
+        0 14px 36px
+        rgba(220, 38, 38, 0.32);
+    }
+
+    button:active {
+      transform: translateY(0);
     }
 
     button:disabled {
       cursor: wait;
       opacity: 0.6;
+      transform: none;
     }
 
     .error {
@@ -218,12 +253,12 @@
 
       border:
         1px solid
-        rgba(248,113,113,0.25);
+        rgba(248, 113, 113, 0.25);
 
       border-radius: 10px;
 
       background:
-        rgba(127,29,29,0.18);
+        rgba(127, 29, 29, 0.24);
 
       color: #fca5a5;
 
@@ -237,11 +272,11 @@
 
       border-top:
         1px solid
-        rgba(255,255,255,0.07);
+        rgba(248, 113, 113, 0.10);
 
       text-align: center;
 
-      color: #475569;
+      color: #7f5a5a;
 
       font-size: 10px;
 
@@ -282,9 +317,8 @@
       </h1>
 
       <p class="description">
-        Masukkan username dan
-        password untuk melanjutkan
-        ke dashboard.
+        Masukkan username dan password
+        untuk melanjutkan ke dashboard.
       </p>
 
       <form id="loginForm">
@@ -349,7 +383,6 @@
   </main>
 
   <script>
-
     const form =
       document.getElementById(
         'loginForm'
@@ -375,6 +408,7 @@
           'none'
 
         button.disabled = true
+
         button.textContent =
           'Memeriksa...'
 
@@ -431,7 +465,6 @@
 
       }
     )
-
   </script>
 
 </body>
