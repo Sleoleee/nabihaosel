@@ -2,8 +2,12 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "source": "/auth-login",
+      "destination": "/api/login"
+    },
+    {
+      "source": "/auth-logout",
+      "destination": "/api/logout"
     },
     {
       "source": "/(.*)",

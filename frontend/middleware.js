@@ -63,7 +63,7 @@ export default function middleware(
     verifySessionToken(session)
 
   if (
-    pathname === '/api/login'
+    pathname === '/auth-login'
   ) {
     return next()
   }
