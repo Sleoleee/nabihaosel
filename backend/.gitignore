@@ -1,1 +1,4 @@
 .rows_cache.pkl
+.rows_cache.jsonl
+.rows_cache.pos
+.rows_cache.done

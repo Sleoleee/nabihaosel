@@ -19,7 +19,7 @@ import config
 from utils.calculations import get_customer_tier
 from sales_targets import match_salesperson
 
-SWEEP = 2000
+SWEEP = 1000
 TOL = 0.0001   # 0.01%
 PLACEHOLDER_SLP = "-No Sales Employee-"
 
@@ -42,39 +42,65 @@ def _retry(fn, tries=5):
             time.sleep(delay); delay *= 2
 
 
-CACHE_FILE = os.path.join(os.path.dirname(__file__), ".rows_cache.pkl")
+import json
+_D = os.path.dirname(__file__)
+CJSONL = os.path.join(_D, ".rows_cache.jsonl")
+CPOS   = os.path.join(_D, ".rows_cache.pos")
+CDONE  = os.path.join(_D, ".rows_cache.done")
+
+def _load_jsonl(path):
+    rows = []
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            if line.strip():
+                rows.append(json.loads(line))
+    return rows
 
 def fetch_clean(db, use_cache=False):
-    if use_cache and os.path.exists(CACHE_FILE):
-        print(f"Memuat baris dari cache lokal ({CACHE_FILE}) — lewati fetch jaringan.")
-        with open(CACHE_FILE, "rb") as f:
-            rows = pickle.load(f)
-        print(f"{len(rows)} baris dari cache.")
-        return rows
-    print(f"Fetching transaksi (tahun >= {config.MIN_YEAR}) via keyset id...")
-    rows, last_id, scanned = [], 0, 0
+    # Cache lengkap? langsung pakai.
+    if use_cache and os.path.exists(CDONE) and os.path.exists(CJSONL):
+        print("Memuat baris dari cache lokal (lengkap)...")
+        rows = _load_jsonl(CJSONL); print(f"{len(rows)} baris dari cache."); return rows
+
+    rows, last_id = [], 0
+    out = None
+    if use_cache and os.path.exists(CJSONL):
+        # Lanjutkan dari fetch parsial sebelumnya.
+        rows = _load_jsonl(CJSONL)
+        try: last_id = int(open(CPOS).read().strip() or 0)
+        except Exception: last_id = 0
+        print(f"Melanjutkan fetch: {len(rows)} baris sudah ada, lanjut dari id>{last_id}.")
+        out = open(CJSONL, "a", encoding="utf-8")
+    else:
+        if use_cache:
+            open(CJSONL, "w").close()
+            for p in (CPOS, CDONE):
+                if os.path.exists(p): os.remove(p)
+            out = open(CJSONL, "a", encoding="utf-8")
+        print(f"Fetching transaksi (tahun >= {config.MIN_YEAR}) via keyset id...")
+
     while True:
+        cur = last_id
         batch = _retry(lambda: db.table("transactions").select(COLS)
-                       .gt("id", last_id).order("id").limit(SWEEP).execute().data)
+                       .gt("id", cur).order("id").limit(SWEEP).execute().data)
         if not batch:
             break
-        scanned += len(batch)
         for r in batch:
             y = r.get("year")
             if y is not None and int(y) >= config.MIN_YEAR:
                 rows.append(r)
+                if out: out.write(json.dumps(r) + "\n")
         last_id = batch[-1]["id"]
-        print(f"  ...{scanned} disisir, {len(rows)} dipakai", end="\r")
+        if out:
+            out.flush()
+            with open(CPOS, "w") as pf: pf.write(str(last_id))
+        print(f"  ...id>{last_id}, {len(rows)} dipakai", end="\r")
         if len(batch) < SWEEP:
             break
+    if out:
+        out.close()
+        open(CDONE, "w").close()
     print(f"\n{len(rows)} baris siap diproses.")
-    if use_cache:
-        try:
-            with open(CACHE_FILE, "wb") as f:
-                pickle.dump(rows, f)
-            print(f"Baris disimpan ke cache ({CACHE_FILE}). Hapus file itu setelah upload data baru.")
-        except Exception as e:
-            print(f"(gagal simpan cache: {e})")
     return rows
 
 
