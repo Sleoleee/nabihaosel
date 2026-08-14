@@ -12,22 +12,16 @@ function getCookie(
   cookieName
 ) {
   const header =
-    request.headers.get(
-      'cookie'
-    )
+    request.headers.get('cookie')
 
   if (!header) {
     return null
   }
 
-  const cookies =
-    header.split(';')
+  const cookies = header.split(';')
 
-  for (
-    const cookie of cookies
-  ) {
-    const trimmed =
-      cookie.trim()
+  for (const cookie of cookies) {
+    const trimmed = cookie.trim()
 
     const equalIndex =
       trimmed.indexOf('=')
@@ -37,20 +31,13 @@ function getCookie(
     }
 
     const name =
-      trimmed.slice(
-        0,
-        equalIndex
-      )
+      trimmed.slice(0, equalIndex)
 
     const value =
-      trimmed.slice(
-        equalIndex + 1
-      )
+      trimmed.slice(equalIndex + 1)
 
     if (name === cookieName) {
-      return decodeURIComponent(
-        value
-      )
+      return decodeURIComponent(value)
     }
   }
 
@@ -75,21 +62,15 @@ export default function middleware(
   const authenticated =
     verifySessionToken(session)
 
-  // Endpoint login harus
-  // bisa diakses tanpa session.
   if (
     pathname === '/api/login'
   ) {
     return next()
   }
 
-  // Login page
   if (
     pathname === '/login.html'
   ) {
-    // Kalau sudah login,
-    // tidak perlu melihat
-    // login page lagi.
     if (authenticated) {
       return Response.redirect(
         new URL('/', request.url),
@@ -100,8 +81,6 @@ export default function middleware(
     return next()
   }
 
-  // Semua halaman lain
-  // membutuhkan session.
   if (!authenticated) {
     return Response.redirect(
       new URL(
@@ -113,4 +92,8 @@ export default function middleware(
   }
 
   return next()
+}
+
+export const config = {
+  runtime: 'nodejs',
 }
