@@ -2,7 +2,9 @@ import axios from 'axios'
 
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
-const api = axios.create({ baseURL: BASE })
+// timeout 30s: bila endpoint berat (agg_customer_month) melewati batas serverless,
+// request ditolak agar panel jatuh ke state kosong, bukan skeleton selamanya.
+const api = axios.create({ baseURL: BASE, timeout: 30000 })
 
 export const buildParams = (filters = {}) => {
   const params = {}

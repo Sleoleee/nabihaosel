@@ -39,6 +39,7 @@ export default function CustomerIntelligence() {
   const [bridge, setBridge] = useState(null)
   const [detail, setDetail] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [heavyLoading, setHeavyLoading] = useState(true)
   const [seg, setSeg] = useState('all'); const [tier, setTier] = useState('all')
   const [status, setStatus] = useState('all'); const [search, setSearch] = useState(''); const [page, setPage] = useState(1)
   const [lifeMode, setLifeMode] = useState('count')
@@ -48,15 +49,25 @@ export default function CustomerIntelligence() {
 
   useEffect(() => {
     if (!g?.ready) return
+    // Bagian ringan (dim_customer + cohort + daftar overdue) — tampil duluan.
     setLoading(true)
     Promise.all([
       getCustomerAnalytics({ channels }),
-      getCustomerLifecycle({ years, channels }),
       getCustomerCohort(),
       getCustomerListNew({ page:1, limit:6, status:'Overdue', channel: g.channels?.length===1?g.channels[0]:undefined }),
-      getCustomerBridge({ years, channels }),
-    ]).then(([a,l,c,at,b])=>{ setAn(a); setLife(l); setCohort(c); setAttention(at?.data||[]); setBridge(b) })
+    ]).then(([a,c,at])=>{ setAn(a); setCohort(c); setAttention(at?.data||[]) })
       .catch(()=>{}).finally(()=>setLoading(false))
+  }, [g?.ready, years, channels])
+
+  // Bagian berat (agg_customer_month: lifecycle + bridge) — dimuat terpisah agar tak memblokir page.
+  useEffect(() => {
+    if (!g?.ready) return
+    setHeavyLoading(true); setLife(null); setBridge(null)
+    Promise.all([
+      getCustomerLifecycle({ years, channels }),
+      getCustomerBridge({ years, channels }),
+    ]).then(([l,b])=>{ setLife(l); setBridge(b) })
+      .catch(()=>{}).finally(()=>setHeavyLoading(false))
   }, [g?.ready, years, channels])
 
   useEffect(() => {
@@ -121,7 +132,7 @@ export default function CustomerIntelligence() {
             <div style={{ fontSize:10.5, color:'#aaa' }}>Customer baru / repeat / reactivated per bulan · garis = total aktif</div></div>
           <select style={selStyle} value={lifeMode} onChange={e=>setLifeMode(e.target.value)}><option value="count">Jumlah customer</option><option value="rev">Revenue</option></select>
         </div>
-        {loading ? <Skeleton height={220}/> : !life?.length ? <div style={{height:220,display:'flex',alignItems:'center',justifyContent:'center',color:'#888',fontSize:13}}>Tidak ada data untuk filter ini</div> : (
+        {heavyLoading ? <Skeleton height={220}/> : !life?.length ? <div style={{height:220,display:'flex',alignItems:'center',justifyContent:'center',color:'#888',fontSize:13}}>Tidak ada data untuk filter ini</div> : (
           <ResponsiveContainer width="100%" height={240}>
             <ComposedChart data={life.map(m=>({label:m.label,New:lifeMode==='rev'?m.rev_new:m.New,Repeat:lifeMode==='rev'?m.rev_repeat:m.Repeat,Reactivated:lifeMode==='rev'?m.rev_react:m.Reactivated,net:lifeMode==='rev'?(m.rev_new+m.rev_repeat+m.rev_react):m.net}))}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
@@ -139,7 +150,7 @@ export default function CustomerIntelligence() {
       <Card style={{ padding:16 }}>
         <div style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Revenue Bridge</div>
         <div style={{ fontSize:10.5, color:'#aaa', marginBottom:10 }}>Pertumbuhan revenue datang dari mana (periode lalu → periode ini).</div>
-        {loading || !bridge ? <Skeleton height={90}/> : (
+        {heavyLoading || !bridge ? <Skeleton height={90}/> : (
           <div style={{ display:'flex', alignItems:'stretch', gap:6, flexWrap:'wrap' }}>
             {bridge.bridge.map((b,i)=>{
               const pos = b.value>=0
