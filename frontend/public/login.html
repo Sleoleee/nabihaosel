@@ -8,7 +8,7 @@
     content="width=device-width, initial-scale=1.0"
   />
 
-  <title>Dashboard Login</title>
+  <title>Dashboard Access</title>
 
   <style>
     * {
@@ -19,6 +19,7 @@
     body {
       margin: 0;
       min-height: 100%;
+
       font-family:
         Inter,
         Arial,
@@ -57,7 +58,7 @@
     }
 
     .card {
-      padding: 42px;
+      padding: 44px;
 
       border-radius: 24px;
 
@@ -78,8 +79,8 @@
     }
 
     .lock {
-      width: 60px;
-      height: 60px;
+      width: 64px;
+      height: 64px;
 
       display: flex;
       align-items: center;
@@ -87,7 +88,7 @@
 
       margin-bottom: 28px;
 
-      border-radius: 17px;
+      border-radius: 18px;
 
       background:
         rgba(220, 38, 38, 0.14);
@@ -96,15 +97,11 @@
         1px solid
         rgba(248, 113, 113, 0.24);
 
-      box-shadow:
-        inset 0 0 20px
-        rgba(239, 68, 68, 0.06);
-
-      font-size: 26px;
+      font-size: 28px;
     }
 
     .eyebrow {
-      margin-bottom: 8px;
+      margin-bottom: 9px;
 
       color: #f87171;
 
@@ -118,88 +115,27 @@
       margin: 0;
 
       font-size: 30px;
+      font-weight: 700;
 
       letter-spacing: -0.03em;
     }
 
     .description {
       margin:
-        12px 0 32px;
+        13px 0 32px;
 
       color: #a1a1aa;
 
       font-size: 14px;
-      line-height: 1.6;
-    }
-
-    .field {
-      margin-bottom: 18px;
-    }
-
-    label {
-      display: block;
-
-      margin-bottom: 8px;
-
-      color: #e4e4e7;
-
-      font-size: 13px;
-      font-weight: 500;
-    }
-
-    input {
-      width: 100%;
-
-      padding:
-        14px 15px;
-
-      border:
-        1px solid #3f1d1d;
-
-      border-radius: 11px;
-
-      outline: none;
-
-      background: #120606;
-
-      color: #ffffff;
-
-      font-size: 14px;
-
-      transition:
-        border-color 0.15s ease,
-        box-shadow 0.15s ease,
-        background 0.15s ease;
-    }
-
-    input::placeholder {
-      color: #6b5252;
-    }
-
-    input:hover {
-      border-color: #6b2a2a;
-    }
-
-    input:focus {
-      border-color: #ef4444;
-
-      background: #160707;
-
-      box-shadow:
-        0 0 0 3px
-        rgba(239, 68, 68, 0.14);
+      line-height: 1.7;
     }
 
     button {
       width: 100%;
 
-      margin-top: 7px;
-
-      padding:
-        14px 18px;
+      padding: 15px 18px;
 
       border: 0;
-
       border-radius: 11px;
 
       cursor: pointer;
@@ -222,8 +158,7 @@
 
       transition:
         transform 0.15s ease,
-        box-shadow 0.15s ease,
-        opacity 0.15s ease;
+        box-shadow 0.15s ease;
     }
 
     button:hover {
@@ -236,33 +171,6 @@
 
     button:active {
       transform: translateY(0);
-    }
-
-    button:disabled {
-      cursor: wait;
-      opacity: 0.6;
-      transform: none;
-    }
-
-    .error {
-      display: none;
-
-      margin-bottom: 16px;
-
-      padding: 12px 14px;
-
-      border:
-        1px solid
-        rgba(248, 113, 113, 0.25);
-
-      border-radius: 10px;
-
-      background:
-        rgba(127, 29, 29, 0.24);
-
-      color: #fca5a5;
-
-      font-size: 13px;
     }
 
     .footer {
@@ -279,16 +187,12 @@
       color: #7f5a5a;
 
       font-size: 10px;
-
       letter-spacing: 0.12em;
     }
 
-    @media (
-      max-width: 520px
-    ) {
+    @media (max-width: 520px) {
       .card {
-        padding:
-          32px 24px;
+        padding: 34px 24px;
       }
 
       h1 {
@@ -309,7 +213,7 @@
       </div>
 
       <div class="eyebrow">
-        SECURE ACCESS
+        DASHBOARD ACCESS
       </div>
 
       <h1>
@@ -317,65 +221,19 @@
       </h1>
 
       <p class="description">
-        Masukkan username dan password
-        untuk melanjutkan ke dashboard.
+        Klik tombol di bawah untuk
+        melanjutkan ke dashboard.
       </p>
 
-      <form id="loginForm">
-
-        <div class="field">
-
-          <label for="username">
-            Username
-          </label>
-
-          <input
-            id="username"
-            name="username"
-            type="text"
-            placeholder="Masukkan username"
-            autocomplete="username"
-            required
-            autofocus
-          />
-
-        </div>
-
-        <div class="field">
-
-          <label for="password">
-            Password
-          </label>
-
-          <input
-            id="password"
-            name="password"
-            type="password"
-            placeholder="Masukkan password"
-            autocomplete="current-password"
-            required
-          />
-
-        </div>
-
-        <div
-          id="error"
-          class="error"
-        >
-          Username atau password salah.
-        </div>
-
-        <button
-          id="submitButton"
-          type="submit"
-        >
-          Masuk Dashboard
-        </button>
-
-      </form>
+      <button
+        id="enterButton"
+        type="button"
+      >
+        Masuk Dashboard
+      </button>
 
       <div class="footer">
-        PROTECTED DASHBOARD
+        SALES DASHBOARD
       </div>
 
     </section>
@@ -383,86 +241,28 @@
   </main>
 
   <script>
-    const form =
-      document.getElementById(
-        'loginForm'
-      )
-
-    const errorBox =
-      document.getElementById(
-        'error'
-      )
-
     const button =
       document.getElementById(
-        'submitButton'
+        'enterButton'
       )
 
-    form.addEventListener(
-      'submit',
-      async (event) => {
+    button.addEventListener(
+      'click',
+      () => {
 
-        event.preventDefault()
+        const secure =
+          location.protocol === 'https:'
+            ? '; Secure'
+            : ''
 
-        errorBox.style.display =
-          'none'
+        document.cookie =
+          'dashboard_access=granted;' +
+          ' Path=/;' +
+          ' Max-Age=43200;' +
+          ' SameSite=Lax' +
+          secure
 
-        button.disabled = true
-
-        button.textContent =
-          'Memeriksa...'
-
-        const username =
-          document.getElementById(
-            'username'
-          ).value
-
-        const password =
-          document.getElementById(
-            'password'
-          ).value
-
-        try {
-
-          const response =
-            await fetch(
-              '/auth-login',
-              {
-                method: 'POST',
-
-                headers: {
-                  'Content-Type':
-                    'application/json',
-                },
-
-                body:
-                  JSON.stringify({
-                    username,
-                    password,
-                  }),
-              }
-            )
-
-          if (!response.ok) {
-            throw new Error(
-              'Login gagal'
-            )
-          }
-
-          window.location.replace('/')
-
-        } catch (error) {
-
-          errorBox.style.display =
-            'block'
-
-          button.disabled = false
-
-          button.textContent =
-            'Masuk Dashboard'
-
-        }
-
+        window.location.replace('/')
       }
     )
   </script>

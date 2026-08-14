@@ -2,26 +2,23 @@ import {
   next,
 } from '@vercel/functions'
 
-import {
-  SESSION_COOKIE,
-  verifySessionToken,
-} from './auth/session.js'
-
 function getCookie(
   request,
   cookieName
 ) {
-  const header =
+  const cookieHeader =
     request.headers.get('cookie')
 
-  if (!header) {
+  if (!cookieHeader) {
     return null
   }
 
-  const cookies = header.split(';')
+  const cookies =
+    cookieHeader.split(';')
 
   for (const cookie of cookies) {
-    const trimmed = cookie.trim()
+    const trimmed =
+      cookie.trim()
 
     const equalIndex =
       trimmed.indexOf('=')
@@ -31,13 +28,20 @@ function getCookie(
     }
 
     const name =
-      trimmed.slice(0, equalIndex)
+      trimmed.slice(
+        0,
+        equalIndex
+      )
 
     const value =
-      trimmed.slice(equalIndex + 1)
+      trimmed.slice(
+        equalIndex + 1
+      )
 
     if (name === cookieName) {
-      return decodeURIComponent(value)
+      return decodeURIComponent(
+        value
+      )
     }
   }
 
@@ -53,25 +57,23 @@ export default function middleware(
   const pathname =
     url.pathname
 
-  const session =
+  const access =
     getCookie(
       request,
-      SESSION_COOKIE
+      'dashboard_access'
     )
 
-  const authenticated =
-    verifySessionToken(session)
+  const allowed =
+    access === 'granted'
 
-  if (
-    pathname === '/auth-login'
-  ) {
-    return next()
-  }
-
+  // Login page boleh diakses
   if (
     pathname === '/login.html'
   ) {
-    if (authenticated) {
+
+    // Kalau sudah pernah klik masuk,
+    // langsung ke dashboard.
+    if (allowed) {
       return Response.redirect(
         new URL('/', request.url),
         302
@@ -81,7 +83,9 @@ export default function middleware(
     return next()
   }
 
-  if (!authenticated) {
+  // Kalau belum klik "Masuk Dashboard",
+  // arahkan ke halaman pembuka.
+  if (!allowed) {
     return Response.redirect(
       new URL(
         '/login.html',
@@ -92,8 +96,4 @@ export default function middleware(
   }
 
   return next()
-}
-
-export const config = {
-  runtime: 'nodejs',
 }
