@@ -3,7 +3,7 @@
 // Catatan keamanan: ini penjagaan sisi-klien untuk dashboard internal, BUKAN
 // pengaman kriptografis. Untuk keamanan sungguhan, pindahkan ke autentikasi backend.
 export const CREDENTIALS = [
-  { username: 'admin', password: 'nabihaosel2026' },
+  { username: 'admin', password: 'test12345' },
 ]
 
 export const AUTH_KEY = 'nabihaosel_auth'
