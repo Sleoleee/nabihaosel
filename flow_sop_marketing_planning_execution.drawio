@@ -1,0 +1,168 @@
+<mxfile host="app.diagrams.net" agent="Claude" version="24.0.0">
+  <diagram id="sop-marketing-planning" name="SOP Marketing Planning &amp; Execution">
+    <mxGraphModel dx="1400" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1040" pageHeight="2720" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- TITLE -->
+        <mxCell id="title" value="FLOW SOP MARKETING PLANNING &amp; EXECUTION CYCLE" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D71920;fontColor=#D71920;fontStyle=1;fontSize=15;align=left;spacingLeft=16;" vertex="1" parent="1">
+          <mxGeometry x="0" y="16" width="1040" height="38" as="geometry" />
+        </mxCell>
+
+        <!-- ================= MAIN SPINE (center x=500) ================= -->
+        <mxCell id="A" value="MULAI" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="380" y="80" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="B" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;MARKETING COORDINATOR / HEAD SALES&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;b&gt;Planning Cycle Initiation&lt;/b&gt;&lt;br&gt;Membuka siklus perencanaan bulanan/kuartalan dan menetapkan periode kerja." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="174" width="240" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="C" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;MARKETING COORDINATOR&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;b&gt;Business &amp;amp; Cross-Functional Input Collection&lt;/b&gt;&lt;br&gt;Target Sales B2C, prioritas brand/SKU, stok/harga, product launch brief, approved budget, insight periode sebelumnya." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="296" width="240" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="D" value="Apakah input lengkap dan mutakhir?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="400" y="418" width="200" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="H" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;HEAD SALES B2C + MARKETING COORDINATOR&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;b&gt;Objective &amp;amp; KPI Setting&lt;/b&gt;&lt;br&gt;Menetapkan objective dan target KPI yang terhubung dengan target bisnis." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="558" width="240" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="I" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;HEAD SALES B2C + MARKETING COORDINATOR&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;b&gt;Brand / SKU / Initiative Prioritization&lt;/b&gt;&lt;br&gt;Menetapkan prioritas brand, SKU, campaign theme, launch/promo dan program utama." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="680" width="240" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="J" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;MARKETING COORDINATOR + CHANNEL OWNERS&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;b&gt;Monthly / Quarterly Marketing Plan Draft&lt;/b&gt;&lt;br&gt;Menyusun program, owner, KPI, target waktu dan dependency utama." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="802" width="240" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="K" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;MARKETING COORDINATOR&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;b&gt;Integrated Marketing Calendar&lt;/b&gt;&lt;br&gt;Mengintegrasikan campaign, content, marketplace/promo, product launch dan aktivitas lain yang relevan." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="924" width="240" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="L" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;MARKETING COORDINATOR + REVIEWERS&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;b&gt;Capacity, Dependency &amp;amp; Budget Alignment&lt;/b&gt;&lt;br&gt;Memeriksa kapasitas tim, kebutuhan aset, stok, timeline R&amp;amp;D, approved budget dan benturan kalender." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="1046" width="240" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="M" value="Apakah plan feasible dan selaras target?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="400" y="1168" width="200" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="O" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;MARKETING COORDINATOR + HEAD SALES B2C&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;b&gt;Plan Review &amp;amp; Approval&lt;/b&gt;&lt;br&gt;Review final vs target/capacity, kemudian approval oleh Head Sales B2C." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="1308" width="240" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="P" value="Apakah Marketing Plan disetujui?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="400" y="1430" width="200" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="R" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;MARKETING COORDINATOR&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;b&gt;Release Controlled Plan &amp;amp; Calendar&lt;/b&gt;&lt;br&gt;Terbitkan Monthly Marketing Plan, integrated calendar, approval reference dan assignment." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="1570" width="240" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="S" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;CHANNEL OWNERS / DESIGNER&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;b&gt;Handover to Execution Processes&lt;/b&gt;&lt;br&gt;Content, creative, campaign, marketplace/Ads, product launch, promotion dan trade activation berjalan sesuai SOP terkait." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="1692" width="240" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="T" value="Apakah terjadi perubahan material dalam bulan berjalan?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="400" y="1814" width="200" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- ================= CABANG INPUT GAP (kiri atas, x=160) ================= -->
+        <mxCell id="E" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;MARKETING COORDINATOR&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;b&gt;Gap List &amp;amp; Input Update&lt;/b&gt;&lt;br&gt;Mencatat kekurangan dan meminta sumber data memperbarui input." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="418" width="240" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="F" value="Dapat selesai pada cycle ini?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="540" width="200" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="G" value="FINALISASI PLAN DITUNDA" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontStyle=1;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="40" y="680" width="240" height="44" as="geometry" />
+        </mxCell>
+
+        <!-- ================= LOOP: REVISE (kanan) ================= -->
+        <mxCell id="N" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;COORDINATOR + HEAD SALES&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;b&gt;Revise &amp;amp; Re-prioritize&lt;/b&gt;&lt;br&gt;Sesuaikan sequencing/prioritas lalu kembali ke draft plan." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="720" y="1168" width="240" height="72" as="geometry" />
+        </mxCell>
+
+        <!-- ================= LOOP: REVISION/ESCALATION (kanan) ================= -->
+        <mxCell id="Q" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;COORDINATOR / HEAD SALES&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;b&gt;Revision / Escalation&lt;/b&gt;&lt;br&gt;Perbaiki plan atau eskalasikan isu yang melampaui kewenangan." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="720" y="1430" width="240" height="72" as="geometry" />
+        </mxCell>
+
+        <!-- ================= CABANG T = TIDAK: PERFORMANCE REVIEW (kiri, x=160) ================= -->
+        <mxCell id="U" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;COORDINATOR + HEAD SALES&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;b&gt;Monthly Performance Review&lt;/b&gt;&lt;br&gt;Evaluasi detail mengikuti SOP Marketing Performance Evaluation." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1954" width="240" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="V" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;MARKETING COORDINATOR&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;b&gt;Carry-over Improvement&lt;/b&gt;&lt;br&gt;Satu keputusan perbaikan menjadi input cycle berikutnya." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="2076" width="240" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="W" value="INPUT CYCLE BERIKUTNYA" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontStyle=1;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="40" y="2198" width="240" height="44" as="geometry" />
+        </mxCell>
+
+        <!-- ================= CABANG T = YA: CHANGE CONTROL (center) ================= -->
+        <mxCell id="X" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;MARKETING COORDINATOR&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;b&gt;Change Classification&lt;/b&gt;&lt;br&gt;Nilai dampak ke jadwal, budget, promo/voucher, harga, product claim, kontrak dan dependency." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="1954" width="240" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="Y" value="Dalam plan disetujui dan tanpa tambahan kewenangan?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="400" y="2076" width="200" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="Z" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;MARKETING COORDINATOR&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;b&gt;Coordinator Approval&lt;/b&gt;&lt;br&gt;Perubahan jadwal / tambahan konten tanpa biaya sesuai delegated authority." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="2216" width="240" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="AA" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;HEAD SALES / AUTHORIZED APPROVER&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;b&gt;Higher Approval / Escalation&lt;/b&gt;&lt;br&gt;Promo, budget, harga, claim atau kontrak mengikuti authority matrix." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="720" y="2216" width="240" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="AB" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;MARKETING COORDINATOR&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;b&gt;Update Plan, Calendar &amp;amp; Revision Log&lt;/b&gt;&lt;br&gt;Catat alasan, approver, effective date, perubahan assignment dan komunikasi ke stakeholder." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="2338" width="240" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="AC" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;MARKETING TEAM&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;b&gt;Resume Execution&lt;/b&gt;&lt;br&gt;Tim melanjutkan eksekusi menggunakan versi plan/calendar yang berlaku." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="2460" width="240" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="AD" value="MONITOR &amp; REVIEW" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontStyle=1;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="380" y="2582" width="240" height="44" as="geometry" />
+        </mxCell>
+
+        <!-- ================= EDGES: MAIN ================= -->
+        <mxCell id="eAB" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="A" target="B"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eBC" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="B" target="C"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eCD" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="C" target="D"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eDH" value="YA" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="D" target="H"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eHI" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="H" target="I"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eIJ" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="I" target="J"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eJK" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="J" target="K"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eKL" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="K" target="L"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eLM" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="L" target="M"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eMO" value="YA" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="M" target="O"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eOP" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="O" target="P"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ePR" value="YA" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="P" target="R"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eRS" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="R" target="S"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eST" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="S" target="T"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ================= EDGES: INPUT GAP BRANCH ================= -->
+        <mxCell id="eDE" value="TIDAK" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="D" target="E"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eEF" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="E" target="F"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eFG" value="TIDAK" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="F" target="G"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eFH" value="YA" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="F" target="H"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ================= EDGES: REVISE LOOP (M -> N -> J) ================= -->
+        <mxCell id="eMN" value="TIDAK" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="M" target="N"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eNJ" value="KEMBALI KE DRAFT" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;dashed=1;exitX=0.5;exitY=0;entryX=1;entryY=0.5;" edge="1" parent="1" source="N" target="J"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="840" y="838" /></Array></mxGeometry></mxCell>
+
+        <!-- ================= EDGES: REVISION LOOP (P -> Q -> P) ================= -->
+        <mxCell id="ePQ" value="TIDAK" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=1;exitY=0.6;entryX=0;entryY=0.5;" edge="1" parent="1" source="P" target="Q"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eQP" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;dashed=1;exitX=0.5;exitY=0;entryX=1;entryY=0.25;" edge="1" parent="1" source="Q" target="P"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="840" y="1408" /><mxPoint x="640" y="1408" /></Array></mxGeometry></mxCell>
+
+        <!-- ================= EDGES: T = TIDAK BRANCH (U -> V -> W) ================= -->
+        <mxCell id="eTU" value="TIDAK" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=0;exitY=0.5;entryX=0.5;entryY=0;" edge="1" parent="1" source="T" target="U"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="160" y="1859" /></Array></mxGeometry></mxCell>
+        <mxCell id="eUV" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="U" target="V"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eVW" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="V" target="W"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ================= EDGES: T = YA BRANCH (X -> Y -> Z/AA -> AB -> AC -> AD) ================= -->
+        <mxCell id="eTX" value="YA" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="T" target="X"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eXY" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="X" target="Y"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eYZ" value="YA" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="Y" target="Z"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eYAA" value="TIDAK" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=1;exitY=0.5;entryX=0.5;entryY=0;" edge="1" parent="1" source="Y" target="AA"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="840" y="2121" /></Array></mxGeometry></mxCell>
+        <mxCell id="eZAB" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="Z" target="AB"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eAAAB" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=1;entryY=0.5;" edge="1" parent="1" source="AA" target="AB"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="840" y="2374" /></Array></mxGeometry></mxCell>
+        <mxCell id="eABAC" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="AB" target="AC"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eACAD" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="AC" target="AD"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- NOTE -->
+        <mxCell id="note" value="Aturan alur: setiap decision memiliki cabang YA/TIDAK. Cabang menuju proses berikutnya, kembali ke proses sebelumnya (garis putus-putus), atau berakhir pada terminator." style="text;html=1;align=left;whiteSpace=wrap;fontSize=9;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="40" y="2650" width="900" height="30" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
