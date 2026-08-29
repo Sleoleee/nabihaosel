@@ -175,6 +175,83 @@ CREATE INDEX IF NOT EXISTS idx_adcm_kat     ON agg_discount_category_month(kateg
 -- Index item_no di transaksi -> mempercepat view dim_item (dipakai product-sku)
 CREATE INDEX IF NOT EXISTS idx_transactions_item ON transactions(item_no);
 
+-- =====================================================================
+-- LAPISAN WILAYAH / TERRITORY (PROMPT 8) — jalankan setelah bagian di atas.
+-- =====================================================================
+
+-- ---------- Master customer (snapshot Excel, di-upsert by cardcode) ----------
+CREATE TABLE IF NOT EXISTS customer_master (
+  customer_code     TEXT PRIMARY KEY,
+  customer_name     TEXT,
+  create_date       DATE,
+  wilayah_raw       TEXT,
+  group_name        TEXT,
+  pymnt_group       TEXT,
+  is_active_master  BOOLEAN,
+  master_updated_at TIMESTAMPTZ DEFAULT now()
+);
+-- Catatan: kolom Phone1 SENGAJA tidak dimuat (data pribadi, tak dipakai analitik).
+
+-- ---------- Referensi provinsi (38 provinsi pasca-2022) ----------
+CREATE TABLE IF NOT EXISTS dim_province (
+  province_code TEXT PRIMARY KEY,   -- kode BPS 2 digit
+  province_name TEXT,
+  region_pulau  TEXT,
+  geojson_id    TEXT
+);
+
+-- ---------- Kolom wilayah tambahan di dim_customer ----------
+ALTER TABLE dim_customer ADD COLUMN IF NOT EXISTS province_code        TEXT;
+ALTER TABLE dim_customer ADD COLUMN IF NOT EXISTS province_name        TEXT;
+ALTER TABLE dim_customer ADD COLUMN IF NOT EXISTS region_pulau         TEXT;
+ALTER TABLE dim_customer ADD COLUMN IF NOT EXISTS is_territory         BOOLEAN;
+ALTER TABLE dim_customer ADD COLUMN IF NOT EXISTS non_territory_type   TEXT;
+ALTER TABLE dim_customer ADD COLUMN IF NOT EXISTS group_name           TEXT;
+ALTER TABLE dim_customer ADD COLUMN IF NOT EXISTS pymnt_group          TEXT;
+ALTER TABLE dim_customer ADD COLUMN IF NOT EXISTS create_date          DATE;
+ALTER TABLE dim_customer ADD COLUMN IF NOT EXISTS is_active_master     BOOLEAN;
+ALTER TABLE dim_customer ADD COLUMN IF NOT EXISTS umur_customer_bulan  INT;
+
+-- ---------- Agregasi wilayah ----------
+DROP TABLE IF EXISTS agg_province_month CASCADE;
+CREATE TABLE IF NOT EXISTS agg_province_month (
+  province_code TEXT, tahun INT, bulan INT,
+  revenue NUMERIC, bills INT, customer_aktif INT, customer_baru INT, customer_lost INT,
+  revenue_at_risk NUMERIC, customer_overdue INT, aov NUMERIC,
+  PRIMARY KEY (province_code, tahun, bulan)
+);
+
+DROP TABLE IF EXISTS agg_province_category CASCADE;
+CREATE TABLE IF NOT EXISTS agg_province_category (
+  province_code TEXT, kategori TEXT, tahun INT,
+  revenue NUMERIC, jumlah_customer INT,
+  PRIMARY KEY (province_code, kategori, tahun)
+);
+
+DROP TABLE IF EXISTS agg_province_salesperson CASCADE;
+CREATE TABLE IF NOT EXISTS agg_province_salesperson (
+  province_code TEXT, slp_name TEXT, tahun INT,
+  revenue NUMERIC, jumlah_customer INT,
+  PRIMARY KEY (province_code, slp_name, tahun)
+);
+
+DROP TABLE IF EXISTS dim_province_stats CASCADE;
+CREATE TABLE IF NOT EXISTS dim_province_stats (
+  province_code TEXT, tahun INT,
+  customer_terdaftar INT,   -- kumulatif s/d akhir tahun (create_date)
+  customer_aktif INT,       -- >=1 transaksi di tahun tsb
+  customer_tidur INT,       -- terdaftar tapi 0 transaksi di tahun tsb
+  tingkat_aktivasi NUMERIC,
+  PRIMARY KEY (province_code, tahun)
+);
+
+CREATE INDEX IF NOT EXISTS idx_dc_province   ON dim_customer(province_code);
+CREATE INDEX IF NOT EXISTS idx_dc_territory  ON dim_customer(is_territory);
+CREATE INDEX IF NOT EXISTS idx_apm_prov      ON agg_province_month(province_code, tahun, bulan);
+CREATE INDEX IF NOT EXISTS idx_apc_prov      ON agg_province_category(province_code, tahun);
+CREATE INDEX IF NOT EXISTS idx_aps_prov      ON agg_province_salesperson(province_code, tahun);
+CREATE INDEX IF NOT EXISTS idx_dps_prov      ON dim_province_stats(province_code, tahun);
+
 -- ---------- Hak akses: service_role (dipakai build_analytics.py & backend) ----------
 GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
