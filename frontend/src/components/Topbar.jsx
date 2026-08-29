@@ -6,6 +6,7 @@ const NAV = [
   { to: '/sales', label: 'Sales Performance' },
   { to: '/customers', label: 'Customer Dashboard' },
   { to: '/products', label: 'Product Opportunity' },
+  { to: '/territory', label: 'Territory' },
 ]
 
 export default function Topbar() {

@@ -182,8 +182,8 @@ export default function Overview() {
 
       {!loading && <AIInsights/>}
 
-      {/* 3 Pilar */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12 }}>
+      {/* 4 Pilar */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12 }}>
         <Pilar tag="SALES" color="#1d4ed8" to="/sales"
           headline={targets ? `${below} dari ${sps.length} di bawah target` : '—'}
           sub="Lihat performa tim penjualan" />
@@ -193,6 +193,9 @@ export default function Overview() {
         <Pilar tag="PRODUCT" color="#15803d" to="/products"
           headline={topKat ? `${topKat.kategori}` : '—'}
           sub={topKat ? `Kategori terbesar · ${(topKat.revenue/katTotal*100).toFixed(1)}% revenue` : 'Peluang produk'} />
+        <Pilar tag="TERRITORY" color="#b45309" to="/territory"
+          headline="Peta & aktivasi wilayah"
+          sub="Di mana tumbuh, jenuh, & pipeline tidur" />
       </div>
 
       {/* Trend + Bills/AOV */}

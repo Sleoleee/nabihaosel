@@ -591,3 +591,218 @@ def sales_mix(years: Optional[str] = Query(None), channels: Optional[str] = Quer
         top = sorted(kats.items(), key=lambda x: -x[1])[:5]
         out[name] = [{"kategori": k, "revenue": round(v)} for k, v in top]
     return out
+
+
+# ============================ TERRITORY (PROMPT 9) ============================
+def _sel_years(years):
+    yrs = [int(y) for y in _csv(years)]
+    if not yrs:
+        rows = _fetch_all_rows("agg_province_month", "tahun")
+        yrs = sorted({int(r["tahun"]) for r in rows if r.get("tahun")})[-1:] or [2026]
+    return sorted(yrs)
+
+
+@router.get("/territory")
+def territory(years: Optional[str] = Query(None),
+              kategori: Optional[str] = Query(None),
+              salesperson: Optional[str] = Query(None),
+              months: Optional[str] = Query(None)):
+    """Semua data page Territory kecuali drill: coverage banner, KPI, per-provinsi
+    (peta/ranking/tabel/aktivasi/growth/depth), rollup pulau, rincian Non-Trade,
+    heatmap coverage salesperson & penetrasi kategori."""
+    yrs = _sel_years(years)
+    latest = max(yrs); prev = latest - 1
+    mos = set(int(m) for m in _csv(months)) if months else None
+
+    prov_dim = {p["province_code"]: p for p in _fetch_all_rows("dim_province",
+                "province_code,province_name,region_pulau")}
+    apm = _fetch_all_rows("agg_province_month",
+        "province_code,tahun,bulan,revenue,bills,customer_aktif,customer_baru,customer_lost,"
+        "revenue_at_risk,customer_overdue,aov")
+    dps = _fetch_all_rows("dim_province_stats",
+        "province_code,tahun,customer_terdaftar,customer_aktif,customer_tidur,tingkat_aktivasi")
+    apc = _fetch_all_rows("agg_province_category", "province_code,kategori,tahun,revenue,jumlah_customer")
+    aps = _fetch_all_rows("agg_province_salesperson", "province_code,slp_name,tahun,revenue,jumlah_customer")
+
+    # revenue per provinsi per tahun (untuk growth) + agregat periode terpilih
+    rev_py = defaultdict(float)          # (pc, tahun) -> rev
+    agg = defaultdict(lambda: {"rev": 0.0, "bills": 0, "overdue": 0, "at_risk": 0.0, "baru": 0})
+    for r in apm:
+        pc = r["province_code"]; y = int(r["tahun"]); b = int(r.get("bulan") or 0)
+        rev = float(r.get("revenue") or 0)
+        rev_py[(pc, y)] += rev
+        if y in yrs and (mos is None or b in mos):
+            a = agg[pc]
+            a["rev"] += rev; a["bills"] += int(r.get("bills") or 0)
+            a["overdue"] += int(r.get("customer_overdue") or 0)
+            a["at_risk"] += float(r.get("revenue_at_risk") or 0)
+            a["baru"] += int(r.get("customer_baru") or 0)
+
+    dps_latest = {d["province_code"]: d for d in dps if int(d["tahun"]) == latest}
+
+    # top kategori & salesperson dominan per provinsi (tahun terbaru)
+    kat_by_prov = defaultdict(list); slp_by_prov = defaultdict(list)
+    for r in apc:
+        if int(r["tahun"]) == latest:
+            kat_by_prov[r["province_code"]].append((r["kategori"], float(r.get("revenue") or 0)))
+    for r in aps:
+        if int(r["tahun"]) == latest:
+            slp_by_prov[r["province_code"]].append((r["slp_name"], float(r.get("revenue") or 0)))
+
+    total_rev_sel = sum(a["rev"] for a in agg.values())
+    provinces_out = []
+    for pc, p in prov_dim.items():
+        a = agg.get(pc, {"rev": 0.0, "bills": 0, "overdue": 0, "at_risk": 0.0, "baru": 0})
+        d = dps_latest.get(pc, {})
+        aktif = int(d.get("customer_aktif") or 0)
+        terdaftar = int(d.get("customer_terdaftar") or 0)
+        tidur = int(d.get("customer_tidur") or 0)
+        rev = a["rev"]
+        cur = rev_py.get((pc, latest), 0.0); pre = rev_py.get((pc, prev), 0.0)
+        growth = round((cur - pre) / pre * 100, 1) if pre else None
+        kats = sorted(kat_by_prov.get(pc, []), key=lambda x: -x[1])
+        slps = sorted(slp_by_prov.get(pc, []), key=lambda x: -x[1])
+        slp_tot = sum(v for _, v in slps)
+        provinces_out.append({
+            "province_code": pc, "province_name": p["province_name"], "region_pulau": p["region_pulau"],
+            "revenue": round(rev), "share": round(rev / total_rev_sel * 100, 1) if total_rev_sel else 0,
+            "growth_yoy": growth, "bills": a["bills"],
+            "aov": round(rev / a["bills"]) if a["bills"] else 0,
+            "customer_aktif": aktif, "customer_terdaftar": terdaftar, "customer_tidur": tidur,
+            "tingkat_aktivasi": float(d.get("tingkat_aktivasi") or 0),
+            "rev_per_cust": round(rev / aktif) if aktif else 0,
+            "overdue_rate": round(a["overdue"] / aktif * 100, 1) if aktif else 0,
+            "revenue_at_risk": round(a["at_risk"]), "customer_baru": a["baru"],
+            "top_kategori": [k for k, _ in kats[:3]],
+            "slp_dominan": slps[0][0] if slps else None,
+            "slp_share": round(slps[0][1] / slp_tot * 100, 1) if slps and slp_tot else 0,
+        })
+    provinces_out.sort(key=lambda x: -x["revenue"])
+
+    # rollup pulau
+    reg = defaultdict(lambda: {"revenue": 0, "aktif": 0, "terdaftar": 0, "tidur": 0})
+    for p in provinces_out:
+        r = reg[p["region_pulau"]]
+        r["revenue"] += p["revenue"]; r["aktif"] += p["customer_aktif"]
+        r["terdaftar"] += p["customer_terdaftar"]; r["tidur"] += p["customer_tidur"]
+    regions_out = [{"region_pulau": k, **v,
+                    "tingkat_aktivasi": round(v["aktif"] / v["terdaftar"] * 100, 1) if v["terdaftar"] else 0}
+                   for k, v in reg.items()]
+    regions_out.sort(key=lambda x: -x["revenue"])
+
+    # coverage banner (total = agg_category_month, agar rekonsiliasi dg Overview)
+    acm = _fetch("agg_category_month", "tahun,bulan,revenue", years=[str(y) for y in yrs])
+    total_all = sum(float(r.get("revenue") or 0) for r in acm
+                    if (mos is None or int(r.get("bulan") or 0) in mos))
+    nontrade = max(0.0, total_all - total_rev_sel)
+
+    # rincian Non-Trade (lifetime dari dim_customer) — untuk drawer "lihat rincian"
+    dc_non = _fetch_all_rows("dim_customer",
+        "customer_code,customer_name,total_revenue,non_territory_type,is_territory")
+    nt = defaultdict(lambda: {"revenue": 0.0, "n": 0})
+    nt_entities = []
+    for c in dc_non:
+        if c.get("is_territory") is False:
+            t = c.get("non_territory_type") or "Belum Terpetakan"
+            nt[t]["revenue"] += float(c.get("total_revenue") or 0); nt[t]["n"] += 1
+            nt_entities.append({"name": c.get("customer_name"), "type": t,
+                                "revenue": round(float(c.get("total_revenue") or 0))})
+    nt_entities.sort(key=lambda x: -x["revenue"])
+    coverage_details = [{"type": k, "revenue": round(v["revenue"]), "n": v["n"]}
+                        for k, v in sorted(nt.items(), key=lambda x: -x[1]["revenue"])]
+
+    # KPI
+    prov_aktif = sum(1 for p in provinces_out if p["revenue"] > 0)
+    terbesar = provinces_out[0] if provinces_out else None
+    growth_cand = [p for p in provinces_out if p["growth_yoy"] is not None and p["revenue"] > 0]
+    growth_top = max(growth_cand, key=lambda x: x["growth_yoy"]) if growth_cand else None
+    nat_terdaftar = sum(p["customer_terdaftar"] for p in provinces_out)
+    nat_aktif = sum(p["customer_aktif"] for p in provinces_out)
+    rpc_list = sorted([p["rev_per_cust"] for p in provinces_out if p["rev_per_cust"] > 0])
+    rpc_med = rpc_list[len(rpc_list)//2] if rpc_list else 0
+
+    # penetrasi kategori (top 12 kategori by revenue) & coverage salesperson (top 12)
+    kat_tot = defaultdict(float)
+    for r in apc:
+        if int(r["tahun"]) == latest:
+            kat_tot[r["kategori"]] += float(r.get("revenue") or 0)
+    top_kats = [k for k, _ in sorted(kat_tot.items(), key=lambda x: -x[1])[:12]]
+    pen = {}
+    for r in apc:
+        if int(r["tahun"]) != latest or r["kategori"] not in top_kats:
+            continue
+        pc = r["province_code"]; d = dps_latest.get(pc, {})
+        ak = int(d.get("customer_aktif") or 0)
+        pen.setdefault(pc, {})[r["kategori"]] = round(int(r.get("jumlah_customer") or 0) / ak * 100, 1) if ak else 0
+
+    slp_tot = defaultdict(float)
+    for r in aps:
+        if int(r["tahun"]) == latest:
+            slp_tot[r["slp_name"]] += float(r.get("revenue") or 0)
+    top_slps = [s for s, _ in sorted(slp_tot.items(), key=lambda x: -x[1])[:12]]
+    cov = {}; single_dep = {}
+    for pc, slps in slp_by_prov.items():
+        tot = sum(v for _, v in slps)
+        cov[pc] = {s: round(v) for s, v in slps if s in top_slps}
+        single_dep[pc] = round(max((v for _, v in slps), default=0) / tot * 100, 1) if tot else 0
+
+    return {
+        "years": yrs, "latest_year": latest,
+        "coverage": {"pct": round(total_rev_sel / total_all * 100, 1) if total_all else 0,
+                     "territory_rev": round(total_rev_sel), "total_rev": round(total_all),
+                     "nontrade_rev": round(nontrade)},
+        "coverage_details": coverage_details, "nontrade_entities": nt_entities[:50],
+        "kpi": {
+            "prov_aktif": prov_aktif, "prov_total": len(prov_dim),
+            "terbesar": {"name": terbesar["province_name"], "share": terbesar["share"]} if terbesar else None,
+            "growth_top": {"name": growth_top["province_name"], "pct": growth_top["growth_yoy"]} if growth_top else None,
+            "aktivasi": {"aktif": nat_aktif, "terdaftar": nat_terdaftar,
+                         "pct": round(nat_aktif / nat_terdaftar * 100, 1) if nat_terdaftar else 0},
+            "rev_per_aktif": round(total_rev_sel / nat_aktif) if nat_aktif else 0,
+            "rev_per_aktif_median": rpc_med,
+        },
+        "provinces": provinces_out, "regions": regions_out,
+        "penetration": {"kategori": top_kats, "data": pen},
+        "coverage_salesperson": {"salespeople": top_slps, "data": cov, "single_dep": single_dep},
+    }
+
+
+@router.get("/territory-detail")
+def territory_detail(province_code: str = Query(...), years: Optional[str] = Query(None)):
+    """Drill satu provinsi: tren bulanan vs tahun lalu, akuisisi customer baru per bulan,
+    daftar customer (dg flag 'tidur')."""
+    yrs = _sel_years(years); latest = max(yrs); prev = latest - 1
+    apm = _fetch_all_rows("agg_province_month",
+        "province_code,tahun,bulan,revenue,customer_baru")
+    apm = [r for r in apm if r["province_code"] == province_code]
+    trend = {latest: [0.0]*12, prev: [0.0]*12}
+    baru = [0]*12
+    for r in apm:
+        y = int(r["tahun"]); b = int(r.get("bulan") or 0)
+        if 1 <= b <= 12:
+            if y in trend:
+                trend[y][b-1] += float(r.get("revenue") or 0)
+            if y == latest:
+                baru[b-1] += int(r.get("customer_baru") or 0)
+
+    dc = _fetch_all_rows("dim_customer",
+        "customer_code,customer_name,tier,segmen_rfm,salesperson_utama,status,"
+        "days_since_last_order,total_revenue,province_code,is_territory")
+    custs = []
+    for c in dc:
+        if c.get("province_code") != province_code:
+            continue
+        dsl = c.get("days_since_last_order")
+        custs.append({
+            "customer_code": c["customer_code"], "customer_name": c.get("customer_name"),
+            "tier": c.get("tier"), "segmen_rfm": c.get("segmen_rfm"),
+            "salesperson": c.get("salesperson_utama"), "status": c.get("status"),
+            "days_since_last_order": dsl, "revenue": round(float(c.get("total_revenue") or 0)),
+            "tidur": (dsl is None),   # terdaftar tapi belum pernah/lama tak beli
+        })
+    custs.sort(key=lambda x: -x["revenue"])
+    return {"province_code": province_code,
+            "trend": {"labels": MONTHS, "current": [round(x) for x in trend[latest]],
+                      "prev": [round(x) for x in trend[prev]], "year": latest, "prev_year": prev},
+            "acquisition": {"labels": MONTHS, "data": baru},
+            "customers": custs}
