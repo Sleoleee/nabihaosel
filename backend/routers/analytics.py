@@ -641,10 +641,10 @@ def territory(years: Optional[str] = Query(None),
     dps_latest = {d["province_code"]: d for d in dps if int(d["tahun"]) == latest}
 
     # top kategori & salesperson dominan per provinsi (tahun terbaru)
+    # kategori bersifat lifetime (agg_province_category disimpan tahun=0)
     kat_by_prov = defaultdict(list); slp_by_prov = defaultdict(list)
     for r in apc:
-        if int(r["tahun"]) == latest:
-            kat_by_prov[r["province_code"]].append((r["kategori"], float(r.get("revenue") or 0)))
+        kat_by_prov[r["province_code"]].append((r["kategori"], float(r.get("revenue") or 0)))
     for r in aps:
         if int(r["tahun"]) == latest:
             slp_by_prov[r["province_code"]].append((r["slp_name"], float(r.get("revenue") or 0)))
@@ -724,12 +724,11 @@ def territory(years: Optional[str] = Query(None),
     # penetrasi kategori (top 12 kategori by revenue) & coverage salesperson (top 12)
     kat_tot = defaultdict(float)
     for r in apc:
-        if int(r["tahun"]) == latest:
-            kat_tot[r["kategori"]] += float(r.get("revenue") or 0)
+        kat_tot[r["kategori"]] += float(r.get("revenue") or 0)
     top_kats = [k for k, _ in sorted(kat_tot.items(), key=lambda x: -x[1])[:12]]
     pen = {}
     for r in apc:
-        if int(r["tahun"]) != latest or r["kategori"] not in top_kats:
+        if r["kategori"] not in top_kats:
             continue
         pc = r["province_code"]; d = dps_latest.get(pc, {})
         ak = int(d.get("customer_aktif") or 0)

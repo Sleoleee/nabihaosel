@@ -125,53 +125,62 @@ def enrich_master(master):
 
 
 # ----------------------------- LANGKAH 5: agregasi provinsi -----------------------------
-def build_province_aggs(master, rows, dim_customer):
+def build_province_aggs(master, acm, acc, dim_customer):
+    """Bangun agregasi provinsi dari TABEL AGREGAT (bukan transaksi mentah) — cepat & tahan koneksi.
+      acm = agg_customer_month  (customer_code, tahun, bulan, revenue, bills)
+      acc = agg_customer_category (customer_code, kategori, revenue)  -> penetrasi (lifetime)
+      dim_customer = (customer_code, salesperson_utama, status, revenue_at_risk)
+    Catatan: kategori bersifat lifetime (agg_customer_category tak punya tahun) -> disimpan tahun=0.
+    Salesperson diatribusikan ke salesperson_utama per customer (per-tahun via acm)."""
     code2prov = {m["customer_code"]: m["province_code"] for m in master}
-    # status lifecycle & revenue_at_risk dari dim_customer (lifetime).
     dc = {d["customer_code"]: d for d in dim_customer}
 
-    # first-ever purchase (untuk customer_baru per provinsi-bulan)
+    # first-ever month per customer (untuk customer_baru), dari acm
     first_ym = {}
-    for r in rows:
+    for r in acm:
         c = r.get("customer_code")
         if not c:
             continue
-        ym = (int(r["year"]), int(str(r["posting_date"])[5:7]))
+        ym = (int(r["tahun"]), int(r.get("bulan") or 0))
         if c not in first_ym or ym < first_ym[c]:
             first_ym[c] = ym
 
-    apm = defaultdict(lambda: {"revenue": 0.0, "bills": set(), "cust": set(), "baru": set()})
-    apc = defaultdict(lambda: {"revenue": 0.0, "cust": set()})
-    aps = defaultdict(lambda: {"revenue": 0.0, "cust": set()})
+    apm = defaultdict(lambda: {"revenue": 0.0, "bills": 0, "cust": set(), "baru": set()})
+    aps = defaultdict(lambda: {"revenue": 0.0, "cust": set()})   # (pc, slp, tahun)
     prov_year_active = defaultdict(set)   # (pc,year) -> set(cust)
 
-    for r in rows:
+    for r in acm:
         c = r.get("customer_code")
         pc = code2prov.get(c)
         if not pc:      # non-trade / tak ada di master -> tak masuk peta
             continue
-        y = int(r["year"]); mo = int(str(r["posting_date"])[5:7])
-        rev = _f(r.get(provinces_rev_col()))
-        doc = r.get("document_number")
-        kat = (r.get("kategori") or "—")
-        slp = (r.get("slp_name") or "—")
-
+        y = int(r["tahun"]); mo = int(r.get("bulan") or 0)
+        rev = _f(r.get("revenue"))
         a = apm[(pc, y, mo)]
         a["revenue"] += rev
-        if doc is not None: a["bills"].add(doc)
-        if c: a["cust"].add(c)
-        if first_ym.get(c) == (y, mo): a["baru"].add(c)
-
-        ck = apc[(pc, kat, y)]; ck["revenue"] += rev; ck["cust"].add(c)
-        sk = aps[(pc, slp, y)]; sk["revenue"] += rev; sk["cust"].add(c)
+        a["bills"] += int(r.get("bills") or 0)
+        a["cust"].add(c)
+        if first_ym.get(c) == (y, mo):
+            a["baru"].add(c)
         prov_year_active[(pc, y)].add(c)
+        slp = (dc.get(c, {}).get("salesperson_utama") or "—")
+        sk = aps[(pc, slp, y)]; sk["revenue"] += rev; sk["cust"].add(c)
 
-    # rakit agg_province_month + tandai current-state (overdue/lost/at-risk) di bulan TERBARU per provinsi
+    # kategori (lifetime) dari agg_customer_category -> agg_province_category (tahun=0)
+    apc = defaultdict(lambda: {"revenue": 0.0, "cust": set()})
+    for r in acc:
+        c = r.get("customer_code")
+        pc = code2prov.get(c)
+        if not pc:
+            continue
+        kat = (r.get("kategori") or "—")
+        ck = apc[(pc, kat)]; ck["revenue"] += _f(r.get("revenue")); ck["cust"].add(c)
+
+    # current-state (overdue/lost/at-risk) per provinsi dari dim_customer, ditaruh di bulan TERBARU
     latest_ym = defaultdict(lambda: (0, 0))
     for (pc, y, mo) in apm:
         if (y, mo) > latest_ym[pc]:
             latest_ym[pc] = (y, mo)
-    # current-state per provinsi dari dim_customer
     cs = defaultdict(lambda: {"overdue": 0, "lost": 0, "at_risk": 0.0})
     for m in master:
         pc = m["province_code"]
@@ -189,7 +198,7 @@ def build_province_aggs(master, rows, dim_customer):
 
     apm_rows = []
     for (pc, y, mo), a in apm.items():
-        bills = len(a["bills"]); rev = a["revenue"]
+        bills = a["bills"]; rev = a["revenue"]
         is_latest = (y, mo) == latest_ym[pc]
         apm_rows.append({
             "province_code": pc, "tahun": y, "bulan": mo,
@@ -201,15 +210,15 @@ def build_province_aggs(master, rows, dim_customer):
             "aov": round(rev / bills) if bills else 0,
         })
 
-    apc_rows = [{"province_code": pc, "kategori": kat, "tahun": y,
+    apc_rows = [{"province_code": pc, "kategori": kat, "tahun": 0,
                  "revenue": round(v["revenue"], 2), "jumlah_customer": len(v["cust"])}
-                for (pc, kat, y), v in apc.items()]
+                for (pc, kat), v in apc.items()]
     aps_rows = [{"province_code": pc, "slp_name": slp, "tahun": y,
                  "revenue": round(v["revenue"], 2), "jumlah_customer": len(v["cust"])}
                 for (pc, slp, y), v in aps.items()]
 
     # dim_province_stats: terdaftar (kumulatif s/d akhir tahun), aktif, tidur, aktivasi
-    years = sorted({int(r["year"]) for r in rows})
+    years = sorted({int(r["tahun"]) for r in acm})
     reg_by_prov_cd = defaultdict(list)   # pc -> list of create_date (date)
     for m in master:
         pc = m["province_code"]
@@ -241,8 +250,8 @@ def provinces_rev_col():
 
 
 # ----------------------------- LANGKAH 6: validasi -----------------------------
-def validate_report(master, rows, unknown):
-    import config
+def validate_report(master, acm, unknown):
+    """Validasi dari agg_customer_month (bukan transaksi mentah)."""
     msgs = []
     ok = True
     master_codes = {m["customer_code"] for m in master}
@@ -250,10 +259,16 @@ def validate_report(master, rows, unknown):
 
     # a) customer di transaksi yang tak ada di master
     tx_codes = defaultdict(float)
-    for r in rows:
+    rev_y = defaultdict(float); rev_y_terr = defaultdict(float)
+    for r in acm:
         c = r.get("customer_code")
-        if c:
-            tx_codes[c] += _f(r.get(config.REVENUE_COLUMN))
+        if not c:
+            continue
+        rev = _f(r.get("revenue")); y = int(r["tahun"])
+        tx_codes[c] += rev
+        rev_y[y] += rev
+        if code2prov.get(c):
+            rev_y_terr[y] += rev
     missing = {c: rev for c, rev in tx_codes.items() if c not in master_codes}
     if missing:
         ok = False
@@ -295,12 +310,6 @@ def validate_report(master, rows, unknown):
         msgs.append("[d] ✓ Tidak ada ketidakcocokan prefix vs Wilayah.")
 
     # e) coverage % revenue terpetakan per tahun
-    rev_y = defaultdict(float); rev_y_terr = defaultdict(float)
-    for r in rows:
-        c = r.get("customer_code"); y = int(r["year"]); rev = _f(r.get(config.REVENUE_COLUMN))
-        rev_y[y] += rev
-        if code2prov.get(c):
-            rev_y_terr[y] += rev
     msgs.append("[e] Coverage revenue terpetakan ke provinsi per tahun:")
     for y in sorted(rev_y):
         pct = rev_y_terr[y] / rev_y[y] * 100 if rev_y[y] else 0
@@ -378,16 +387,22 @@ def main():
         print("\n(--preview) selesai. Jalankan tanpa --preview untuk menulis + agregasi ulang.")
         return
 
-    print("\n[fetch] Mengambil transaksi...")
-    rows = fetch_clean(db, use_cache=use_cache)
+    print("\n[fetch] Mengambil tabel agregat (agg_customer_month, agg_customer_category, dim_customer)...")
+    acm = _fetch_agg(db, "agg_customer_month", "customer_code,tahun,bulan,revenue,bills")
+    print(f"    agg_customer_month: {len(acm)} baris")
+    acc = _fetch_agg(db, "agg_customer_category", "customer_code,kategori,revenue")
+    print(f"    agg_customer_category: {len(acc)} baris")
+    dim_customer = _fetch_agg(db, "dim_customer", "customer_code,status,revenue_at_risk,salesperson_utama")
+    print(f"    dim_customer: {len(dim_customer)} baris")
+    if not acm:
+        print("\n❌ agg_customer_month kosong. Jalankan build_analytics.py dulu.")
+        sys.exit(1)
 
     print("[5] Membangun agregasi provinsi...")
-    dim_customer = _retry(lambda: db.table("dim_customer")
-                          .select("customer_code,status,revenue_at_risk").limit(1000000).execute().data) or []
-    apm, apc, aps, dps = build_province_aggs(master, rows, dim_customer)
+    apm, apc, aps, dps = build_province_aggs(master, acm, acc, dim_customer)
 
     print("\n--- [6] LAPORAN VALIDASI ---")
-    ok, msgs = validate_report(master, rows, unknown)
+    ok, msgs = validate_report(master, acm, unknown)
     print("\n".join(msgs))
     if not ok:
         print("\n❌ Validasi GAGAL. Perbaiki dulu (mis. tambah pemetaan wilayah / cek master). Tidak menulis.")
@@ -420,6 +435,11 @@ def main():
     _write(db, "agg_province_salesperson", aps, "province_code,slp_name,tahun")
     _write(db, "dim_province_stats", dps, "province_code,tahun")
     print("\n✓ Selesai. Lapisan Territory terisi.")
+
+
+def _fetch_agg(db, table, cols):
+    """Ambil tabel agregat sekali (retryable). Jauh lebih kecil dari transaksi mentah."""
+    return _retry(lambda: db.table(table).select(cols).limit(1000000).execute().data) or []
 
 
 def _write(db, name, recs, pk):
