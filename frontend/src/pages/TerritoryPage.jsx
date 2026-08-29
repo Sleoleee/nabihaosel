@@ -187,6 +187,12 @@ export default function TerritoryPage() {
         </div>
       </div>
 
+      {!loading && !data && (
+        <div style={{ background:'#fff5f7', border:'1px solid #fde3e9', borderRadius:10, padding:'12px 14px', fontSize:13, color:'#7a1226' }}>
+          Gagal memuat data Territory. Kemungkinan endpoint <code>/api/analytics/territory</code> di backend belum aktif — pastikan project <b>backend</b> di Vercel sudah di-redeploy (Promote to Production) dengan commit terbaru, dan tabel wilayah sudah terisi (build_territory.py).
+        </div>
+      )}
+
       {/* Baris 0 — banner cakupan */}
       {loading || !cov ? <Skeleton height={40}/> : (
         <div style={{ background:'#fff5f7', border:'1px solid #fde3e9', borderRadius:10, padding:'10px 14px',
@@ -311,17 +317,17 @@ export default function TerritoryPage() {
         <Card style={{ padding:16 }}>
           <div style={{ fontSize:13, fontWeight:600 }}>Coverage Salesperson per Wilayah</div>
           <div style={{ fontSize:10.5, color:'#aaa', marginBottom:8 }}>Merah pada kolom "% 1 orang" = ketergantungan tunggal &gt;70%. Leaderboard & target ada di Sales Performance.</div>
-          {loading ? <Skeleton height={280}/> : <Heatmap kind="rp"
-            cols={data.coverage_salesperson.salespeople} rows={shown}
-            get={(p,c)=>data.coverage_salesperson.data[p.province_code]?.[c]||0}
-            extra={(p)=>data.coverage_salesperson.single_dep[p.province_code]} extraLabel="% 1 orang" />}
+          {loading || !data ? <Skeleton height={280}/> : <Heatmap kind="rp"
+            cols={data.coverage_salesperson?.salespeople || []} rows={shown}
+            get={(p,c)=>data.coverage_salesperson?.data?.[p.province_code]?.[c]||0}
+            extra={(p)=>data.coverage_salesperson?.single_dep?.[p.province_code]} extraLabel="% 1 orang" />}
         </Card>
         <Card style={{ padding:16 }}>
           <div style={{ fontSize:13, fontWeight:600 }}>Penetrasi Kategori per Wilayah</div>
           <div style={{ fontSize:10.5, color:'#aaa', marginBottom:8 }}>% customer aktif di provinsi yang membeli kategori. Sel merah pada provinsi besar = white space geografis.</div>
-          {loading ? <Skeleton height={280}/> : <Heatmap kind="pct"
-            cols={data.penetration.kategori} rows={shown}
-            get={(p,c)=>data.penetration.data[p.province_code]?.[c]||0} />}
+          {loading || !data ? <Skeleton height={280}/> : <Heatmap kind="pct"
+            cols={data.penetration?.kategori || []} rows={shown}
+            get={(p,c)=>data.penetration?.data?.[p.province_code]?.[c]||0} />}
         </Card>
       </div>
 
