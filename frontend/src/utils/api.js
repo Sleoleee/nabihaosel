@@ -43,6 +43,7 @@ export const getCustomerDetail = (code) => api.get('/api/analytics/customer-deta
 export const getCustomerBridge = (p) => api.get('/api/analytics/customer-bridge', { params: p }).then(r => r.data)
 export const getTerritory = (p) => api.get('/api/analytics/territory', { params: p }).then(r => r.data)
 export const getTerritoryDetail = (province_code, p) => api.get('/api/analytics/territory-detail', { params: { province_code, ...p } }).then(r => r.data)
+export const getTerritoryMeta = () => api.get('/api/analytics/territory-meta').then(r => r.data)
 
 // Customers
 export const getRFM = (f) => api.get('/api/customers/rfm', { params: buildParams(f) }).then(r => r.data)

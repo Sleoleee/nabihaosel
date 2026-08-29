@@ -324,13 +324,41 @@ def classification_summary(master):
 
 
 # ----------------------------- MAIN -----------------------------
+def preview_diff(db, master, unknown):
+    """PROMPT 10: bandingkan master baru vs customer_master di DB. LAPOR saja, tak menulis."""
+    existing = _retry(lambda: db.table("customer_master")
+                      .select("customer_code,wilayah_raw,is_active_master").limit(1000000).execute().data) or []
+    ex = {e["customer_code"]: e for e in existing}
+    new_cust = [m for m in master if m["customer_code"] not in ex]
+    changed_wil = [m for m in master if m["customer_code"] in ex
+                   and (m["wilayah_raw"] or "") != (ex[m["customer_code"]].get("wilayah_raw") or "")]
+    became_inactive = [m for m in master if m["customer_code"] in ex
+                       and ex[m["customer_code"]].get("is_active_master") is True and m["is_active_master"] is False]
+    print("\n--- PREVIEW PERUBAHAN MASTER ---")
+    print(f"  Customer baru        : {len(new_cust)}")
+    print(f"  Wilayah berubah      : {len(changed_wil)}")
+    print(f"  Menjadi tidak aktif  : {len(became_inactive)}")
+    if unknown:
+        print(f"  ❌ Wilayah baru tak dikenal ({len(unknown)}) — IMPOR DIBLOKIR sampai ditambahkan ke provinces._VARIANTS:")
+        for w, n in sorted(unknown.items(), key=lambda x: -x[1]):
+            print(f"       {w!r} ({n})")
+    # customer di transaksi tapi hilang dari master baru
+    tx = _retry(lambda: db.table("dim_customer").select("customer_code").limit(1000000).execute().data) or []
+    new_codes = {m["customer_code"] for m in master}
+    gone = [t["customer_code"] for t in tx if t["customer_code"] not in new_codes]
+    if gone:
+        print(f"  ⚠ {len(gone)} customer ada di transaksi tapi HILANG dari master baru (contoh): {gone[:10]}")
+    return not unknown
+
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     if not args:
-        raise SystemExit("Pakai: python build_territory.py <database_customer_TPF.xlsx> [--cache] [--dry]")
+        raise SystemExit("Pakai: python build_territory.py <database_customer_TPF.xlsx> [--cache] [--dry] [--preview]")
     path = args[0]
     use_cache = "--cache" in sys.argv
     dry = "--dry" in sys.argv
+    preview = "--preview" in sys.argv
 
     from utils.db import get_client
     db = get_client()
@@ -342,6 +370,13 @@ def main():
     print("[2/3] Normalisasi wilayah + klasifikasi Trade/Non-Trade...")
     unknown = enrich_master(master)
     print(classification_summary(master))
+
+    if preview:
+        okp = preview_diff(db, master, unknown)
+        if not okp:
+            sys.exit(1)
+        print("\n(--preview) selesai. Jalankan tanpa --preview untuk menulis + agregasi ulang.")
+        return
 
     print("\n[fetch] Mengambil transaksi...")
     rows = fetch_clean(db, use_cache=use_cache)
@@ -363,8 +398,11 @@ def main():
 
     print("\n[tulis] Menyimpan ke Supabase...")
     _write(db, "dim_province", provinces.province_rows(), "province_code")
-    master_rows = [{k: m[k] for k in ("customer_code", "customer_name", "create_date",
-                    "wilayah_raw", "group_name", "pymnt_group", "is_active_master")} for m in master]
+    from datetime import datetime, timezone
+    now_iso = datetime.now(timezone.utc).isoformat()
+    master_rows = [{**{k: m[k] for k in ("customer_code", "customer_name", "create_date",
+                    "wilayah_raw", "group_name", "pymnt_group", "is_active_master")},
+                    "master_updated_at": now_iso} for m in master]
     _write(db, "customer_master", master_rows, "customer_code")
 
     # LANGKAH 4: perluas dim_customer (upsert kolom wilayah by customer_code)

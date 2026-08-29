@@ -7,7 +7,7 @@ import Card from '../components/Card'
 import Skeleton, { SkeletonCard } from '../components/Skeleton'
 import { formatRupiah, formatRupiahShort } from '../utils/format'
 import { useGlobalFilters } from '../context/GlobalFilters'
-import { getTerritory, getTerritoryDetail } from '../utils/api'
+import { getTerritory, getTerritoryDetail, getTerritoryMeta } from '../utils/api'
 
 const tt = { contentStyle:{background:'#1a1a1a',border:'none',borderRadius:8,color:'#fff',fontSize:12}, itemStyle:{color:'#fff'}, cursor:{fill:'rgba(255,255,255,0.06)'} }
 const RED = '#d31137'
@@ -112,6 +112,7 @@ export default function TerritoryPage() {
   const [showNonTrade, setShowNonTrade] = useState(false)
   const [detail, setDetail] = useState(null)
   const [dormOnly, setDormOnly] = useState(false)
+  const [meta, setMeta] = useState(null)
 
   const years = g?.years?.join(',') || undefined
   const months = g?.months?.join(',') || undefined
@@ -121,6 +122,15 @@ export default function TerritoryPage() {
     setLoading(true)
     getTerritory({ years, months }).then(setData).catch(()=>setData(null)).finally(()=>setLoading(false))
   }, [g?.ready, years, months])
+
+  useEffect(() => { getTerritoryMeta().then(setMeta).catch(()=>{}) }, [])
+
+  const masterAge = useMemo(() => {
+    if (!meta?.master_updated_at) return null
+    const d = new Date(meta.master_updated_at)
+    const days = Math.floor((Date.now() - d.getTime()) / 86400000)
+    return { text: d.toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' }), days }
+  }, [meta])
 
   useEffect(() => {
     let done = false
@@ -437,6 +447,16 @@ export default function TerritoryPage() {
             </div>
           )}
         </Card>
+      )}
+
+      {/* Footer — umur data master */}
+      {masterAge && (
+        <div style={{ fontSize:11, textAlign:'right', marginTop:2,
+          color: masterAge.days>90?'#b45309':'#aaa',
+          fontWeight: masterAge.days>90?600:400 }}>
+          {masterAge.days>90 ? '⚠ ' : ''}Data wilayah per {masterAge.text}
+          {masterAge.days>90 ? ` — sudah ${masterAge.days} hari, sebaiknya di-refresh (build_territory.py).` : ''}
+        </div>
       )}
     </div>
   )

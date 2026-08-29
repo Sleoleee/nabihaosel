@@ -806,3 +806,15 @@ def territory_detail(province_code: str = Query(...), years: Optional[str] = Que
                       "prev": [round(x) for x in trend[prev]], "year": latest, "prev_year": prev},
             "acquisition": {"labels": MONTHS, "data": baru},
             "customers": custs}
+
+
+@router.get("/territory-meta")
+def territory_meta():
+    """master_updated_at terbaru untuk footer 'Data wilayah per <tanggal>'."""
+    db = get_client()
+    try:
+        r = db.table("customer_master").select("master_updated_at").order(
+            "master_updated_at", desc=True).limit(1).execute().data
+        return {"master_updated_at": (r[0]["master_updated_at"] if r else None)}
+    except Exception:
+        return {"master_updated_at": None}
