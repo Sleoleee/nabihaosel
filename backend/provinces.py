@@ -106,29 +106,41 @@ _VARIANTS = {
 }
 
 
+# Nilai yang berarti "tidak ada wilayah" (sel kosong ATAU teks harfiah NULL, dsb).
+_NULLISH = {"", "NULL", "NONE", "-", "N A", "NA", "#N A", "#N/A", "NAN", "(BLANK)", "BLANK"}
+
+
 def normalize_wilayah(raw):
     """
     Kembalikan province_code utk nilai Wilayah master.
-    - None/kosong -> None (customer tanpa wilayah = kandidat Non-Trade).
+    - None/kosong/'NULL'/'-' -> None (customer tanpa wilayah = kandidat Non-Trade).
     - Dikenal -> kode.
     - TIDAK dikenal -> raise ValueError (pemanggil wajib GAGAL & laporkan).
     """
-    if raw is None or str(raw).strip() == "":
+    if raw is None:
         return None
     key = _norm(raw)
+    if key in _NULLISH:
+        return None
     if key in _VARIANTS:
         return _VARIANTS[key]
     raise ValueError(f"Wilayah tidak dikenal: {raw!r} (normalisasi: {key!r})")
 
 
-# Prefix cardcode -> province_code (untuk UJI SILANG salah-input; hanya prefix geografis).
+# Prefix cardcode -> province_code (untuk UJI SILANG salah-input; hanya prefix yang PASTI).
+# Sesuai dokumen: SSE = Sulawesi Selatan (73), bukan Sumatera Selatan.
+# Hanya prefix yang terkonfirmasi dokumen dimasukkan agar tak ada laporan salah-input palsu.
 CARDCODE_PREFIX_PROVINCE = {
-    "ACH": "11", "SMU": "12", "SMB": "13", "RIA": "14", "JMB": "15",
-    "SSE": "16", "BKL": "17", "LPG": "18", "BBL": "19", "KRI": "21",
-    "JKT": "31", "JBA": "32", "JTH": "33", "YOG": "34", "JTI": "35", "BTN": "36",
-    "BAL": "51", "NTB": "52", "NTT": "53",
-    "KBA": "61", "KTE": "62", "KSE": "63", "KTI": "64", "KUT": "65",
-    "SLU": "71", "SLT": "73",
+    "ACH": "11",   # Aceh
+    "SMU": "12",   # Sumatera Utara
+    "LPG": "18",   # Lampung
+    "JKT": "31",   # DKI Jakarta
+    "JBA": "32",   # Jawa Barat
+    "JTH": "33",   # Jawa Tengah
+    "JTI": "35",   # Jawa Timur
+    "BTN": "36",   # Banten
+    "KBA": "61",   # Kalimantan Barat
+    "SSE": "73",   # Sulawesi Selatan
 }
 
 # Prefix cardcode yang JELAS bukan geografis (entitas internal).

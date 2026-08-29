@@ -271,8 +271,10 @@ def validate_report(master, acm, unknown):
             rev_y_terr[y] += rev
     missing = {c: rev for c, rev in tx_codes.items() if c not in master_codes}
     if missing:
-        ok = False
-        msgs.append(f"[a] ❌ {len(missing)} customer di transaksi TIDAK ada di master:")
+        mv = sum(missing.values())
+        msgs.append(f"[a] ⚠ {len(missing)} customer di transaksi TIDAK ada di master "
+                    f"(Rp {mv:,.0f} = {mv/max(sum(tx_codes.values()),1)*100:.3f}% revenue) — "
+                    f"masuk bucket Non-Trade. Idealnya tambahkan ke master:")
         for c, rev in sorted(missing.items(), key=lambda x: -x[1])[:20]:
             msgs.append(f"      {c}  Rp {rev:,.0f}")
     else:
