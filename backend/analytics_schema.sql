@@ -252,6 +252,21 @@ CREATE INDEX IF NOT EXISTS idx_apc_prov      ON agg_province_category(province_c
 CREATE INDEX IF NOT EXISTS idx_aps_prov      ON agg_province_salesperson(province_code, tahun);
 CREATE INDEX IF NOT EXISTS idx_dps_prov      ON dim_province_stats(province_code, tahun);
 
+-- =====================================================================
+-- SETTINGS (grup salesperson & target) — diedit dari menu Setting dashboard.
+-- Dibaca live oleh backend; TIDAK perlu build_analytics.py saat diubah.
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS settings_salesperson_group (
+  slp_name TEXT, tahun INT, grup TEXT,
+  PRIMARY KEY (slp_name, tahun)
+);
+CREATE TABLE IF NOT EXISTS settings_target (
+  slp_name TEXT, tahun INT, target NUMERIC,
+  PRIMARY KEY (slp_name, tahun)
+);
+CREATE INDEX IF NOT EXISTS idx_ssg_year ON settings_salesperson_group(tahun);
+CREATE INDEX IF NOT EXISTS idx_star_year ON settings_target(tahun);
+
 -- ---------- Hak akses: service_role (dipakai build_analytics.py & backend) ----------
 GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;

@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/Auth'
 
@@ -11,6 +12,13 @@ const NAV = [
 
 export default function Topbar() {
   const { user, logout } = useAuth()
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  useEffect(() => {
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
   return (
     <header style={{
       position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
@@ -33,8 +41,34 @@ export default function Topbar() {
           </NavLink>
         ))}
       </nav>
+      <div ref={ref} style={{ marginLeft: 'auto', position: 'relative' }}>
+        <button onClick={() => setOpen(o => !o)} style={{
+          padding: '6px 12px', borderRadius: 7, fontSize: 12.5, cursor: 'pointer',
+          color: 'rgba(255,255,255,0.7)', background: 'transparent',
+          border: '1px solid rgba(255,255,255,0.15)',
+        }}>
+          ⚙ Setting ▾
+        </button>
+        {open && (
+          <div style={{
+            position: 'absolute', top: 40, right: 0, background: '#fff', borderRadius: 10,
+            boxShadow: '0 12px 34px rgba(0,0,0,0.22)', minWidth: 210, overflow: 'hidden', zIndex: 200,
+          }}>
+            {[
+              { to: '/settings/groups', label: 'Grup Salesperson', desc: 'Atur SPV / grup per tahun' },
+              { to: '/settings/targets', label: 'Target Penjualan', desc: 'Target per orang per tahun' },
+            ].map(it => (
+              <NavLink key={it.to} to={it.to} onClick={() => setOpen(false)}
+                style={{ display: 'block', padding: '10px 14px', textDecoration: 'none', color: '#2d2d2d', borderBottom: '1px solid #f4f4f5' }}>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{it.label}</div>
+                <div style={{ fontSize: 11, color: '#999' }}>{it.desc}</div>
+              </NavLink>
+            ))}
+          </div>
+        )}
+      </div>
       <NavLink to="/upload" style={({ isActive }) => ({
-        marginLeft: 'auto', padding: '6px 12px', borderRadius: 7, fontSize: 12.5,
+        marginLeft: 10, padding: '6px 12px', borderRadius: 7, fontSize: 12.5,
         color: isActive ? '#fff' : 'rgba(255,255,255,0.45)', textDecoration: 'none',
         border: '1px solid rgba(255,255,255,0.15)',
       })}>

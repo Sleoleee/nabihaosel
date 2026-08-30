@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.db import get_client
 import config
 from sales_targets import SALESPERSONS, TEAMS, match_salesperson
+import settings_store
 
 router = APIRouter()
 MONTHS = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"]
@@ -178,19 +179,24 @@ def sales_performance(years: Optional[str] = Query(None), channels: Optional[str
         if c.get("status") == "Overdue":
             p["overdue"] += 1; p["at_risk"] += float(c.get("revenue_at_risk") or 0)
 
-    tgt = {sp["name"]: sp for sp in SALESPERSONS}
+    # Grup & target dibaca LIVE dari settings (per tahun terpilih terbaru).
+    # Kalau beberapa tahun dipilih, pengelompokan memakai tahun terbaru agar tak ambigu.
+    gyear = max(yrs)
+    gmap = settings_store.get_group_map(gyear)
+    tmap = settings_store.get_target_map(gyear)
 
     salespeople = []
     for s, a in agg.items():
         m = match_salesperson(s)
-        core = bool(m)
         name = m["name"] if m else s
-        target = tgt[name]["target"] if (core and name in tgt) else 0
+        spv = settings_store.effective_group(s, gmap)   # bisa 'Lainnya'
+        target = settings_store.effective_target(s, tmap)
         rev = round(a["rev"])
         pf = port.get(s, {"custs":0,"overdue":0,"at_risk":0.0})
         salespeople.append({
-            "slp_name": s, "name": name, "spv": m["team"] if m else None,
-            "is_core": core, "is_non_person": config.is_non_person_slp(s),
+            "slp_name": s, "name": name, "spv": spv,
+            "is_core": spv != settings_store.GROUP_LAINNYA,
+            "is_non_person": config.is_non_person_slp(s),
             "revenue": rev, "revenue_prev": round(a["rev_prev"]),
             "growth_yoy": _pct(rev, a["rev_prev"]),
             "bills": a["bills"], "aov": round(rev/a["bills"]) if a["bills"] else 0,
@@ -198,13 +204,16 @@ def sales_performance(years: Optional[str] = Query(None), channels: Optional[str
             "customer_repeat": a["repeat"], "customer_reactivated": a["react"],
             "revenue_new": round(a["rev_new"]),
             "overdue_customers": pf["overdue"], "revenue_at_risk": round(pf["at_risk"]),
-            "target": target, "pct": round(rev/target*100, 1) if target else None,
+            "target": round(target), "pct": round(rev/target*100, 1) if target else None,
             "gap": round(target - rev) if target else None,
         })
     salespeople.sort(key=lambda x: -x["revenue"])
 
+    # Daftar tim dari grup yang benar-benar ada (Lainnya paling akhir).
+    team_names = sorted({s["spv"] for s in salespeople if s["spv"]},
+                        key=lambda g: (g == settings_store.GROUP_LAINNYA, g))
     teams = []
-    for t in TEAMS:
+    for t in team_names:
         members = [s for s in salespeople if s["spv"] == t]
         trev = sum(m["revenue"] for m in members)
         ttgt = sum(m["target"] for m in members)
@@ -212,7 +221,7 @@ def sales_performance(years: Optional[str] = Query(None), channels: Optional[str
                       "pct": round(trev/ttgt*100, 1) if ttgt else None,
                       "gap": round(ttgt - trev), "members": len(members)})
 
-    return {"salespeople": salespeople, "teams": teams,
+    return {"salespeople": salespeople, "teams": teams, "group_year": gyear,
             "grand_total_revenue": round(sum(s["revenue"] for s in salespeople))}
 
 

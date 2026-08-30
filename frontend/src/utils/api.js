@@ -45,6 +45,13 @@ export const getTerritory = (p) => api.get('/api/analytics/territory', { params:
 export const getTerritoryDetail = (province_code, p) => api.get('/api/analytics/territory-detail', { params: { province_code, ...p } }).then(r => r.data)
 export const getTerritoryMeta = () => api.get('/api/analytics/territory-meta').then(r => r.data)
 
+// Settings
+export const getSettingsYears = () => api.get('/api/settings/years').then(r => r.data)
+export const getGroups = (year) => api.get('/api/settings/groups', { params: { year } }).then(r => r.data)
+export const saveGroups = (payload) => api.post('/api/settings/groups', payload).then(r => r.data)
+export const getTargets = (year) => api.get('/api/settings/targets', { params: { year } }).then(r => r.data)
+export const saveTargets = (payload) => api.post('/api/settings/targets', payload).then(r => r.data)
+
 // Customers
 export const getRFM = (f) => api.get('/api/customers/rfm', { params: buildParams(f) }).then(r => r.data)
 export const getTiers = (f) => api.get('/api/customers/tiers', { params: buildParams(f) }).then(r => r.data)

@@ -8,7 +8,7 @@ import Card from '../components/Card'
 import Skeleton, { SkeletonCard } from '../components/Skeleton'
 import { formatRupiah, formatRupiahShort, formatNumber } from '../utils/format'
 import { useGlobalFilters } from '../context/GlobalFilters'
-import { getAnalyticsOverview, getSalesTargets, getCustomerSummary } from '../utils/api'
+import { getAnalyticsOverview, getSalesPerformance, getCustomerSummary } from '../utils/api'
 
 const DONUT_COLORS = ['#d31137','#5b6b82','#a8b3c4','#8b1a2b','#fc617e','#c9d1dc','#f096a6','#3d4a5c','#fbbfc9','#7a8699','#e0243f']
 const YEAR_COLORS = { '2026':'#d31137','2025':'#d31137','2024':'#9aa7ba','2023':'#c9d1dc' }
@@ -125,7 +125,7 @@ export default function Overview() {
     setLoading(true)
     Promise.all([
       getAnalyticsOverview(g.apiParams),
-      getSalesTargets({ year: firstYear }).catch(()=>null),
+      getSalesPerformance({ years: firstYear }).catch(()=>null),
       getCustomerSummary({ year: firstYear }).catch(()=>null),
     ]).then(([o,t,c])=>{ setData(o); setTargets(t); setCustSum(c) })
       .catch(()=>{}).finally(()=>setLoading(false))
@@ -138,8 +138,8 @@ export default function Overview() {
   const primary = trend?.primary ? String(trend.primary) : trendYears.slice(-1)[0]
   const TT = makeTrendTooltip(trend?.data||[], primary)
 
-  // Pilar Sales
-  const sps = targets?.salespeople || []
+  // Pilar Sales — hanya salesperson yang punya target (dari settings live)
+  const sps = (targets?.salespeople || []).filter(s => s.target)
   const below = sps.filter(s => (s.pct||0) < 100).length
   const sortedSp = [...sps].filter(s=>s.target).sort((a,b)=>(b.pct||0)-(a.pct||0))
   const top3 = sortedSp.slice(0,3), bot3 = sortedSp.slice(-3).reverse()

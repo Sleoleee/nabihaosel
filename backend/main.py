@@ -5,7 +5,7 @@ import os
 
 load_dotenv()
 
-from routers import upload, overview, customers, products, sales, discounts, analytics
+from routers import upload, overview, customers, products, sales, discounts, analytics, settings
 
 app = FastAPI(title="Sales Analytics API")
 
@@ -25,6 +25,7 @@ app.include_router(products.router, prefix="/api/products")
 app.include_router(sales.router, prefix="/api/sales")
 app.include_router(discounts.router, prefix="/api/discounts")
 app.include_router(analytics.router, prefix="/api/analytics")
+app.include_router(settings.router, prefix="/api/settings")
 
 @app.get("/")
 def root():
