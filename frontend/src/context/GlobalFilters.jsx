@@ -17,13 +17,15 @@ export function GlobalFilterProvider({ children }) {
   const months   = parseList(sp.get('months'))
   const compare  = sp.get('compare') === '1'
 
-  // Muat daftar tahun/channel; set default tahun terbaru bila URL kosong
+  // Muat daftar tahun/channel; default tahun 2026 (bila tersedia), selain itu tahun terbaru.
   useEffect(() => {
     getAnalyticsFilters().then(f => {
-      setAvail({ years: (f.years || []).map(String), channels: f.channels || [] })
+      const yrs = (f.years || []).map(String)
+      setAvail({ years: yrs, channels: f.channels || [] })
       if (!sp.get('years') && f.years?.length) {
+        const def = yrs.includes('2026') ? '2026' : String(f.years[0])
         const next = new URLSearchParams(sp)
-        next.set('years', String(f.years[0]))
+        next.set('years', def)
         setSp(next, { replace: true })
       }
       setReady(true)

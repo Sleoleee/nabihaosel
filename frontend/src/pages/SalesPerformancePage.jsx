@@ -47,6 +47,27 @@ function KpiCard({ title, value, sub, accent }) {
   )
 }
 
+const RANK_BG = ['#d31137', '#3d4a5c', '#9aa7ba']
+function Top3Row({ rank, name, spv, growth, mainRight, subRight }) {
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 0', borderTop: rank>1?'1px solid #f4f4f5':'none' }}>
+      <div style={{ width:22, height:22, borderRadius:'50%', flexShrink:0, background:RANK_BG[rank-1]||'#9aa7ba', color:'#fff', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>{rank}</div>
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ fontSize:13.5, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{name}</div>
+        <div style={{ fontSize:10.5, color:'#999' }}>
+          {spv || 'Lainnya'}
+          {growth!=null && <span style={{ marginLeft:6, color: growth>=0?'#15803d':'#d31137', fontWeight:600 }}>{growth>=0?'▲':'▼'} {Math.abs(growth)}% YoY</span>}
+        </div>
+      </div>
+      <div style={{ textAlign:'right', whiteSpace:'nowrap' }}>
+        <div>{mainRight}</div>
+        <div style={{ fontSize:10.5, marginTop:1 }}>{subRight}</div>
+      </div>
+    </div>
+  )
+}
+function Empty() { return <div style={{ color:'#888', fontSize:12.5, padding:'20px 0' }}>Tidak ada data untuk filter ini.</div> }
+
 export default function SalesPerformancePage() {
   const g = useGlobalFilters()
   const [data, setData] = useState(null)
@@ -93,8 +114,9 @@ export default function SalesPerformancePage() {
   const withT = scoped.filter(s=>s.target)
   const achieved = withT.filter(s=>(s.pct||0)>=100).length
   const revs = scoped.map(s=>s.revenue).sort((a,b)=>a-b)
-  const mean = revs.length ? totRev/revs.length : 0
-  const median = revs.length ? revs[Math.floor(revs.length/2)] : 0
+  const nMonths = data?.n_months || 1
+  const meanMonth = revs.length ? (totRev/revs.length)/nMonths : 0
+  const medianMonth = (revs.length ? revs[Math.floor(revs.length/2)] : 0) / nMonths
 
   const quadrantData = scoped.filter(s=>s.pct!=null && s.growth_yoy!=null)
     .map(s=>({ ...s, x:s.pct, y:s.growth_yoy, z:s.revenue }))
@@ -105,6 +127,10 @@ export default function SalesPerformancePage() {
   let _cum = 0
   const paretoData = byRev.map(s=>{ _cum += s.revenue; return { name:s.name, revenue:s.revenue, cum:Math.round(_cum/ptot*1000)/10 } })
   const n80 = (paretoData.findIndex(d=>d.cum>=80)+1) || paretoData.length
+
+  // Top 3 penyumbang revenue & top 3 pencapaian target tahunan
+  const top3Rev = byRev.slice(0,3)
+  const top3Pct = scoped.filter(s=>s.target).sort((a,b)=>(b.pct||0)-(a.pct||0)).slice(0,3)
 
   const sel = (v) => <span onClick={()=>{ setSortKey(v); setSortDir(d=>sortKey===v&&d==='desc'?'asc':'desc') }} style={{cursor:'pointer'}}>⇅</span>
   const th = { padding:'6px 8px', textAlign:'right', fontSize:10.5, color:'#888', fontWeight:600, whiteSpace:'nowrap' }
@@ -135,10 +161,10 @@ export default function SalesPerformancePage() {
       <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12 }}>
         {loading ? [1,2,3,4,5].map(i=><SkeletonCard key={i} style={{height:92}}/>) : <>
           <KpiCard title="TOTAL REVENUE TIM" value={formatRupiahShort(totRev)} sub={`${scoped.length} salesperson`} />
-          <KpiCard title="% ACHIEVEMENT" value={totTgt?`${(totRev/totTgt*100).toFixed(1)}%`:'—'} sub={totTgt?`target ${formatRupiahShort(totTgt)}`:'tanpa target'} accent={totTgt?pctColor(totRev/totTgt*100):null} />
-          <KpiCard title="GAP KE TARGET" value={totTgt?formatRupiahShort(Math.max(0,totTgt-totRev)):'—'} sub={totTgt&&totRev<totTgt?`kurang untuk capai target`:'target tercapai'} accent="#d31137" />
+          <KpiCard title="% ACHIEVEMENT TAHUNAN" value={totTgt?`${(totRev/totTgt*100).toFixed(1)}%`:'—'} sub={totTgt?`target ${formatRupiahShort(totTgt)}`:'tanpa target'} accent={totTgt?pctColor(totRev/totTgt*100):null} />
+          <KpiCard title="GAP KE TARGET TAHUNAN" value={totTgt?formatRupiahShort(Math.max(0,totTgt-totRev)):'—'} sub={totTgt&&totRev<totTgt?`kurang untuk capai target`:'target tercapai'} accent="#d31137" />
           <KpiCard title="MENCAPAI TARGET" value={withT.length?`${achieved} dari ${withT.length}`:'—'} sub="salesperson ≥100%" />
-          <KpiCard title="AVG REVENUE / SP" value={formatRupiahShort(mean)} sub={`median ${formatRupiahShort(median)}`} />
+          <KpiCard title="AVG / SP / MONTH" value={formatRupiahShort(meanMonth)} sub={`median ${formatRupiahShort(medianMonth)} · ${nMonths} bln`} />
         </>}
       </div>
 
@@ -189,6 +215,36 @@ export default function SalesPerformancePage() {
           </ResponsiveContainer>
         )}
       </Card>
+
+      {/* Baris 3.5 — Top 3 penyumbang revenue & top 3 pencapaian target */}
+      <div>
+        <div style={{ fontSize:15, fontWeight:700, marginBottom:2 }}>Top 3 penyumbang revenue & top 3 pencapaian target</div>
+        <div style={{ fontSize:11.5, color:'#888', marginBottom:10 }}>Dua sudut pandang: siapa yang membawa uang paling besar, dan siapa yang paling dekat ke target tahunannya sendiri.</div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+          <Card style={{ padding:16 }}>
+            <div style={{ fontSize:13, fontWeight:600 }}>Revenue tertinggi</div>
+            <div style={{ fontSize:10.5, color:'#aaa', marginBottom:6 }}>Kontribusi rupiah terbesar ke total tim.</div>
+            {loading ? <Skeleton height={190}/> : !top3Rev.length ? <Empty/> : top3Rev.map((s,i)=>(
+              <Top3Row key={s.slp_name} rank={i+1} name={s.name} spv={s.spv}
+                growth={s.growth_yoy}
+                mainRight={<span style={{ fontSize:16, fontWeight:700 }}>{formatRupiahShort(s.revenue)}</span>}
+                subRight={s.target ? <span style={{ color:pctColor(s.pct), fontWeight:600 }}>{s.pct!=null?`${s.pct}% ke target`:'—'}</span> : <span style={{ color:'#bbb' }}>tanpa target</span>}
+              />
+            ))}
+          </Card>
+          <Card style={{ padding:16 }}>
+            <div style={{ fontSize:13, fontWeight:600 }}>Pencapaian target tertinggi</div>
+            <div style={{ fontSize:10.5, color:'#aaa', marginBottom:6 }}>% revenue terhadap target tahunan masing-masing.</div>
+            {loading ? <Skeleton height={190}/> : !top3Pct.length ? <div style={{color:'#888',fontSize:12.5,padding:'20px 0'}}>Belum ada salesperson bertarget pada filter ini.</div> : top3Pct.map((s,i)=>(
+              <Top3Row key={s.slp_name} rank={i+1} name={s.name} spv={s.spv}
+                growth={s.growth_yoy}
+                mainRight={<span style={{ fontSize:16, fontWeight:700, color:pctColor(s.pct) }}>{s.pct!=null?`${s.pct}%`:'—'}</span>}
+                subRight={<span style={{ color:'#888' }}>{formatRupiahShort(s.revenue)} · target {formatRupiahShort(s.target)}</span>}
+              />
+            ))}
+          </Card>
+        </div>
+      </div>
 
       {/* Baris 4 — Leaderboard */}
       <Card style={{ padding:16 }}>

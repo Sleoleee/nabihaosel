@@ -149,18 +149,22 @@ def sales_performance(years: Optional[str] = Query(None), channels: Optional[str
     fetch_years = [str(y) for y in sorted(set(yrs) | prev)]
 
     asp = _fetch_all_rows("agg_salesperson_month",
-        "slp_name,tahun,channel,revenue,bills,customer_new,customer_repeat,customer_reactivated,"
+        "slp_name,tahun,bulan,channel,revenue,bills,customer_new,customer_repeat,customer_reactivated,"
         "revenue_new,revenue_repeat,revenue_reactivated", years=fetch_years)
     if chs:
         asp = [r for r in asp if r.get("channel") in chs]
 
     sel = set(yrs)
+    months_present = set()   # (tahun,bulan) di periode terpilih -> jumlah bulan
     agg = defaultdict(lambda: {"rev":0.0,"rev_prev":0.0,"bills":0,
                                "new":0,"repeat":0,"react":0,"rev_new":0.0})
     for r in asp:
         y = int(r["tahun"]); s = r["slp_name"]; a = agg[s]
         rev = float(r.get("revenue") or 0)
         if y in sel:
+            b = int(r.get("bulan") or 0)
+            if 1 <= b <= 12 and rev:
+                months_present.add((y, b))
             a["rev"] += rev; a["bills"] += int(r.get("bills") or 0)
             a["new"] += int(r.get("customer_new") or 0)
             a["repeat"] += int(r.get("customer_repeat") or 0)
@@ -222,6 +226,7 @@ def sales_performance(years: Optional[str] = Query(None), channels: Optional[str
                       "gap": round(ttgt - trev), "members": len(members)})
 
     return {"salespeople": salespeople, "teams": teams, "group_year": gyear,
+            "n_months": len(months_present) or 1,
             "grand_total_revenue": round(sum(s["revenue"] for s in salespeople))}
 
 
