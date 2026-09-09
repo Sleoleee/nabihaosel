@@ -267,6 +267,16 @@ CREATE TABLE IF NOT EXISTS settings_target (
 CREATE INDEX IF NOT EXISTS idx_ssg_year ON settings_salesperson_group(tahun);
 CREATE INDEX IF NOT EXISTS idx_star_year ON settings_target(tahun);
 
+-- Mapping client -> GROUP INDUK (beberapa customer di bawah satu group).
+-- customer_code cocok dg Customer/Vendor_Code di transaksi. Dibaca live (tanpa rebuild).
+CREATE TABLE IF NOT EXISTS customer_group (
+  customer_code  TEXT PRIMARY KEY,
+  group_name     TEXT,
+  sales_employee TEXT,        -- info dari file; attribution tetap dari SlpName transaksi
+  customer_name  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_cg_group ON customer_group(group_name);
+
 -- ---------- Hak akses: service_role (dipakai build_analytics.py & backend) ----------
 GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;

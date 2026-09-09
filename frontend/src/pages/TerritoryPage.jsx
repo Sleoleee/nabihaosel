@@ -431,13 +431,14 @@ export default function TerritoryPage() {
                 <div style={{ maxHeight:260, overflowY:'auto' }}>
                   <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
                     <thead><tr style={{ position:'sticky', top:0, background:'#fff', borderBottom:'2px solid #f0f0f0' }}>
-                      {['Nama','Tier','Segmen','Salesperson','Terakhir beli','Status','Revenue'].map(h=>
+                      {['Nama','Group','Tier','Segmen','Salesperson','Terakhir beli','Status','Revenue'].map(h=>
                         <th key={h} style={{ padding:'5px', textAlign:h==='Revenue'?'right':'left', color:'#888', fontSize:10 }}>{h}</th>)}
                     </tr></thead>
                     <tbody>
                       {(detail.customers||[]).filter(c=>!dormOnly||c.tidur).slice(0,300).map(c => (
                         <tr key={c.customer_code} style={{ borderBottom:'1px solid #f6f6f6', background: c.tidur?'#fffdf5':'transparent' }}>
                           <td style={{ padding:'4px 5px' }}>{c.customer_name||c.customer_code}</td>
+                          <td style={{ padding:'4px 5px', color:c.group?'#d31137':'#ccc', fontWeight:c.group?600:400 }}>{c.group||'—'}</td>
                           <td style={{ padding:'4px 5px', color:'#888' }}>{c.tier}</td>
                           <td style={{ padding:'4px 5px', color:'#888' }}>{c.segmen_rfm}</td>
                           <td style={{ padding:'4px 5px', color:'#888' }}>{c.salesperson}</td>

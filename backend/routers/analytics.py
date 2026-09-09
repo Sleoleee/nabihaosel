@@ -801,6 +801,7 @@ def territory_detail(province_code: str = Query(...), years: Optional[str] = Que
     dc = _fetch_all_rows("dim_customer",
         "customer_code,customer_name,tier,segmen_rfm,salesperson_utama,status,"
         "days_since_last_order,total_revenue,province_code,is_territory")
+    gmap = settings_store.get_customer_group_map()
     custs = []
     for c in dc:
         if c.get("province_code") != province_code:
@@ -808,6 +809,7 @@ def territory_detail(province_code: str = Query(...), years: Optional[str] = Que
         dsl = c.get("days_since_last_order")
         custs.append({
             "customer_code": c["customer_code"], "customer_name": c.get("customer_name"),
+            "group": gmap.get(c["customer_code"]),
             "tier": c.get("tier"), "segmen_rfm": c.get("segmen_rfm"),
             "salesperson": c.get("salesperson_utama"), "status": c.get("status"),
             "days_since_last_order": dsl, "revenue": round(float(c.get("total_revenue") or 0)),
@@ -831,3 +833,91 @@ def territory_meta():
         return {"master_updated_at": (r[0]["master_updated_at"] if r else None)}
     except Exception:
         return {"master_updated_at": None}
+
+
+# ============================ CUSTOMER GROUP (rollup client -> group induk) ============================
+@router.get("/customer-groups")
+def customer_groups(mode: str = Query("group"),
+                    years: Optional[str] = Query(None),
+                    channels: Optional[str] = Query(None)):
+    """Ranking entitas customer: mode 'group' (grouped->group induk, tak ber-group tampil per nama)
+    atau 'individu' (semua per customer). Hanya metrik yang bisa dijumlah (revenue, bills, customer,
+    overdue, revenue_at_risk, growth). RFM/Tier tetap urusan mode individu di panel lain."""
+    yrs = [int(y) for y in _csv(years)]
+    if not yrs:
+        r0 = _fetch_all_rows("agg_customer_month", "tahun")
+        yrs = sorted({int(r["tahun"]) for r in r0}) or [2026]
+    chs = _csv(channels)
+    sel = set(yrs); prevset = {y - 1 for y in yrs}
+    fetch_years = [str(y) for y in sorted(sel | prevset)]
+
+    gmap = settings_store.get_customer_group_map()
+    dc = {d["customer_code"]: d for d in _fetch_all_rows("dim_customer",
+          "customer_code,customer_name,status,revenue_at_risk,salesperson_utama")}
+
+    acm = _fetch_all_rows("agg_customer_month", "customer_code,tahun,channel,revenue,bills",
+                          years=fetch_years)
+    if chs:
+        acm = [r for r in acm if r.get("channel") in chs]
+
+    def entity_of(code):
+        g = gmap.get(code)
+        if mode == "group" and g:
+            return ("g:" + g, g, True)
+        nm = (dc.get(code, {}).get("customer_name")) or code
+        return ("c:" + code, nm, False)
+
+    # revenue per customer (periode & prev) untuk growth + rollup entitas
+    ent = defaultdict(lambda: {"label": "", "is_group": False, "rev": 0.0, "rev_prev": 0.0,
+                               "bills": 0, "codes": set()})
+    for r in acm:
+        code = r.get("customer_code")
+        if not code:
+            continue
+        key, label, isg = entity_of(code)
+        e = ent[key]; e["label"] = label; e["is_group"] = isg
+        y = int(r["tahun"]); rev = float(r.get("revenue") or 0)
+        if y in sel:
+            e["rev"] += rev; e["bills"] += int(r.get("bills") or 0); e["codes"].add(code)
+        elif y in prevset:
+            e["rev_prev"] += rev
+
+    # overdue & at-risk per entitas dari dim_customer
+    for code, d in dc.items():
+        key, label, isg = entity_of(code)
+        if key not in ent:
+            continue
+        e = ent[key]
+        e.setdefault("overdue", 0); e.setdefault("at_risk", 0.0)
+        e.setdefault("slp", defaultdict(float))
+        if d.get("status") == "Overdue":
+            e["overdue"] += 1; e["at_risk"] += float(d.get("revenue_at_risk") or 0)
+        if d.get("salesperson_utama"):
+            e["slp"][d["salesperson_utama"]] += 1
+
+    out = []
+    for key, e in ent.items():
+        slp = e.get("slp") or {}
+        top_slp = max(slp.items(), key=lambda x: x[1])[0] if slp else None
+        rev = e["rev"]
+        out.append({
+            "key": key, "label": e["label"], "is_group": e["is_group"],
+            "revenue": round(rev), "revenue_prev": round(e["rev_prev"]),
+            "growth_yoy": _pct(rev, e["rev_prev"]),
+            "bills": e["bills"], "n_customers": len(e["codes"]),
+            "aov": round(rev / e["bills"]) if e["bills"] else 0,
+            "overdue": e.get("overdue", 0), "revenue_at_risk": round(e.get("at_risk", 0.0)),
+            "salesperson": top_slp,
+        })
+    out.sort(key=lambda x: -x["revenue"])
+
+    total = sum(o["revenue"] for o in out) or 1
+    for o in out:
+        o["share"] = round(o["revenue"] / total * 100, 1)
+    top5 = round(sum(o["revenue"] for o in out[:5]) / total * 100, 1)
+    top10 = round(sum(o["revenue"] for o in out[:10]) / total * 100, 1)
+    n_group = sum(1 for o in out if o["is_group"])
+    return {"mode": mode, "years": yrs, "total_revenue": round(total),
+            "n_entities": len(out), "n_group": n_group,
+            "concentration": {"top5": top5, "top10": top10},
+            "entities": out}

@@ -9,7 +9,7 @@ import { formatRupiah, formatRupiahShort, formatNumber } from '../utils/format'
 import { useGlobalFilters } from '../context/GlobalFilters'
 import {
   getCustomerAnalytics, getCustomerLifecycle, getCustomerCohort, getCustomerListNew,
-  getCustomerBridge, getCustomerDetail,
+  getCustomerBridge, getCustomerDetail, getCustomerGroups,
 } from '../utils/api'
 
 const RFM_COLORS = {
@@ -28,6 +28,9 @@ const SEGMENT_ACTION = {
 const heat = (p) => { const t=Math.max(0,Math.min(100,p))/100; const r=Math.round(211+(240-211)*(1-t)); const g=Math.round(17+(253-17)*(1-t)*0.4+ (0)); return `rgba(211,17,55,${0.12+t*0.8})` }
 
 function tierRange(t){ const p=String(t).split('— '); return p[1]?p[1].trim():'' }
+function MiniStat({ label, value }){ return (
+  <div><div style={{ fontSize:10.5, color:'#888' }}>{label}</div><div style={{ fontSize:15, fontWeight:700 }}>{value}</div></div>
+) }
 
 export default function CustomerIntelligence() {
   const g = useGlobalFilters()
@@ -43,6 +46,9 @@ export default function CustomerIntelligence() {
   const [seg, setSeg] = useState('all'); const [tier, setTier] = useState('all')
   const [status, setStatus] = useState('all'); const [search, setSearch] = useState(''); const [page, setPage] = useState(1)
   const [lifeMode, setLifeMode] = useState('count')
+  const [groupMode, setGroupMode] = useState('group')   // group | individu
+  const [ranking, setRanking] = useState(null)
+  const [rankLoading, setRankLoading] = useState(true)
 
   const years = g?.years?.join(',') || undefined
   const channels = g?.channels?.join(',') || undefined
@@ -69,6 +75,14 @@ export default function CustomerIntelligence() {
     ]).then(([l,b])=>{ setLife(l); setBridge(b) })
       .catch(()=>{}).finally(()=>setHeavyLoading(false))
   }, [g?.ready, years, channels])
+
+  // Peringkat Group vs Individu (rollup client -> group induk)
+  useEffect(() => {
+    if (!g?.ready) return
+    setRankLoading(true)
+    getCustomerGroups({ mode: groupMode, years, channels })
+      .then(setRanking).catch(()=>setRanking(null)).finally(()=>setRankLoading(false))
+  }, [g?.ready, groupMode, years, channels])
 
   useEffect(() => {
     if (!g?.ready) return
@@ -124,6 +138,58 @@ export default function CustomerIntelligence() {
           </div>
         ))}
       </div>
+
+      {/* Baris 1.5 — Peringkat Group vs Individu */}
+      <Card style={{ padding:16 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4, flexWrap:'wrap', gap:8 }}>
+          <div>
+            <div style={{ fontSize:13, fontWeight:600 }}>Peringkat {groupMode==='group'?'Group':'Individu'} — siapa tertinggi</div>
+            <div style={{ fontSize:10.5, color:'#aaa' }}>Beberapa client di bawah satu group induk dijumlahkan. Mode Individu memecah kembali per customer.</div>
+          </div>
+          <div style={{ display:'flex', border:'1px solid #e8e8e8', borderRadius:8, overflow:'hidden' }}>
+            {[['group','Group'],['individu','Individu']].map(([m,l])=>(
+              <button key={m} onClick={()=>setGroupMode(m)} style={{
+                padding:'6px 16px', fontSize:12.5, border:'none', cursor:'pointer', fontWeight:600,
+                background: groupMode===m?'#d31137':'#fff', color: groupMode===m?'#fff':'#666' }}>{l}</button>
+            ))}
+          </div>
+        </div>
+        {rankLoading ? <Skeleton height={280}/> : !ranking?.entities?.length ? (
+          <div style={{color:'#888',fontSize:13,padding:'20px 0'}}>Tidak ada data untuk filter ini. (Pastikan tabel <code>customer_group</code> sudah diisi via load_customer_group.py.)</div>
+        ) : (<>
+          <div style={{ display:'flex', gap:18, flexWrap:'wrap', margin:'6px 0 12px' }}>
+            <MiniStat label={groupMode==='group'?'Jumlah group':'Jumlah customer'} value={groupMode==='group'?`${ranking.n_group} group`:formatNumber(ranking.n_entities)} />
+            <MiniStat label="Top 5 kuasai" value={`${ranking.concentration.top5}%`} />
+            <MiniStat label="Top 10 kuasai" value={`${ranking.concentration.top10}%`} />
+            <MiniStat label="Total revenue" value={formatRupiahShort(ranking.total_revenue)} />
+          </div>
+          <div style={{ maxHeight:360, overflowY:'auto' }}>
+            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+              <thead><tr style={{ position:'sticky', top:0, background:'#fff', borderBottom:'2px solid #f0f0f0' }}>
+                {['#',groupMode==='group'?'Group / Customer':'Customer','Salesperson','Outlet','Revenue','Share','YoY','Overdue'].map((h,i)=>
+                  <th key={h} style={{ padding:'6px 7px', textAlign:i<=2?'left':'right', color:'#888', fontSize:10.5 }}>{h}</th>)}
+              </tr></thead>
+              <tbody>
+                {ranking.entities.slice(0,30).map((e,i)=>(
+                  <tr key={e.key} style={{ borderBottom:'1px solid #f6f6f6' }}>
+                    <td style={{ padding:'5px 7px', color:'#bbb' }}>{i+1}</td>
+                    <td style={{ padding:'5px 7px', fontWeight:500 }}>
+                      {e.label}
+                      {e.is_group && <span style={{ marginLeft:6, fontSize:9.5, padding:'1px 6px', borderRadius:10, background:'#fde3e9', color:'#d31137', fontWeight:700 }}>GROUP</span>}
+                    </td>
+                    <td style={{ padding:'5px 7px', color:'#888' }}>{e.salesperson||'—'}</td>
+                    <td style={{ padding:'5px 7px', textAlign:'right', color:'#888' }}>{e.n_customers}</td>
+                    <td style={{ padding:'5px 7px', textAlign:'right', fontWeight:600 }}>{formatRupiahShort(e.revenue)}</td>
+                    <td style={{ padding:'5px 7px', textAlign:'right', color:'#888' }}>{e.share}%</td>
+                    <td style={{ padding:'5px 7px', textAlign:'right', color:(e.growth_yoy||0)>=0?'#15803d':'#d31137' }}>{e.growth_yoy==null?'—':`${e.growth_yoy>0?'+':''}${e.growth_yoy}%`}</td>
+                    <td style={{ padding:'5px 7px', textAlign:'right', color:e.overdue?'#b45309':'#bbb' }}>{e.overdue||''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>)}
+      </Card>
 
       {/* Baris 2 — Lifecycle Flow */}
       <Card style={{ padding:16 }}>

@@ -8,7 +8,7 @@ import Card from '../components/Card'
 import Skeleton, { SkeletonCard } from '../components/Skeleton'
 import { formatRupiah, formatRupiahShort, formatNumber } from '../utils/format'
 import { useGlobalFilters } from '../context/GlobalFilters'
-import { getAnalyticsOverview, getSalesPerformance, getCustomerSummary } from '../utils/api'
+import { getAnalyticsOverview, getSalesPerformance, getCustomerSummary, getCustomerGroups } from '../utils/api'
 
 const DONUT_COLORS = ['#d31137','#5b6b82','#a8b3c4','#8b1a2b','#fc617e','#c9d1dc','#f096a6','#3d4a5c','#fbbfc9','#7a8699','#e0243f']
 const YEAR_COLORS = { '2026':'#d31137','2025':'#d31137','2024':'#9aa7ba','2023':'#c9d1dc' }
@@ -113,6 +113,7 @@ export default function Overview() {
   const [data, setData] = useState(null)
   const [targets, setTargets] = useState(null)
   const [custSum, setCustSum] = useState(null)
+  const [groups, setGroups] = useState(null)
   const [loading, setLoading] = useState(true)
   const [target, setTarget] = useState(() => localStorage.getItem('targetRevenue') || '')
   const targetNum = parseFloat(target.replace(/[^0-9.]/g,'')) || 0
@@ -127,11 +128,13 @@ export default function Overview() {
       getAnalyticsOverview(g.apiParams),
       getSalesPerformance({ years: firstYear }).catch(()=>null),
       getCustomerSummary({ year: firstYear }).catch(()=>null),
-    ]).then(([o,t,c])=>{ setData(o); setTargets(t); setCustSum(c) })
+      getCustomerGroups({ mode:'group', years: firstYear, channels: g.channels?.join(',')||undefined }).catch(()=>null),
+    ]).then(([o,t,c,gr])=>{ setData(o); setTargets(t); setCustSum(c); setGroups(gr) })
       .catch(()=>{}).finally(()=>setLoading(false))
   }, [g?.ready, JSON.stringify(g?.apiParams)])  // eslint-disable-line
 
   if (!g) return null
+  const topGroup = (groups?.entities||[]).find(e=>e.is_group) || null
   const kpi = data?.kpi
   const trend = data?.trend
   const trendYears = (trend?.years||[]).map(String)
@@ -197,6 +200,18 @@ export default function Overview() {
           headline="Peta & aktivasi wilayah"
           sub="Di mana tumbuh, jenuh, & pipeline tidur" />
       </div>
+
+      {/* Headline group customer terbesar */}
+      {topGroup && (
+        <Link to="/customers" style={{ textDecoration:'none' }}>
+          <div style={{ background:'#fff', borderRadius:10, padding:'10px 16px', border:'1px solid #f0f0f0', display:'flex', alignItems:'center', gap:10, fontSize:12.5, color:'#2d2d2d' }}>
+            <span style={{ fontSize:9.5, fontWeight:700, padding:'2px 8px', borderRadius:10, background:'#fde3e9', color:'#d31137' }}>GROUP TERBESAR</span>
+            <b>{topGroup.label}</b>
+            <span style={{ color:'#888' }}>{formatRupiahShort(topGroup.revenue)} · {topGroup.share}% revenue{topGroup.salesperson?` · ${topGroup.salesperson}`:''}</span>
+            <span style={{ marginLeft:'auto', color:'#d31137', fontWeight:600 }}>Lihat peringkat group →</span>
+          </div>
+        </Link>
+      )}
 
       {/* Trend + Bills/AOV */}
       <div style={{ display:'grid', gridTemplateColumns:'3fr 2fr', gap:12 }}>

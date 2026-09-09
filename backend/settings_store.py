@@ -56,3 +56,13 @@ def effective_target(slp_name, tmap):
 
 def display_name(slp_name):
     return _defaults_for(slp_name)[1]
+
+
+def get_customer_group_map():
+    """{customer_code: group_name} dari tabel customer_group (mapping client->group induk)."""
+    db = get_client()
+    try:
+        rows = db.table("customer_group").select("customer_code,group_name").limit(100000).execute().data or []
+        return {r["customer_code"]: (r.get("group_name") or None) for r in rows if r.get("group_name")}
+    except Exception:
+        return {}

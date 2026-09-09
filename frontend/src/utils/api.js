@@ -41,6 +41,7 @@ export const getDiscount = (p) => api.get('/api/analytics/discount', { params: p
 export const getQaReconcile = () => api.get('/api/analytics/qa-reconcile').then(r => r.data)
 export const getCustomerDetail = (code) => api.get('/api/analytics/customer-detail', { params: { code } }).then(r => r.data)
 export const getCustomerBridge = (p) => api.get('/api/analytics/customer-bridge', { params: p }).then(r => r.data)
+export const getCustomerGroups = (p) => api.get('/api/analytics/customer-groups', { params: p }).then(r => r.data)
 export const getTerritory = (p) => api.get('/api/analytics/territory', { params: p }).then(r => r.data)
 export const getTerritoryDetail = (province_code, p) => api.get('/api/analytics/territory-detail', { params: { province_code, ...p } }).then(r => r.data)
 export const getTerritoryMeta = () => api.get('/api/analytics/territory-meta').then(r => r.data)
