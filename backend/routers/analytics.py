@@ -54,6 +54,22 @@ def _pct(cur, prev):
     return round((cur - prev) / prev * 100, 1) if prev else None
 
 
+# Status recency (jendela tetap, relatif ke tanggal transaksi terbaru dataset):
+#   AKTIF <=90 hari · TIDAK AKTIF 91-180 hari · HILANG >180 hari (atau tak pernah).
+STATUS_ORDER = ["Aktif", "Tidak Aktif", "Hilang"]
+
+
+def status_recency(days):
+    if days is None:
+        return "Hilang"
+    d = float(days)
+    if d <= 90:
+        return "Aktif"
+    if d <= 180:
+        return "Tidak Aktif"
+    return "Hilang"
+
+
 @router.get("/overview")
 def overview(years: Optional[str] = Query(None), channels: Optional[str] = Query(None),
              months: Optional[str] = Query(None), compare: bool = Query(False)):
@@ -326,24 +342,30 @@ def customer_analytics(channels: Optional[str] = Query(None)):
     n = len(dc)
     total_rev = sum(float(c.get("total_revenue") or 0) for c in dc)
     ints = [float(c["interval_normal_hari"]) for c in dc if c.get("interval_normal_hari")]
-    with_ratio = [c for c in dc if c.get("recency_ratio") is not None]
-    overdue = [c for c in with_ratio if float(c["recency_ratio"]) >= 1.0]
+    # Status recency (Aktif / Tidak Aktif / Hilang)
+    st_agg = defaultdict(lambda: {"count":0,"revenue":0.0})
+    for c in dc:
+        s = status_recency(c.get("days_since_last_order"))
+        st_agg[s]["count"]+=1; st_agg[s]["revenue"]+=float(c.get("total_revenue") or 0)
+    status_dist = [{"status":s,"count":st_agg[s]["count"],"revenue":round(st_agg[s]["revenue"]),
+                    "pct":round(st_agg[s]["count"]/n*100,1) if n else 0} for s in STATUS_ORDER]
     kpi = {
         "total_customers": n,
         "avg_rev_per_customer": round(total_rev/n) if n else 0,
         "avg_retention_days": round(sum(ints)/len(ints),1) if ints else 0,
-        "revenue_at_risk": round(sum(float(c.get("revenue_at_risk") or 0) for c in dc)),
-        "overdue_rate": round(len(overdue)/len(with_ratio)*100,1) if with_ratio else 0,
+        "aktif": st_agg["Aktif"]["count"],
+        "tidak_aktif": st_agg["Tidak Aktif"]["count"],
+        "hilang": st_agg["Hilang"]["count"],
     }
-    # Tier distribution
+    # Tier distribution (urut Tier 1 -> Tier 13)
     tier = defaultdict(lambda: {"count":0,"revenue":0.0,"mon":0.0})
     for c in dc:
         t = tier[c.get("tier") or "-"]; t["count"]+=1
         t["revenue"]+=float(c.get("total_revenue") or 0); t["mon"]+=float(c.get("monetary") or 0)
-    tier_dist = [{"tier":k,"count":v["count"],"revenue":round(v["revenue"]),
-                  "avg_monthly":round(v["mon"]/v["count"]) if v["count"] else 0,
-                  "pct_rev":round(v["revenue"]/total_rev*100,1) if total_rev else 0}
-                 for k,v in tier.items()]
+    tier_dist = [{"tier":k,"count":tier[k]["count"],"revenue":round(tier[k]["revenue"]),
+                  "avg_monthly":round(tier[k]["mon"]/tier[k]["count"]) if tier[k]["count"] else 0,
+                  "pct_rev":round(tier[k]["revenue"]/total_rev*100,1) if total_rev else 0}
+                 for k in TIER_ORDER if k in tier]
     # RFM bubble + segmen
     seg = defaultdict(lambda: {"count":0,"revenue":0.0,"rec":0.0,"freq":0.0})
     for c in dc:
@@ -373,7 +395,7 @@ def customer_analytics(channels: Optional[str] = Query(None)):
         key = "<7h" if iv<7 else "7-14h" if iv<14 else "15-30h" if iv<30 else "31-60h" if iv<60 else "61-90h" if iv<90 else ">90h"
         interval_dist[key]+=1
 
-    return {"kpi":kpi, "tier_dist":tier_dist, "rfm_bubble":rfm_bubble,
+    return {"kpi":kpi, "tier_dist":tier_dist, "status_dist":status_dist,
             "concentration":{"top10_pct":top10,"pareto":pareto},
             "reorder":{"repeat_rate":repeat_rate,
                        "bills_dist":[{"k":k,"v":bills_dist[k]} for k in ["1","2-3","4-6","7-12","13+"]],
@@ -420,15 +442,20 @@ def customer_list(segment: Optional[str] = Query(None), tier: Optional[str] = Qu
         "customer_code,customer_name,tier,segmen_rfm,status,total_revenue,avg_spending_per_month_active,"
         "jumlah_bills,last_order_date,interval_normal_hari,days_since_last_order,recency_ratio,"
         "revenue_at_risk,salesperson_utama,channel_utama")
+    # status recency dihitung live (menggantikan Active/Overdue/Lost lama)
+    for c in dc:
+        c["status"] = status_recency(c.get("days_since_last_order"))
     def keep(c):
-        if segment and segment!="all" and c.get("segmen_rfm")!=segment: return False
         if tier and tier!="all" and c.get("tier")!=tier: return False
-        if status and status!="all" and c.get("status")!=status: return False
+        if status and status!="all":
+            if status == "Perhatian":
+                if c["status"] not in ("Tidak Aktif", "Hilang"): return False
+            elif c["status"] != status: return False
         if channel and channel!="all" and c.get("channel_utama")!=channel: return False
         if search and search.lower() not in (c.get("customer_name") or "").lower(): return False
         return True
     rows = [c for c in dc if keep(c)]
-    rows.sort(key=lambda c: -(float(c.get("revenue_at_risk") or 0)))
+    rows.sort(key=lambda c: -(float(c.get("total_revenue") or 0)))
     total = len(rows)
     start = (page-1)*limit
     return {"data": rows[start:start+limit], "total": total}
@@ -853,7 +880,7 @@ def customer_groups(mode: str = Query("group"),
 
     gmap = settings_store.get_customer_group_map()
     dc = {d["customer_code"]: d for d in _fetch_all_rows("dim_customer",
-          "customer_code,customer_name,status,revenue_at_risk,salesperson_utama")}
+          "customer_code,customer_name,days_since_last_order,salesperson_utama")}
 
     acm = _fetch_all_rows("agg_customer_month", "customer_code,tahun,channel,revenue,bills",
                           years=fetch_years)
@@ -888,10 +915,10 @@ def customer_groups(mode: str = Query("group"),
         if key not in ent:
             continue
         e = ent[key]
-        e.setdefault("overdue", 0); e.setdefault("at_risk", 0.0)
+        e.setdefault("nonaktif", 0)
         e.setdefault("slp", defaultdict(float))
-        if d.get("status") == "Overdue":
-            e["overdue"] += 1; e["at_risk"] += float(d.get("revenue_at_risk") or 0)
+        if status_recency(d.get("days_since_last_order")) in ("Tidak Aktif", "Hilang"):
+            e["nonaktif"] += 1
         if d.get("salesperson_utama"):
             e["slp"][d["salesperson_utama"]] += 1
 
@@ -906,7 +933,7 @@ def customer_groups(mode: str = Query("group"),
             "growth_yoy": _pct(rev, e["rev_prev"]),
             "bills": e["bills"], "n_customers": len(e["codes"]),
             "aov": round(rev / e["bills"]) if e["bills"] else 0,
-            "overdue": e.get("overdue", 0), "revenue_at_risk": round(e.get("at_risk", 0.0)),
+            "nonaktif": e.get("nonaktif", 0),
             "salesperson": top_slp,
         })
     out.sort(key=lambda x: -x["revenue"])

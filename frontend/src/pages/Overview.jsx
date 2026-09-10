@@ -8,7 +8,7 @@ import Card from '../components/Card'
 import Skeleton, { SkeletonCard } from '../components/Skeleton'
 import { formatRupiah, formatRupiahShort, formatNumber } from '../utils/format'
 import { useGlobalFilters } from '../context/GlobalFilters'
-import { getAnalyticsOverview, getSalesPerformance, getCustomerSummary, getCustomerGroups } from '../utils/api'
+import { getAnalyticsOverview, getSalesPerformance, getCustomerAnalytics, getCustomerGroups } from '../utils/api'
 
 const DONUT_COLORS = ['#d31137','#5b6b82','#a8b3c4','#8b1a2b','#fc617e','#c9d1dc','#f096a6','#3d4a5c','#fbbfc9','#7a8699','#e0243f']
 const YEAR_COLORS = { '2026':'#d31137','2025':'#d31137','2024':'#9aa7ba','2023':'#c9d1dc' }
@@ -127,7 +127,7 @@ export default function Overview() {
     Promise.all([
       getAnalyticsOverview(g.apiParams),
       getSalesPerformance({ years: firstYear }).catch(()=>null),
-      getCustomerSummary({ year: firstYear }).catch(()=>null),
+      getCustomerAnalytics({ channels: g.channels?.join(',')||undefined }).catch(()=>null),
       getCustomerGroups({ mode:'group', years: firstYear, channels: g.channels?.join(',')||undefined }).catch(()=>null),
     ]).then(([o,t,c,gr])=>{ setData(o); setTargets(t); setCustSum(c); setGroups(gr) })
       .catch(()=>{}).finally(()=>setLoading(false))
@@ -191,8 +191,8 @@ export default function Overview() {
           headline={targets ? `${below} dari ${sps.length} di bawah target` : '—'}
           sub="Lihat performa tim penjualan" />
         <Pilar tag="CUSTOMER" color="#d31137" to="/customers"
-          headline={custSum ? `${formatRupiahShort(custSum.revenue_at_risk)} revenue at risk` : '—'}
-          sub={custSum ? `${custSum.overdue_rate}% pelanggan overdue` : 'Kesehatan pelanggan'} />
+          headline={custSum?.kpi ? `${formatNumber(custSum.kpi.hilang)} customer hilang` : '—'}
+          sub={custSum?.kpi ? `${formatNumber(custSum.kpi.tidak_aktif)} tidak aktif · ${formatNumber(custSum.kpi.aktif)} aktif` : 'Kesehatan pelanggan'} />
         <Pilar tag="PRODUCT" color="#15803d" to="/products"
           headline={topKat ? `${topKat.kategori}` : '—'}
           sub={topKat ? `Kategori terbesar · ${(topKat.revenue/katTotal*100).toFixed(1)}% revenue` : 'Peluang produk'} />
