@@ -26,7 +26,7 @@ const METRICS = [
   { k:'customer_aktif',   label:'Customer aktif',        fmt:(v)=>v, diverging:false },
   { k:'rev_per_cust',     label:'Revenue / customer',    fmt:(v)=>formatRupiahShort(v), diverging:false },
   { k:'tingkat_aktivasi', label:'Tingkat aktivasi %',    fmt:(v)=>`${v}%`, diverging:false },
-  { k:'overdue_rate',     label:'Overdue rate %',        fmt:(v)=>`${v}%`, diverging:true },
+  { k:'nonaktif_rate',    label:'% Tidak Aktif & Hilang', fmt:(v)=>`${v}%`, diverging:true },
 ]
 
 const csvExport = (rows, cols, name) => {
@@ -341,14 +341,14 @@ export default function TerritoryPage() {
             {label:'Tidur',get:r=>r.customer_tidur},{label:'Aktivasi%',get:r=>r.tingkat_aktivasi},
             {label:'Revenue',get:r=>r.revenue},{label:'Share%',get:r=>r.share},{label:'GrowthYoY%',get:r=>r.growth_yoy},
             {label:'Bills',get:r=>r.bills},{label:'AOV',get:r=>r.aov},{label:'Rev/cust',get:r=>r.rev_per_cust},
-            {label:'Overdue%',get:r=>r.overdue_rate},{label:'TopKategori',get:r=>(r.top_kategori||[]).join(' | ')},
+            {label:'TidakAktif%',get:r=>r.nonaktif_rate},{label:'TopKategori',get:r=>(r.top_kategori||[]).join(' | ')},
           ], 'territory.csv')}>Export CSV</button>
         </div>
         {loading ? <Skeleton height={300}/> : (
           <div style={{ overflowX:'auto', maxHeight:420, overflowY:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11.5 }}>
               <thead><tr style={{ position:'sticky', top:0, background:'#fff', borderBottom:'2px solid #f0f0f0' }}>
-                {['Provinsi','Pulau','Terdaftar','Aktif','Tidur','Aktivasi','Revenue','Share','YoY','Bills','AOV','Rev/cust','Overdue','Top kategori'].map(h=>
+                {['Provinsi','Pulau','Terdaftar','Aktif','Tidur','Aktivasi','Revenue','Share','YoY','Bills','AOV','Rev/cust','Tdk Aktif%','Top kategori'].map(h=>
                   <th key={h} style={{ padding:'6px', textAlign: ['Provinsi','Pulau','Top kategori'].includes(h)?'left':'right', color:'#888', fontSize:10.5 }}>{h}</th>)}
               </tr></thead>
               <tbody>
@@ -364,7 +364,7 @@ export default function TerritoryPage() {
                     <td style={{...tdR, color:(p.growth_yoy||0)>=0?'#15803d':RED}}>{p.growth_yoy==null?'—':`${p.growth_yoy}%`}</td>
                     <td style={tdR}>{p.bills}</td><td style={tdR}>{formatRupiahShort(p.aov)}</td>
                     <td style={tdR}>{formatRupiahShort(p.rev_per_cust)}</td>
-                    <td style={tdR}>{p.overdue_rate}%</td>
+                    <td style={{...tdR, color:(p.nonaktif_rate||0)>=50?RED:'#888'}}>{p.nonaktif_rate}%</td>
                     <td style={{ padding:'5px 6px', color:'#888', fontSize:10.5 }}>{(p.top_kategori||[]).slice(0,3).join(', ')}</td>
                   </tr>
                 ))}
@@ -422,8 +422,8 @@ export default function TerritoryPage() {
                       <input type="checkbox" checked={dormOnly} onChange={e=>setDormOnly(e.target.checked)} /> hanya yang tidur
                     </label>
                     <button style={linkBtn} onClick={()=>csvExport((detail.customers||[]).filter(c=>!dormOnly||c.tidur), [
-                      {label:'Kode',get:r=>r.customer_code},{label:'Nama',get:r=>r.customer_name},{label:'Tier',get:r=>r.tier},
-                      {label:'Segmen',get:r=>r.segmen_rfm},{label:'Salesperson',get:r=>r.salesperson},{label:'Status',get:r=>r.status},
+                      {label:'Kode',get:r=>r.customer_code},{label:'Nama',get:r=>r.customer_name},{label:'Group',get:r=>r.group||''},
+                      {label:'Status',get:r=>r.status},{label:'Tier',get:r=>r.tier},{label:'Salesperson',get:r=>r.salesperson},
                       {label:'HariSejakBeli',get:r=>r.days_since_last_order},{label:'Revenue',get:r=>r.revenue},
                     ], `customer_${picked}.csv`)}>Export CSV</button>
                   </div>
@@ -431,7 +431,7 @@ export default function TerritoryPage() {
                 <div style={{ maxHeight:260, overflowY:'auto' }}>
                   <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
                     <thead><tr style={{ position:'sticky', top:0, background:'#fff', borderBottom:'2px solid #f0f0f0' }}>
-                      {['Nama','Group','Tier','Segmen','Salesperson','Terakhir beli','Status','Revenue'].map(h=>
+                      {['Nama','Group','Status','Tier','Salesperson','Terakhir beli','Revenue'].map(h=>
                         <th key={h} style={{ padding:'5px', textAlign:h==='Revenue'?'right':'left', color:'#888', fontSize:10 }}>{h}</th>)}
                     </tr></thead>
                     <tbody>
@@ -439,11 +439,10 @@ export default function TerritoryPage() {
                         <tr key={c.customer_code} style={{ borderBottom:'1px solid #f6f6f6', background: c.tidur?'#fffdf5':'transparent' }}>
                           <td style={{ padding:'4px 5px' }}>{c.customer_name||c.customer_code}</td>
                           <td style={{ padding:'4px 5px', color:c.group?'#d31137':'#ccc', fontWeight:c.group?600:400 }}>{c.group||'—'}</td>
+                          <td style={{ padding:'4px 5px' }}><span style={{ fontSize:10, fontWeight:600, color: c.status==='Aktif'?'#22c55e':c.status==='Tidak Aktif'?'#f59e0b':'#d31137' }}>{c.status}</span></td>
                           <td style={{ padding:'4px 5px', color:'#888' }}>{c.tier}</td>
-                          <td style={{ padding:'4px 5px', color:'#888' }}>{c.segmen_rfm}</td>
                           <td style={{ padding:'4px 5px', color:'#888' }}>{c.salesperson}</td>
                           <td style={{ padding:'4px 5px', color:'#888' }}>{c.days_since_last_order==null?'—':`${c.days_since_last_order} hari lalu`}</td>
-                          <td style={{ padding:'4px 5px' }}>{c.tidur?'😴 tidur':c.status}</td>
                           <td style={{ padding:'4px 5px', textAlign:'right' }}>{formatRupiahShort(c.revenue)}</td>
                         </tr>
                       ))}

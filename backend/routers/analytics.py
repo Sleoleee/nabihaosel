@@ -681,6 +681,17 @@ def territory(years: Optional[str] = Query(None),
 
     dps_latest = {d["province_code"]: d for d in dps if int(d["tahun"]) == latest}
 
+    # Status recency per provinsi (live dari dim_customer) -> % Tidak Aktif & Hilang.
+    dcs = _fetch_all_rows("dim_customer", "province_code,days_since_last_order,is_territory")
+    prov_status = defaultdict(lambda: {"non": 0, "total": 0})
+    for c in dcs:
+        pc = c.get("province_code")
+        if not pc or c.get("is_territory") is False:
+            continue
+        ps = prov_status[pc]; ps["total"] += 1
+        if status_recency(c.get("days_since_last_order")) in ("Tidak Aktif", "Hilang"):
+            ps["non"] += 1
+
     # top kategori & salesperson dominan per provinsi (tahun terbaru)
     # kategori bersifat lifetime (agg_province_category disimpan tahun=0)
     kat_by_prov = defaultdict(list); slp_by_prov = defaultdict(list)
@@ -712,7 +723,7 @@ def territory(years: Optional[str] = Query(None),
             "customer_aktif": aktif, "customer_terdaftar": terdaftar, "customer_tidur": tidur,
             "tingkat_aktivasi": float(d.get("tingkat_aktivasi") or 0),
             "rev_per_cust": round(rev / aktif) if aktif else 0,
-            "overdue_rate": round(a["overdue"] / aktif * 100, 1) if aktif else 0,
+            "nonaktif_rate": round(prov_status[pc]["non"] / prov_status[pc]["total"] * 100, 1) if prov_status[pc]["total"] else 0,
             "revenue_at_risk": round(a["at_risk"]), "customer_baru": a["baru"],
             "top_kategori": [k for k, _ in kats[:3]],
             "slp_dominan": slps[0][0] if slps else None,
@@ -837,8 +848,8 @@ def territory_detail(province_code: str = Query(...), years: Optional[str] = Que
         custs.append({
             "customer_code": c["customer_code"], "customer_name": c.get("customer_name"),
             "group": gmap.get(c["customer_code"]),
-            "tier": c.get("tier"), "segmen_rfm": c.get("segmen_rfm"),
-            "salesperson": c.get("salesperson_utama"), "status": c.get("status"),
+            "tier": c.get("tier"),
+            "salesperson": c.get("salesperson_utama"), "status": status_recency(dsl),
             "days_since_last_order": dsl, "revenue": round(float(c.get("total_revenue") or 0)),
             "tidur": (dsl is None),   # terdaftar tapi belum pernah/lama tak beli
         })
