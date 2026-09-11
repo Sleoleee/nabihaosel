@@ -1,0 +1,44 @@
+<mxfile host="app.diagrams.net" agent="Claude" version="24.0.0">
+  <diagram id="sop-aksi-ppic-03" name="SOP-AKSI-PPIC-03 Monitoring Inventory &amp; Safety Stock">
+    <mxGraphModel dx="1400" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1060" pageHeight="1420" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="FLOW SOP-AKSI-PPIC-03 MONITORING INVENTORY &amp; SAFETY STOCK" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D71920;fontColor=#D71920;fontStyle=1;fontSize=15;align=left;spacingLeft=16;" vertex="1" parent="1">
+          <mxGeometry x="0" y="16" width="1060" height="38" as="geometry" />
+        </mxCell>
+
+        <mxCell id="A" value="MULAI" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="380" y="80" width="240" height="44" as="geometry" /></mxCell>
+        <mxCell id="n1" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;SPV PPIC&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Tetapkan/mutakhirkan safety stock &amp; reorder point" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;" vertex="1" parent="1"><mxGeometry x="380" y="174" width="240" height="72" as="geometry" /></mxCell>
+        <mxCell id="n2" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;ADMIN PPIC&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Tarik data level persediaan aktual" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;" vertex="1" parent="1"><mxGeometry x="380" y="296" width="240" height="72" as="geometry" /></mxCell>
+        <mxCell id="n3" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;ADMIN PPIC&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Bandingkan level vs safety stock" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;" vertex="1" parent="1"><mxGeometry x="380" y="418" width="240" height="72" as="geometry" /></mxCell>
+        <mxCell id="d4" value="Ada item &amp;lt; reorder point?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="400" y="540" width="200" height="90" as="geometry" /></mxCell>
+
+        <mxCell id="n5" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;SPV PPIC&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Terbitkan sinyal replenishment" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;" vertex="1" parent="1"><mxGeometry x="720" y="549" width="240" height="72" as="geometry" /></mxCell>
+        <mxCell id="n6" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;PURCHASING&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Tindak lanjuti sinyal replenishment" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;" vertex="1" parent="1"><mxGeometry x="720" y="671" width="240" height="72" as="geometry" /></mxCell>
+
+        <mxCell id="n7" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;ADMIN PPIC&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Identifikasi item overstock" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;" vertex="1" parent="1"><mxGeometry x="380" y="800" width="240" height="72" as="geometry" /></mxCell>
+        <mxCell id="n8" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;SPV PPIC&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Evaluasi item overstock" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;" vertex="1" parent="1"><mxGeometry x="380" y="922" width="240" height="72" as="geometry" /></mxCell>
+        <mxCell id="n9" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;SPV PPIC&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Susun laporan monitoring inventory" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;" vertex="1" parent="1"><mxGeometry x="380" y="1044" width="240" height="72" as="geometry" /></mxCell>
+        <mxCell id="n10" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;ADMIN PPIC&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Arsipkan rekaman monitoring" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;" vertex="1" parent="1"><mxGeometry x="380" y="1166" width="240" height="72" as="geometry" /></mxCell>
+        <mxCell id="end" value="SELESAI" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="380" y="1288" width="240" height="44" as="geometry" /></mxCell>
+
+        <mxCell id="eA" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="A" target="n1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n1" target="n2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n2" target="n3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n3" target="d4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e4y" value="YA" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="d4" target="n5"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e4n" value="TIDAK" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="d4" target="n7"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n5" target="n6"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=1;entryY=0.5;" edge="1" parent="1" source="n6" target="n7"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="840" y="836" /></Array></mxGeometry></mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n7" target="n8"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n8" target="n9"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n9" target="n10"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n10" target="end"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="note" value="Aturan alur: label peran (merah) menandai fungsi pelaksana. Bila ada item di bawah reorder point, alur menerbitkan &amp; menindaklanjuti sinyal replenishment sebelum kembali ke evaluasi overstock." style="text;html=1;align=left;whiteSpace=wrap;fontSize=9;fontColor=#333333;" vertex="1" parent="1"><mxGeometry x="40" y="1352" width="980" height="34" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

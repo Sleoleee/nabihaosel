@@ -1,0 +1,45 @@
+<mxfile host="app.diagrams.net" agent="Claude" version="24.0.0">
+  <diagram id="sop-aksi-ppic-04" name="SOP-AKSI-PPIC-04 Perubahan/Revisi Production Plan">
+    <mxGraphModel dx="1400" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1060" pageHeight="1520" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="FLOW SOP-AKSI-PPIC-04 PERUBAHAN/REVISI PRODUCTION PLAN" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D71920;fontColor=#D71920;fontStyle=1;fontSize=15;align=left;spacingLeft=16;" vertex="1" parent="1">
+          <mxGeometry x="0" y="16" width="1060" height="38" as="geometry" />
+        </mxCell>
+
+        <mxCell id="A" value="MULAI" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="380" y="80" width="240" height="44" as="geometry" /></mxCell>
+        <mxCell id="n1" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;PENGAJU&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Ajukan usulan perubahan Production Plan" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;" vertex="1" parent="1"><mxGeometry x="380" y="174" width="240" height="72" as="geometry" /></mxCell>
+        <mxCell id="n2" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;SPV PPIC&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Catat &amp; periksa kelengkapan usulan" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;" vertex="1" parent="1"><mxGeometry x="380" y="296" width="240" height="72" as="geometry" /></mxCell>
+        <mxCell id="d3" value="Perubahan desain permanen?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="400" y="418" width="200" height="90" as="geometry" /></mxCell>
+
+        <mxCell id="toOps" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;GENERAL MANAGER&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Dialihkan ke SOP-AKSI-OPS-01" style="rounded=1;arcSize=30;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;" vertex="1" parent="1"><mxGeometry x="720" y="427" width="240" height="72" as="geometry" /></mxCell>
+
+        <mxCell id="n4" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;ADMIN PPIC&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Analisis dampak (kapasitas/material/pengiriman)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;" vertex="1" parent="1"><mxGeometry x="380" y="560" width="240" height="72" as="geometry" /></mxCell>
+        <mxCell id="n5" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;SPV PPIC&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Susun draft revisi Production Plan" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;" vertex="1" parent="1"><mxGeometry x="380" y="682" width="240" height="72" as="geometry" /></mxCell>
+        <mxCell id="n6" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;PRODUCTION HEAD&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Review &amp; rekomendasi persetujuan" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;" vertex="1" parent="1"><mxGeometry x="380" y="804" width="240" height="72" as="geometry" /></mxCell>
+        <mxCell id="n7" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;GENERAL MANAGER&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Setujui revisi Production Plan" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;" vertex="1" parent="1"><mxGeometry x="380" y="926" width="240" height="72" as="geometry" /></mxCell>
+        <mxCell id="n8" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;SPV PPIC&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Komunikasikan revisi ke fungsi terkait" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;" vertex="1" parent="1"><mxGeometry x="380" y="1048" width="240" height="72" as="geometry" /></mxCell>
+        <mxCell id="n9" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;ADMIN PPIC&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Picu MRP ulang (bila berdampak material)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;" vertex="1" parent="1"><mxGeometry x="380" y="1170" width="240" height="72" as="geometry" /></mxCell>
+        <mxCell id="n10" value="&lt;font color=&quot;#D71920&quot;&gt;&lt;b&gt;ADMIN PPIC&lt;/b&gt;&lt;/font&gt;&lt;br&gt;Arsipkan dokumen revisi" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=9;" vertex="1" parent="1"><mxGeometry x="380" y="1292" width="240" height="72" as="geometry" /></mxCell>
+        <mxCell id="end" value="SELESAI" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="380" y="1414" width="240" height="44" as="geometry" /></mxCell>
+
+        <mxCell id="eA" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="A" target="n1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n1" target="n2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n2" target="d3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e3y" value="YA" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="d3" target="toOps"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e3n" value="TIDAK" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;fontStyle=1;fontSize=9;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="d3" target="n4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n4" target="n5"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n5" target="n6"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n6" target="n7"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n7" target="n8"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n8" target="n9"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n9" target="n10"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n10" target="end"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="note" value="Aturan alur: label peran (merah) menandai fungsi pelaksana. Bila usulan menyangkut perubahan desain permanen, alur dialihkan ke SOP-AKSI-OPS-01 (kewenangan GM) dan tidak dilanjutkan di jalur revisi PPIC." style="text;html=1;align=left;whiteSpace=wrap;fontSize=9;fontColor=#333333;" vertex="1" parent="1"><mxGeometry x="40" y="1478" width="980" height="34" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
