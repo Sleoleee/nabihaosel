@@ -203,18 +203,21 @@ def sales_performance(years: Optional[str] = Query(None), channels: Optional[str
     # Kalau beberapa tahun dipilih, pengelompokan memakai tahun terbaru agar tak ambigu.
     gyear = max(yrs)
     gmap = settings_store.get_group_map(gyear)
+    reg = settings_store.get_registry(gyear)
     tmap = settings_store.get_target_map(gyear)
 
     salespeople = []
     for s, a in agg.items():
         m = match_salesperson(s)
         name = m["name"] if m else s
-        spv = settings_store.effective_group(s, gmap)   # bisa 'Lainnya'
+        spv = settings_store.effective_group(s, gmap, reg)   # bisa 'Lainnya'/'Tanpa SPV'
+        org_channel = settings_store.effective_channel(s, reg)
         target = settings_store.effective_target(s, tmap)
         rev = round(a["rev"])
         pf = port.get(s, {"custs":0,"overdue":0,"at_risk":0.0})
         salespeople.append({
-            "slp_name": s, "name": name, "spv": spv,
+            "slp_name": s, "name": name, "spv": spv, "org_channel": org_channel,
+            "aktif": settings_store.is_aktif(s, reg),
             "is_core": spv != settings_store.GROUP_LAINNYA,
             "is_non_person": config.is_non_person_slp(s),
             "revenue": rev, "revenue_prev": round(a["rev_prev"]),

@@ -267,6 +267,19 @@ CREATE TABLE IF NOT EXISTS settings_target (
 CREATE INDEX IF NOT EXISTS idx_ssg_year ON settings_salesperson_group(tahun);
 CREATE INDEX IF NOT EXISTS idx_star_year ON settings_target(tahun);
 
+-- Registry salesperson per tahun: channel + SPV opsional + aktif.
+-- Satu baris per (slp_name, tahun) = formasi terakhir yang berlaku tahun itu.
+-- Menggantikan settings_salesperson_group (grup = spv); target tetap di settings_target.
+CREATE TABLE IF NOT EXISTS settings_salesperson (
+  slp_name TEXT, tahun INT,
+  channel  TEXT,              -- penugasan organisasi (mis. K25), bukan channel transaksi
+  spv      TEXT,              -- NULL / '' = Tanpa SPV
+  aktif    BOOLEAN DEFAULT TRUE,
+  PRIMARY KEY (slp_name, tahun)
+);
+CREATE INDEX IF NOT EXISTS idx_ssp_year ON settings_salesperson(tahun);
+CREATE INDEX IF NOT EXISTS idx_ssp_channel ON settings_salesperson(channel, tahun);
+
 -- Mapping client -> GROUP INDUK (beberapa customer di bawah satu group).
 -- customer_code cocok dg Customer/Vendor_Code di transaksi. Dibaca live (tanpa rebuild).
 CREATE TABLE IF NOT EXISTS customer_group (

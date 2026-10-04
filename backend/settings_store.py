@@ -42,10 +42,40 @@ def get_target_map(year):
         return {}
 
 
-def effective_group(slp_name, gmap):
+def get_registry(year):
+    """{slp_name: {channel, spv, aktif}} dari settings_salesperson untuk tahun tsb."""
+    db = get_client()
+    try:
+        rows = db.table("settings_salesperson").select("slp_name,channel,spv,aktif").eq(
+            "tahun", int(year)).limit(100000).execute().data or []
+        return {r["slp_name"]: {"channel": r.get("channel"),
+                                "spv": (r.get("spv") or GROUP_LAINNYA),
+                                "aktif": r.get("aktif", True)} for r in rows}
+    except Exception:
+        return {}
+
+
+def effective_group(slp_name, gmap, reg=None):
+    """SPV efektif: registry baru (settings_salesperson) > settings_salesperson_group > default match."""
+    if reg and slp_name in reg:
+        return reg[slp_name]["spv"] or GROUP_LAINNYA
     if slp_name in gmap:
         return gmap[slp_name]
     return _defaults_for(slp_name)[0]
+
+
+def effective_channel(slp_name, reg=None):
+    """Channel organisasi salesperson dari registry; default: K25 bila cocok formasi, else None."""
+    if reg and slp_name in reg and reg[slp_name].get("channel"):
+        return reg[slp_name]["channel"]
+    m = match_salesperson(slp_name)
+    return "K25" if m else None
+
+
+def is_aktif(slp_name, reg=None):
+    if reg and slp_name in reg:
+        return bool(reg[slp_name].get("aktif", True))
+    return True
 
 
 def effective_target(slp_name, tmap):
