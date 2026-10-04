@@ -10,6 +10,7 @@ import ProductOpportunityPage from './pages/ProductOpportunityPage'
 import TerritoryPage from './pages/TerritoryPage'
 import SettingsGroupsPage from './pages/SettingsGroupsPage'
 import SettingsTargetsPage from './pages/SettingsTargetsPage'
+import SettingsSalesPage from './pages/SettingsSalesPage'
 import QaPage from './pages/QaPage'
 import Upload from './pages/Upload'
 import LockPage from './pages/LockPage'
@@ -35,6 +36,7 @@ export default function App() {
               <Route path="/customers" element={<CustomerIntelligence />} />
               <Route path="/products" element={<ProductOpportunityPage />} />
               <Route path="/territory" element={<TerritoryPage />} />
+              <Route path="/settings/sales" element={<SettingsSalesPage />} />
               <Route path="/settings/groups" element={<SettingsGroupsPage />} />
               <Route path="/settings/targets" element={<SettingsTargetsPage />} />
               <Route path="/upload" element={<Upload />} />

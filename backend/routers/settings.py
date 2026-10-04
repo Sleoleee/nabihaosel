@@ -76,6 +76,64 @@ def save_groups(payload: dict = Body(...)):
     return {"ok": True, "saved": len(rows)}
 
 
+@router.get("/channels")
+def channels():
+    import config
+    return {"channels": list(config.BRANCH_GROUP_ORDER)}
+
+
+@router.get("/registry")
+def get_registry(year: int = Query(...)):
+    """Satu sumber untuk halaman Setting gabungan: channel + SPV + target + aktif per salesperson."""
+    reg = S.get_registry(year)
+    tmap = S.get_target_map(year)
+    rev = _revenue_by_slp(year)
+    names = set(_all_slp_names()) | set(reg.keys())
+    people = []
+    for s in sorted(names):
+        people.append({
+            "slp_name": s, "display": S.display_name(s),
+            "channel": S.effective_channel(s, reg),
+            "spv": S.effective_group(s, {}, reg),
+            "target": S.effective_target(s, tmap),
+            "aktif": S.is_aktif(s, reg),
+            "revenue": round(rev.get(s, 0.0)),
+            "in_data": s in rev,
+        })
+    people.sort(key=lambda x: -x["revenue"])
+    # daftar SPV & channel yang sudah dipakai (untuk dropdown)
+    spvs = sorted({p["spv"] for p in people if p["spv"] and p["spv"] != S.GROUP_LAINNYA})
+    import config
+    return {"year": year, "salespeople": people,
+            "channels": list(config.BRANCH_GROUP_ORDER), "spvs": spvs}
+
+
+@router.post("/registry")
+def save_registry(payload: dict = Body(...)):
+    """Simpan baris registry + target sekaligus untuk satu tahun.
+    body: {year, rows:[{slp_name, channel, spv, aktif, target}]}"""
+    year = int(payload.get("year"))
+    rows = payload.get("rows") or []
+    db = get_client()
+    reg_rows, tgt_rows = [], []
+    for r in rows:
+        slp = (r.get("slp_name") or "").strip()
+        if not slp:
+            continue
+        spv = (r.get("spv") or "").strip()
+        reg_rows.append({"slp_name": slp, "tahun": year,
+                         "channel": (r.get("channel") or None),
+                         "spv": (None if spv in ("", S.GROUP_LAINNYA, "Tanpa SPV") else spv),
+                         "aktif": bool(r.get("aktif", True))})
+        if r.get("target") is not None:
+            tgt_rows.append({"slp_name": slp, "tahun": year, "target": float(r.get("target") or 0)})
+    for i in range(0, len(reg_rows), 500):
+        db.table("settings_salesperson").upsert(reg_rows[i:i+500], on_conflict="slp_name,tahun").execute()
+    for i in range(0, len(tgt_rows), 500):
+        db.table("settings_target").upsert(tgt_rows[i:i+500], on_conflict="slp_name,tahun").execute()
+    return {"ok": True, "saved": len(reg_rows)}
+
+
 @router.get("/targets")
 def get_targets(year: int = Query(...)):
     tmap = S.get_target_map(year)

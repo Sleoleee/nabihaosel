@@ -52,6 +52,8 @@ export const getGroups = (year) => api.get('/api/settings/groups', { params: { y
 export const saveGroups = (payload) => api.post('/api/settings/groups', payload).then(r => r.data)
 export const getTargets = (year) => api.get('/api/settings/targets', { params: { year } }).then(r => r.data)
 export const saveTargets = (payload) => api.post('/api/settings/targets', payload).then(r => r.data)
+export const getRegistry = (year) => api.get('/api/settings/registry', { params: { year } }).then(r => r.data)
+export const saveRegistry = (payload) => api.post('/api/settings/registry', payload).then(r => r.data)
 
 // Customers
 export const getRFM = (f) => api.get('/api/customers/rfm', { params: buildParams(f) }).then(r => r.data)

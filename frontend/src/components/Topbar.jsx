@@ -55,8 +55,7 @@ export default function Topbar() {
             boxShadow: '0 12px 34px rgba(0,0,0,0.22)', minWidth: 210, overflow: 'hidden', zIndex: 200,
           }}>
             {[
-              { to: '/settings/groups', label: 'Grup Salesperson', desc: 'Atur SPV / grup per tahun' },
-              { to: '/settings/targets', label: 'Target Penjualan', desc: 'Target per orang per tahun' },
+              { to: '/settings/sales', label: 'Pengaturan Salesperson', desc: 'Channel, SPV, target & aktif per tahun' },
             ].map(it => (
               <NavLink key={it.to} to={it.to} onClick={() => setOpen(false)}
                 style={{ display: 'block', padding: '10px 14px', textDecoration: 'none', color: '#2d2d2d', borderBottom: '1px solid #f4f4f5' }}>
