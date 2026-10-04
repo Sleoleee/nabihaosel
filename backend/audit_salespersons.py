@@ -18,7 +18,6 @@ load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 sys.path.insert(0, os.path.dirname(__file__))
 
 from utils.db import get_client
-from compute_cache import fetch_year, MIN_YEAR
 import config
 from sales_targets import match_salesperson
 
@@ -28,24 +27,26 @@ def main():
     cur = date.today().year
     years = list(range(2022, cur + 1))
 
+    # Sumber: agg_salesperson_month (kecil, cepat) — bukan transaksi mentah.
+    rows = db.table("agg_salesperson_month").select(
+        "slp_name,tahun,channel,revenue").limit(1000000).execute().data or []
+
     # (slp, year) -> revenue ; (slp) -> {channel: revenue}
     rev_sy = defaultdict(float)
     rev_sc = defaultdict(lambda: defaultdict(float))
     rev_year_channel = defaultdict(lambda: defaultdict(float))
     slps = set()
 
-    for y in years:
-        rows = fetch_year(db, y, "slp_name,new_row_total,branch")
-        if not rows:
-            continue
-        for r in rows:
-            name = (r.get("slp_name") or "(kosong)").strip()
-            ch = config.branch_group(r.get("branch"))
-            v = float(r.get("new_row_total") or 0)
-            rev_sy[(name, y)] += v
-            rev_sc[name][ch] += v
-            rev_year_channel[y][ch] += v
-            slps.add(name)
+    for r in rows:
+        name = (r.get("slp_name") or "(kosong)").strip()
+        y = int(r.get("tahun") or 0)
+        ch = r.get("channel") or "OTHER CHANNEL"
+        v = float(r.get("revenue") or 0)
+        rev_sy[(name, y)] += v
+        rev_sc[name][ch] += v
+        rev_year_channel[y][ch] += v
+        slps.add(name)
+    years = [y for y in years if y in rev_year_channel]
 
     # 1) Ringkasan per tahun per channel
     print("\n===== REVENUE PER TAHUN x CHANNEL =====")
