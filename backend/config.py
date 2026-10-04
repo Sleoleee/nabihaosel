@@ -34,6 +34,22 @@ _ECOMMERCE   = {"SHOPEE", "TIKTOK", "TKPD", "BLIBLI", "LAZADA"}
 _SUKSES_JAYA = {"ASEMKA", "TENGSE", "DOMPET"}
 
 
+# Pola substring branch per channel (untuk hapus data by channel via ilike).
+# OTHER CHANNEL = sisanya, tak bisa ditarget dengan pola -> None.
+_CHANNEL_PATTERNS = {
+    "E-Commerce": ["SHOPEE", "TIKTOK", "TKPD", "BLIBLI", "LAZADA"],
+    "SUKSES JAYA": ["ASEMKA", "TENGSE", "DOMPET"],
+    "NAMI": ["NAMI"],
+    "BLOOMIE": ["BLOOMIE"],
+    "K25": ["K25"],
+}
+
+
+def channel_branch_patterns(channel):
+    """Daftar substring branch untuk channel; None bila tak bisa ditarget (OTHER CHANNEL)."""
+    return _CHANNEL_PATTERNS.get(channel)
+
+
 def branch_group(branch):
     """Petakan nilai branch mentah (mis. '1.ASEMKA', '1. ATLAS', '1.NAMI A', NULL) ke channel."""
     if not branch:

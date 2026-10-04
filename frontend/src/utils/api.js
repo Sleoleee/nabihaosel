@@ -92,3 +92,5 @@ export const uploadFile = (file, mode) => {
   }).then(r => r.data)
 }
 export const getUploadHistory = () => api.get('/api/upload/history').then(r => r.data)
+export const getChannelStatus = () => api.get('/api/upload/channel-status').then(r => r.data)
+export const deleteData = (payload) => api.post('/api/upload/delete', payload).then(r => r.data)
