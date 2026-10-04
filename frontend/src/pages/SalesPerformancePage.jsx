@@ -74,8 +74,9 @@ export default function SalesPerformancePage() {
   const [mix, setMix] = useState(null)
   const [trend, setTrend] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [scope, setScope] = useState('core')       // core | all | unassigned
-  const [spvSel, setSpvSel] = useState([])          // multi
+  const [chan, setChan] = useState('all')           // org channel filter
+  const [spvSel, setSpvSel] = useState([])          // multi (dinamis)
+  const [activeOnly, setActiveOnly] = useState(false)
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState('revenue')
   const [sortDir, setSortDir] = useState('desc')
@@ -91,14 +92,19 @@ export default function SalesPerformancePage() {
   }, [g?.ready, years, channels])
 
   const all = data?.salespeople || []
+  const chanList = useMemo(() => [...new Set(all.map(s => s.org_channel).filter(Boolean))].sort(), [all])
+  const spvList = useMemo(() => {
+    const pool = chan === 'all' ? all : all.filter(s => s.org_channel === chan)
+    return [...new Set(pool.map(s => s.spv).filter(Boolean))].sort((a,b)=>(a==='Lainnya'||a==='Tanpa SPV')-(b==='Lainnya'||b==='Tanpa SPV') || (a>b?1:-1))
+  }, [all, chan])
   const scoped = useMemo(() => {
     let r = all
-    if (scope === 'core') r = r.filter(s => s.is_core)
-    else if (scope === 'unassigned') r = r.filter(s => !s.is_core)
+    if (chan !== 'all') r = r.filter(s => s.org_channel === chan)
     if (spvSel.length) r = r.filter(s => spvSel.includes(s.spv))
+    if (activeOnly) r = r.filter(s => s.aktif !== false)
     if (search) r = r.filter(s => s.name.toLowerCase().includes(search.toLowerCase()))
     return r
-  }, [all, scope, spvSel, search])
+  }, [all, chan, spvSel, activeOnly, search])
 
   const sorted = useMemo(() => {
     const r = [...scoped].sort((a,b) => {
@@ -128,6 +134,14 @@ export default function SalesPerformancePage() {
   const paretoData = byRev.map(s=>{ _cum += s.revenue; return { name:s.name, revenue:s.revenue, cum:Math.round(_cum/ptot*1000)/10 } })
   const n80 = (paretoData.findIndex(d=>d.cum>=80)+1) || paretoData.length
 
+  // Teams dihitung dari scoped agar ikut filter channel/SPV
+  const teamsScoped = useMemo(() => {
+    const m = {}
+    scoped.forEach(s => { const t = s.spv || 'Tanpa SPV'; (m[t] = m[t] || { team:t, revenue:0, target:0, members:0 }); m[t].revenue += s.revenue; m[t].target += (s.target||0); m[t].members += 1 })
+    return Object.values(m).map(t => ({ ...t, pct: t.target?Math.round(t.revenue/t.target*1000)/10:null, gap: Math.round(t.target-t.revenue) }))
+      .sort((a,b)=>(a.team==='Tanpa SPV')-(b.team==='Tanpa SPV') || b.revenue-a.revenue)
+  }, [scoped])
+
   // Top 3 penyumbang revenue & top 3 pencapaian target tahunan
   const top3Rev = byRev.slice(0,3)
   const top3Pct = scoped.filter(s=>s.target).sort((a,b)=>(b.pct||0)-(a.pct||0)).slice(0,3)
@@ -144,16 +158,18 @@ export default function SalesPerformancePage() {
       {/* filter lokal */}
       <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
         <span style={{ fontSize:11, fontWeight:700, color:'#888' }}>FILTER SALES</span>
-        <select style={selStyle} value={scope} onChange={e=>setScope(e.target.value)}>
-          <option value="core">Tim inti K25</option>
-          <option value="all">Semua salesperson</option>
-          <option value="unassigned">Unassigned / Non-core</option>
+        <select style={selStyle} value={chan} onChange={e=>{ setChan(e.target.value); setSpvSel([]) }}>
+          <option value="all">Semua channel</option>
+          {chanList.map(c=><option key={c} value={c}>{c}</option>)}
         </select>
-        {SPV_LIST.map(t=>(
+        {spvList.map(t=>(
           <label key={t} style={{ fontSize:12, display:'flex', alignItems:'center', gap:4, cursor:'pointer' }}>
             <input type="checkbox" checked={spvSel.includes(t)} onChange={()=>setSpvSel(s=>s.includes(t)?s.filter(x=>x!==t):[...s,t])}/>{t.replace('SPV ','')}
           </label>
         ))}
+        <label style={{ fontSize:12, display:'flex', alignItems:'center', gap:4, cursor:'pointer', color:'#666' }}>
+          <input type="checkbox" checked={activeOnly} onChange={e=>setActiveOnly(e.target.checked)}/>hanya aktif
+        </label>
         <input placeholder="🔍 cari nama" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...selStyle, width:150 }}/>
       </div>
 
@@ -171,10 +187,10 @@ export default function SalesPerformancePage() {
       {/* Baris 2 — Target vs Actual per SPV */}
       <Card style={{ padding:16 }}>
         <div style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Target vs Actual per SPV</div>
-        <div style={{ fontSize:10.5, color:'#aaa', marginBottom:10 }}>Batang = revenue aktual · garis = target · tim inti K25</div>
+        <div style={{ fontSize:10.5, color:'#aaa', marginBottom:10 }}>Batang = revenue aktual · garis = target · mengikuti filter channel/SPV</div>
         {loading ? <Skeleton height={180}/> : (
           <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-            {(data?.teams||[]).map((t,i)=>{
+            {teamsScoped.map((t,i)=>{
               const pct = t.pct||0, w=Math.min(100,pct)
               return (
                 <div key={i}>
