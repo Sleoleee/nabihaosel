@@ -83,7 +83,7 @@ def _fixed_year_from_name(sheet_name):
     return int(m.group(1)) if m else None
 
 
-def parse_excel(file_bytes: bytes) -> Dict[int, Tuple[List[dict], int]]:
+def parse_excel(file_bytes: bytes, only_sheet: str = None) -> Dict[int, Tuple[List[dict], int]]:
     """
     Returns dict: {year: (records, skipped_count)}
     Streams rows without building a full DataFrame to minimize memory usage.
@@ -97,6 +97,9 @@ def parse_excel(file_bytes: bytes) -> Dict[int, Tuple[List[dict], int]]:
     acc = {}  # year -> [records_list, skipped_count]
 
     for sheet_name in wb.sheetnames:
+        # Bila diminta, hanya proses sheet yang namanya memuat `only_sheet`.
+        if only_sheet and only_sheet.strip().lower() not in str(sheet_name).lower():
+            continue
         ws = wb[sheet_name]
         rows_iter = ws.iter_rows(values_only=True)
 

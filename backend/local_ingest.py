@@ -22,7 +22,25 @@ def main():
     ap.add_argument("--reset", action="store_true", help="kosongkan tabel lokal dulu")
     ap.add_argument("--branch", default=None, help="paksa nilai branch semua baris")
     ap.add_argument("--only-year", type=int, default=None)
+    ap.add_argument("--sheet", default=None, help="hanya proses sheet yang namanya memuat teks ini (mis. Bloomie)")
+    ap.add_argument("--months", default=None, help="hanya bulan tertentu, mis. '1-5', '6', '7,8,9'")
     args = ap.parse_args()
+
+    months = None
+    if args.months:
+        months = set()
+        for part in args.months.replace(" ", "").split(","):
+            if "-" in part:
+                a, b = part.split("-"); months.update(range(int(a), int(b) + 1))
+            elif part:
+                months.add(int(part))
+
+    def month_of(rec):
+        d = str(rec.get("posting_date") or "")
+        try:
+            return int(d[5:7])
+        except Exception:
+            return None
 
     conn = local_store.connect()
     local_store.ensure_schema(conn)
@@ -34,14 +52,16 @@ def main():
     for path in args.files:
         if not os.path.exists(path):
             print(f"  ! lewati (tak ada): {path}"); continue
-        print(f"Parsing: {path}")
+        print(f"Parsing: {path}" + (f"  [sheet~'{args.sheet}']" if args.sheet else "") + (f"  [bulan {sorted(months)}]" if months else ""))
         with open(path, "rb") as f:
-            parsed = parse_excel(io.BytesIO(f.read()))
+            parsed = parse_excel(io.BytesIO(f.read()), only_sheet=args.sheet)
         if not parsed:
-            print("  ! tak ada sheet transaksi valid."); continue
+            print("  ! tak ada sheet transaksi valid (cek nama --sheet?)."); continue
         for year, (records, skipped) in parsed.items():
             if args.only_year is not None and year != args.only_year:
                 continue
+            if months is not None:
+                records = [r for r in records if month_of(r) in months]
             if args.branch:
                 for r in records:
                     r["branch"] = args.branch
