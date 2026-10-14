@@ -197,10 +197,29 @@ def build_excel(rows, reopen, out_path):
     return len(rows), len(before), len(after), n, once, repeat
 
 
+def coverage(rows):
+    """Cetak cakupan tanggal BLOOMIE: min/max + jumlah nota per bulan."""
+    ds = [_d(r.get("posting_date")) for r in rows if _d(r.get("posting_date"))]
+    if not ds:
+        print("  (tidak ada tanggal)"); return
+    per_m = defaultdict(set)
+    for r in rows:
+        d = _d(r.get("posting_date")); doc = r.get("document_number")
+        if d and doc is not None:
+            per_m[(d.year, d.month)].add(doc)
+    print(f"  Tanggal paling awal : {min(ds).isoformat()}")
+    print(f"  Tanggal paling akhir: {max(ds).isoformat()}   <-- cek apakah mencapai 2026-09-30")
+    print("  Nota per bulan:")
+    MONTHS = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"]
+    for (y, m) in sorted(per_m):
+        print(f"    {MONTHS[m-1]} {y}: {len(per_m[(y,m)])} nota")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--reopen", default="2026-07-19")
     ap.add_argument("--out", default=os.path.join(os.path.expanduser("~"), "Bloomie_Analysis"))
+    ap.add_argument("--check", action="store_true", help="hanya cek cakupan tanggal, tak membuat Excel")
     args = ap.parse_args()
     reopen = datetime.fromisoformat(args.reopen).date()
 
@@ -210,6 +229,12 @@ def main():
     print(f"  {len(rows)} baris BLOOMIE.")
     if not rows:
         print("Tidak ada data BLOOMIE. Berhenti."); return
+
+    print("\n=== CAKUPAN DATA BLOOMIE ===")
+    coverage(rows)
+    if args.check:
+        print("\n(--check) selesai — tidak membuat Excel.")
+        return
 
     out_file = os.path.join(args.out, f"bloomie_reopening_{reopen.isoformat()}.xlsx")
     total, nb, na, newc, once, rep = build_excel(rows, reopen, out_file)
