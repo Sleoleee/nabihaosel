@@ -1,58 +1,19 @@
 -- =====================================================================
--- LAPISAN ANALITIK (PROMPT 1) — jalankan sekali di Supabase SQL Editor.
--- fact_sales_line & dim_item = VIEW (tanpa duplikasi data, selalu fresh).
--- dim_customer, dim_salesperson, agg_* = tabel asli, diisi build_analytics.py.
+-- LAPISAN ANALITIK — jalankan sekali di Supabase SQL Editor.
+-- MODE AGREGAT-SAJA (Opsi B): data mentah 'transactions' TIDAK disimpan di
+-- Supabase (tinggal di SQLite lokal). Semua tabel di bawah diisi build_analytics.py
+-- yang membaca data mentah LOKAL lalu mendorong agregat ke sini.
 -- =====================================================================
 
--- ---------- VIEW: fact_sales_line (transaksi bersih level baris) ----------
--- channel & is_produk_inti dihitung via CASE agar cocok dengan config.py.
-CREATE OR REPLACE VIEW fact_sales_line AS
-SELECT
-  id,
-  document_number,
-  posting_date,
-  year                             AS tahun,
-  EXTRACT(MONTH FROM posting_date)::INT AS bulan,
-  customer_code,
-  customer_name,
-  item_no,
-  item_description                 AS item_desc,
-  kategori,
-  quantity,
-  unit,
-  harga_awal,
-  harga_jual,
-  disc_per_row                     AS disc_row_pct,
-  disc_for_document                AS disc_doc_pct,
-  new_row_total                    AS revenue,
-  slp_name,
-  branch,
-  CASE
-    WHEN branch IS NULL THEN 'OTHER CHANNEL'
-    WHEN upper(regexp_replace(branch, '^[0-9]+\.\s*', '')) IN ('SHOPEE','TIKTOK','TKPD','BLIBLI','LAZADA') THEN 'E-Commerce'
-    WHEN upper(regexp_replace(branch, '^[0-9]+\.\s*', '')) IN ('ASEMKA','TENGSE','DOMPET') THEN 'SUKSES JAYA'
-    WHEN upper(regexp_replace(branch, '^[0-9]+\.\s*', '')) LIKE 'NAMI%' THEN 'NAMI'
-    WHEN upper(regexp_replace(branch, '^[0-9]+\.\s*', '')) = 'BLOOMIE' THEN 'BLOOMIE'
-    WHEN upper(regexp_replace(branch, '^[0-9]+\.\s*', '')) = 'K25' THEN 'K25'
-    ELSE 'OTHER CHANNEL'
-  END                              AS channel,
-  CASE WHEN upper(trim(kategori)) IN ('MARKETPLACE','BIAYA PACKAGING','TAS PAPERBAG')
-       THEN FALSE ELSE TRUE END    AS is_produk_inti
-FROM transactions
-WHERE year >= 2023;
-
--- ---------- VIEW: dim_item ----------
-CREATE OR REPLACE VIEW dim_item AS
-SELECT
-  item_no,
-  MAX(item_description) AS item_desc,
-  MAX(kategori)         AS kategori,
-  bool_or(upper(trim(kategori)) NOT IN ('MARKETPLACE','BIAYA PACKAGING','TAS PAPERBAG')) AS is_produk_inti,
-  MIN(posting_date)     AS first_sold,
-  MAX(posting_date)     AS last_sold
-FROM transactions
-WHERE year >= 2023 AND item_no IS NOT NULL
-GROUP BY item_no;
+-- ---------- dim_item (dulu VIEW dari transactions; kini TABEL) ----------
+CREATE TABLE IF NOT EXISTS dim_item (
+  item_no        TEXT PRIMARY KEY,
+  item_desc      TEXT,
+  kategori       TEXT,
+  is_produk_inti BOOLEAN,
+  first_sold     DATE,
+  last_sold      DATE
+);
 
 -- ---------- dim_customer ----------
 CREATE TABLE IF NOT EXISTS dim_customer (

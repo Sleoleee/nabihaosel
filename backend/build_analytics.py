@@ -57,50 +57,20 @@ def _load_jsonl(path):
     return rows
 
 def fetch_clean(db, use_cache=False):
-    # Cache lengkap? langsung pakai.
-    if use_cache and os.path.exists(CDONE) and os.path.exists(CJSONL):
-        print("Memuat baris dari cache lokal (lengkap)...")
-        rows = _load_jsonl(CJSONL); print(f"{len(rows)} baris dari cache."); return rows
-
-    rows, last_id = [], 0
-    out = None
-    if use_cache and os.path.exists(CJSONL):
-        # Lanjutkan dari fetch parsial sebelumnya.
-        rows = _load_jsonl(CJSONL)
-        try: last_id = int(open(CPOS).read().strip() or 0)
-        except Exception: last_id = 0
-        print(f"Melanjutkan fetch: {len(rows)} baris sudah ada, lanjut dari id>{last_id}.")
-        out = open(CJSONL, "a", encoding="utf-8")
-    else:
-        if use_cache:
-            open(CJSONL, "w").close()
-            for p in (CPOS, CDONE):
-                if os.path.exists(p): os.remove(p)
-            out = open(CJSONL, "a", encoding="utf-8")
-        print(f"Fetching transaksi (tahun >= {config.MIN_YEAR}) via keyset id...")
-
-    while True:
-        cur = last_id
-        batch = _retry(lambda: db.table("transactions").select(COLS)
-                       .gt("id", cur).order("id").limit(SWEEP).execute().data)
-        if not batch:
-            break
-        for r in batch:
-            y = r.get("year")
-            if y is not None and int(y) >= config.MIN_YEAR:
-                rows.append(r)
-                if out: out.write(json.dumps(r) + "\n")
-        last_id = batch[-1]["id"]
-        if out:
-            out.flush()
-            with open(CPOS, "w") as pf: pf.write(str(last_id))
-        print(f"  ...id>{last_id}, {len(rows)} dipakai", end="\r")
-        if len(batch) < SWEEP:
-            break
-    if out:
-        out.close()
-        open(CDONE, "w").close()
-    print(f"\n{len(rows)} baris siap diproses.")
+    """Baca data mentah dari SQLite LOKAL (bukan Supabase). Supabase hanya untuk agregat."""
+    import local_store
+    conn = local_store.connect()
+    local_store.ensure_schema(conn)
+    total = local_store.count(conn)
+    if total == 0:
+        print("SQLite lokal kosong. Jalankan dulu: python local_ingest.py <file.xlsx>")
+        conn.close(); return []
+    print(f"Membaca {total} baris dari SQLite lokal (tahun >= {config.MIN_YEAR})...")
+    rows = []
+    for r in local_store.iter_rows(conn, where="CAST(year AS INTEGER) >= ?", params=(config.MIN_YEAR,)):
+        rows.append(r)
+    conn.close()
+    print(f"{len(rows)} baris siap diproses.")
     return rows
 
 
@@ -384,9 +354,30 @@ def build_all(rows):
             "is_tim_inti_k25":bool(sp),"is_non_person":config.is_non_person_slp(slp),
             "total_revenue":round(rev)})
 
+    # dim_item (dulu VIEW dari transactions; kini tabel agar Supabase lepas dari data mentah)
+    _item = {}
+    for r in rows:
+        it = r.get("item_no")
+        if not it:
+            continue
+        kat = r.get("kategori")
+        d = r.get("posting_date")
+        e = _item.get(it)
+        if e is None:
+            e = _item[it] = {"item_no": it, "item_desc": r.get("item_description"),
+                             "kategori": kat, "is_produk_inti": config.is_produk_inti(kat),
+                             "first_sold": d, "last_sold": d}
+        else:
+            if r.get("item_description"): e["item_desc"] = r.get("item_description")
+            if kat: e["kategori"] = kat
+            if config.is_produk_inti(kat): e["is_produk_inti"] = True
+            if d and (e["first_sold"] is None or d < e["first_sold"]): e["first_sold"] = d
+            if d and (e["last_sold"] is None or d > e["last_sold"]): e["last_sold"] = d
+
     tables = {
         "dim_customer": list(dim_customer.values()),
         "dim_salesperson": dim_salesperson,
+        "dim_item": list(_item.values()),
         "agg_salesperson_month": agg_salesperson_month,
         "agg_salesperson_category_month": agg_salesperson_category_month,
         "agg_category_month": agg_category_month,
@@ -433,7 +424,7 @@ def validate(rows, tables, report):
 
 # ============================ WRITE ============================
 PK = {
-    "dim_customer":"customer_code", "dim_salesperson":"slp_name",
+    "dim_customer":"customer_code", "dim_salesperson":"slp_name", "dim_item":"item_no",
     "agg_salesperson_month":"slp_name,tahun,bulan,channel",
     "agg_salesperson_category_month":"slp_name,kategori,tahun,bulan,channel",
     "agg_category_month":"kategori,tahun,bulan,channel", "agg_sku_month":"item_no,tahun,bulan",

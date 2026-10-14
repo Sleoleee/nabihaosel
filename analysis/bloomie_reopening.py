@@ -24,7 +24,7 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(_BACKEND, ".env"))
 
 import config                       # definisi dashboard (branch_group, REVENUE_COLUMN)
-from utils.db import get_client
+import local_store                  # data mentah lokal (SQLite)
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 
@@ -42,23 +42,14 @@ def _d(v):
         return None
 
 
-def fetch_bloomie(db):
-    """Ambil semua transaksi channel BLOOMIE via keyset id (kecil, aman)."""
-    cols = "id,customer_code,customer_name,document_number,posting_date,kategori,quantity,unit,%s,branch,slp_name" % REV
-    rows, last = [], 0
-    while True:
-        batch = (db.table("transactions").select(cols)
-                 .ilike("branch", "%BLOOMIE%").gt("id", last).order("id")
-                 .limit(5000).execute().data)
-        if not batch:
-            break
-        for r in batch:
-            # pastikan benar channel BLOOMIE lewat aturan dashboard
-            if config.branch_group(r.get("branch")) == "BLOOMIE":
-                rows.append(r)
-        last = batch[-1]["id"]
-        if len(batch) < 5000:
-            break
+def fetch_bloomie(conn):
+    """Ambil semua transaksi channel BLOOMIE dari SQLite lokal."""
+    cw = local_store.channel_where("BLOOMIE")
+    where, params = cw if cw else ("1=1", [])
+    rows = []
+    for r in local_store.iter_rows(conn, where=where, params=params):
+        if config.branch_group(r.get("branch")) == "BLOOMIE":
+            rows.append(r)
     return rows
 
 
@@ -223,9 +214,11 @@ def main():
     args = ap.parse_args()
     reopen = datetime.fromisoformat(args.reopen).date()
 
-    print("Mengambil transaksi BLOOMIE dari Supabase...")
-    db = get_client()
-    rows = fetch_bloomie(db)
+    print("Membaca transaksi BLOOMIE dari SQLite lokal...")
+    conn = local_store.connect()
+    local_store.ensure_schema(conn)
+    rows = fetch_bloomie(conn)
+    conn.close()
     print(f"  {len(rows)} baris BLOOMIE.")
     if not rows:
         print("Tidak ada data BLOOMIE. Berhenti."); return

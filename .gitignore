@@ -3,3 +3,7 @@
 __pycache__/
 *.pyc
 Bloomie_Analysis/
+
+# Data mentah lokal (Opsi B) - jangan commit
+data_local/
+*.db
