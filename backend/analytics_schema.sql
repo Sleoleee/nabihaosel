@@ -133,8 +133,7 @@ CREATE INDEX IF NOT EXISTS idx_acustm_cust  ON agg_customer_month(customer_code,
 CREATE INDEX IF NOT EXISTS idx_acustcat_cust ON agg_customer_category(customer_code);
 CREATE INDEX IF NOT EXISTS idx_adcm_kat     ON agg_discount_category_month(kategori, tahun, bulan);
 
--- Index item_no di transaksi -> mempercepat view dim_item (dipakai product-sku)
-CREATE INDEX IF NOT EXISTS idx_transactions_item ON transactions(item_no);
+-- (dim_item kini tabel yang diisi build_analytics.py — tak perlu index di transactions)
 
 -- =====================================================================
 -- LAPISAN WILAYAH / TERRITORY (PROMPT 8) — jalankan setelah bagian di atas.
