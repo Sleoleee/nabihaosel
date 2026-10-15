@@ -34,12 +34,16 @@ def main():
         print("Tidak ada data BLOOMIE. Jalankan local_ingest.py dulu."); return
 
     qty = defaultdict(lambda: defaultdict(float))   # (kat,unit) -> periodkey -> qty
+    docs = defaultdict(lambda: defaultdict(set))    # (kat,unit) -> periodkey -> set(nota)
     for r in rows:
         d = B.d_(r.get("posting_date"))
         if not d:
             continue
         kat = r.get("kategori") or "—"; unit = (r.get("unit") or "—").strip().upper()
-        qty[(kat, unit)][B.period_key(d, reopen)] += _qty(r.get("quantity"))
+        pk = B.period_key(d, reopen)
+        qty[(kat, unit)][pk] += _qty(r.get("quantity"))
+        if r.get("document_number") is not None:
+            docs[(kat, unit)][pk].add(r.get("document_number"))
 
     periods = sorted({pk for m in qty.values() for pk in m}, key=B.period_order)
     combos = sorted(qty.keys(), key=lambda ku: -sum(qty[ku].values()))
@@ -73,6 +77,40 @@ def main():
 
     ws.append([])
     ws.append(["Catatan: TIDAK ada baris/kolom 'grand total' lintas satuan — menjumlah PCS + PAK + LSN tidak sah."])
+
+    # ---------- Sheet 2: rata-rata quantity per order (nota) ----------
+    ws2 = wb.create_sheet("Avg Qty per Order")
+    ws2.append(["BLOOMIE — Rata-rata Quantity per order (nota) per Kategori × Unit"])
+    ws2["A1"].font = openpyxl.styles.Font(bold=True, size=12)
+    ws2.append(["Avg = total quantity ÷ jumlah nota yang memuat kategori-unit itu. 'tiap kali beli, rata-rata ambil berapa'."])
+    ws2.append([])
+    head2 = ["Kategori", "Unit"] + [B.period_label(k, reopen) for k in periods] + ["RATA-RATA KESELURUHAN"]
+    ws2.append(head2)
+    h2 = ws2[ws2.max_row]
+    for c in h2:
+        c.font = B.HDR; c.fill = B.FILL
+    for idx, k in enumerate(periods):
+        if k[1] == 1:
+            h2[2 + idx].fill = B.REOP; h2[2 + idx].font = B.BOLD
+
+    def avg(ku, k):
+        n = len(docs[ku].get(k, set()))
+        return round(qty[ku].get(k, 0) / n, 1) if n else None
+
+    for (kat, unit) in combos:
+        vals = [avg((kat, unit), k) for k in periods]
+        tot_q = sum(qty[(kat, unit)].values())
+        tot_d = len(set().union(*[docs[(kat, unit)].get(k, set()) for k in periods])) if periods else 0
+        overall = round(tot_q / tot_d, 1) if tot_d else None
+        ws2.append([kat, unit] + [("" if v is None else v) for v in vals] + [("" if overall is None else overall)])
+        rr = ws2[ws2.max_row]
+        for i in range(2, len(head2)):
+            rr[i].number_format = '#,##0.0'
+        for idx, k in enumerate(periods):
+            if k[1] == 1:
+                rr[2 + idx].fill = B.REOP
+    ws2.append([])
+    ws2.append(["Sel kosong = tak ada nota kategori-unit itu di periode tsb."])
 
     B.autosize(wb)
     os.makedirs(args.out, exist_ok=True)
