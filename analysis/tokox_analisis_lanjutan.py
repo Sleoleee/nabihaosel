@@ -207,6 +207,27 @@ def main():
     def topcat(cp):
         return max(cp["catrev"].items(), key=lambda x: x[1])[0] if cp["catrev"] else ""
 
+    # ---- PRA-AGREGASI SEKALI JALAN (hindari O(n^2) di sheet 05/06/07/11) ----
+    RC = defaultdict(lambda: {"rev": 0.0, "qty": 0.0, "docqty": defaultdict(float), "custs": set(),
+                              "notas": set(), "rev_gros": 0.0, "rev_t45": 0.0})  # (periode,kat)
+    MC = defaultdict(lambda: {"rev": 0.0, "qty": 0.0, "docqty": defaultdict(float), "custs": set()})  # (bulan,kat)
+    CPK = defaultdict(lambda: defaultdict(float))  # (cust,periode) -> kat -> qty
+    for r in rows:
+        n = notas[r["doc"]]
+        rc = RC[(r["periode"], r["kat"])]
+        rc["rev"] += r["rev"]; rc["qty"] += r["qty"]; rc["docqty"][r["doc"]] += r["qty"]; rc["notas"].add(r["doc"])
+        if r["cust"]: rc["custs"].add(r["cust"])
+        if n["grosir_lama"]: rc["rev_gros"] += r["rev"]
+        if n["tier"] in ("T4", "T5"): rc["rev_t45"] += r["rev"]
+        mc = MC[(r["bulan"], r["kat"])]
+        mc["rev"] += r["rev"]; mc["qty"] += r["qty"]; mc["docqty"][r["doc"]] += r["qty"]
+        if r["cust"]: mc["custs"].add(r["cust"])
+        if r["cust"]: CPK[(r["cust"], r["periode"])][r["kat"]] += r["qty"]
+    MCUST = defaultdict(lambda: {"rev": 0.0, "qty": 0.0, "notas": 0})  # (bulan,cust)
+    for n in notas.values():
+        if not n["cust"]: continue
+        e = MCUST[(n["bulan"], n["cust"])]; e["rev"] += n["rev"]; e["qty"] += n["qty"]; e["notas"] += 1
+
     c01 = []
     allc = cust_pra | cust_pas
     for c in allc:
@@ -318,27 +339,19 @@ def main():
 
     # ---------- 05_Kategori_Detail ----------
     d05 = []
+    tot_rev_p = {p: sum(RC[(pp, k)]["rev"] for (pp, k) in RC if pp == p) or 1 for p in ("PRA", "PASCA")}
     for p in ("PRA", "PASCA"):
-        pr = [r for r in rows if r["periode"] == p]
-        tot_rev = sum(r["rev"] for r in pr) or 1
-        kats = sorted({r["kat"] for r in pr})
-        # per nota grosir flag & T4T5
+        kats = sorted({k for (pp, k) in RC if pp == p})
         for k in kats:
-            kr = [r for r in pr if r["kat"] == k]
-            rev = sum(r["rev"] for r in kr); qty = sum(r["qty"] for r in kr)
-            docs = {r["doc"] for r in kr}
-            per_nota_qty = []
-            for doc in docs:
-                per_nota_qty.append(sum(r["qty"] for r in kr if r["doc"] == doc))
-            rev_grosir = sum(r["rev"] for r in kr if notas[r["doc"]]["grosir_lama"])
-            rev_t45 = sum(r["rev"] for r in kr if notas[r["doc"]]["tier"] in ("T4", "T5"))
+            e = RC[(p, k)]; rev = e["rev"]; qty = e["qty"]; docs = e["docqty"]
+            pnq = list(docs.values())
             d05.append({"periode": p, "kategori": k, "revenue": round(rev), "revenue_per30": round(per30(rev, DAYS[p])),
-                        "pct_revenue_total": round(rev/tot_rev, 4), "qty_pcs": round(qty), "qty_per30": round(per30(qty, DAYS[p])),
-                        "nota_memuat_kategori": len(docs), "avg_qty_per_order": round(qty/len(docs), 2) if docs else "",
-                        "median_qty_per_order": round(median(per_nota_qty), 2) if per_nota_qty else "",
-                        "harga_rata2_per_pcs": round(rev/qty) if qty else "", "customer_unik": len({r["cust"] for r in kr if r["cust"]}),
-                        "pct_revenue_dari_nota_grosir_lama": round(rev_grosir/rev, 4) if rev else "",
-                        "pct_revenue_dari_T4_T5": round(rev_t45/rev, 4) if rev else ""})
+                        "pct_revenue_total": round(rev/tot_rev_p[p], 4), "qty_pcs": round(qty), "qty_per30": round(per30(qty, DAYS[p])),
+                        "nota_memuat_kategori": len(e["notas"]), "avg_qty_per_order": round(qty/len(docs), 2) if docs else "",
+                        "median_qty_per_order": round(median(pnq), 2) if pnq else "",
+                        "harga_rata2_per_pcs": round(rev/qty) if qty else "", "customer_unik": len(e["custs"]),
+                        "pct_revenue_dari_nota_grosir_lama": round(e["rev_gros"]/rev, 4) if rev else "",
+                        "pct_revenue_dari_T4_T5": round(e["rev_t45"]/rev, 4) if rev else ""})
     sheet("05_Kategori_Detail", ["periode","kategori","revenue","revenue_per30","pct_revenue_total","qty_pcs","qty_per30",
                                  "nota_memuat_kategori","avg_qty_per_order","median_qty_per_order","harga_rata2_per_pcs",
                                  "customer_unik","pct_revenue_dari_nota_grosir_lama","pct_revenue_dari_T4_T5"], d05)
@@ -347,35 +360,32 @@ def main():
     d06 = []
     months = sorted({r["bulan"] for r in rows}, key=mkey)
     for m in months:
-        mr = [r for r in rows if r["bulan"] == m]
-        for k in sorted({r["kat"] for r in mr}):
-            kr = [r for r in mr if r["kat"] == k]
-            docs = {r["doc"] for r in kr}; qty = sum(r["qty"] for r in kr)
-            pnq = [sum(r["qty"] for r in kr if r["doc"] == doc) for doc in docs]
-            d06.append({"bulan": m, "kategori": k, "revenue": round(sum(r["rev"] for r in kr)), "qty_pcs": round(qty),
-                        "avg_qty_per_order": round(qty/len(docs), 2) if docs else "",
+        for k in sorted({kk for (mm, kk) in MC if mm == m}):
+            e = MC[(m, k)]; docs = e["docqty"]; pnq = list(docs.values())
+            d06.append({"bulan": m, "kategori": k, "revenue": round(e["rev"]), "qty_pcs": round(e["qty"]),
+                        "avg_qty_per_order": round(e["qty"]/len(docs), 2) if docs else "",
                         "median_qty_per_order": round(median(pnq), 2) if pnq else "",
-                        "customer_unik": len({r["cust"] for r in kr if r["cust"]})})
+                        "customer_unik": len(e["custs"])})
     sheet("06_Kategori_Bulanan", ["bulan","kategori","revenue","qty_pcs","avg_qty_per_order","median_qty_per_order","customer_unik"], d06)
 
     # ---------- 07_Customer_Bulanan ----------
     cust_month_first = {c: month_bucket(cust_first[c], reopen) for c in cust_first}
+    month_custs = defaultdict(list)
+    for (m, c) in MCUST: month_custs[m].append(c)
     d07 = []
     for m in months:
-        mn = [n for n in notas.values() if n["bulan"] == m]
-        active = {n["cust"] for n in mn if n["cust"]}
-        baru = {c for c in active if cust_month_first.get(c) == m}
-        retain = active - baru
-        rev_baru = sum(n["rev"] for n in mn if n["cust"] in baru)
-        rev_ret = sum(n["rev"] for n in mn if n["cust"] in retain)
-        spb = [sum(n["rev"] for n in mn if n["cust"] == c) for c in baru]
-        spr = [sum(n["rev"] for n in mn if n["cust"] == c) for c in retain]
-        # customer baru per tier (tier dari avg qty/nota bulan itu)
+        active = month_custs.get(m, [])
+        baru = [c for c in active if cust_month_first.get(c) == m]
+        retain = [c for c in active if cust_month_first.get(c) != m]
+        rev_baru = sum(MCUST[(m, c)]["rev"] for c in baru)
+        rev_ret = sum(MCUST[(m, c)]["rev"] for c in retain)
+        spb = [MCUST[(m, c)]["rev"] for c in baru]
+        spr = [MCUST[(m, c)]["rev"] for c in retain]
         tier_count = {t: 0 for t in TIER_ORDER}
         for c in baru:
-            cn = [n["qty"] for n in mn if n["cust"] == c]
-            tier_count[tier_of(sum(cn)/len(cn))] += 1
-        crev = sorted((sum(n["rev"] for n in mn if n["cust"] == c) for c in active), reverse=True)
+            e = MCUST[(m, c)]
+            tier_count[tier_of(e["qty"]/e["notas"] if e["notas"] else 0)] += 1
+        crev = sorted((MCUST[(m, c)]["rev"] for c in active), reverse=True)
         tr = sum(crev) or 1
         row = {"bulan": m, "customer_aktif": len(active), "customer_baru": len(baru), "customer_retain": len(retain),
                "revenue_baru": round(rev_baru), "revenue_retain": round(rev_ret),
@@ -475,9 +485,9 @@ def main():
     d11 += toplist("TOP20_BARU", [r for r in c01 if r["status"] == "Baru"], lambda r: r["revenue_pasca"])
     d11 += toplist("TOP20_TURUN_KELAS", [r for r in c01 if r["status"] == "Kembali" and r["perubahan_tier"] == "Turun"], lambda r: r["revenue_pra"])
     d11 += toplist("TOP20_POLA_CICIL", [r for r in c01 if r["pola_cicil"]], lambda r: r["revenue_pra"])
-    # qty kategori per customer
+    # qty kategori per customer (dari CPK, cepat)
     def qty_cat(c, p, catsub):
-        return sum(r["qty"] for r in rows if r["cust"] == c and r["periode"] == p and catsub in r["kat"].upper())
+        return sum(v for kat, v in CPK.get((c, p), {}).items() if catsub in kat.upper())
     for (lbl, p, catsub) in [("TOP10_AKSESORIS_PRA","PRA","AKSESORIS"),("TOP10_AKSESORIS_PASCA","PASCA","AKSESORIS"),
                              ("TOP10_STATIONARY_PRA","PRA","STATIONARY"),("TOP10_STATIONARY_PASCA","PASCA","STATIONARY")]:
         scored = [(qty_cat(r["kode_customer"], p, catsub), r) for r in c01]
