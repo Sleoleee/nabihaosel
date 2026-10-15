@@ -86,13 +86,20 @@ def main():
     # matriks periode x kategori
     cell = defaultdict(lambda: defaultdict(float))   # periodkey -> cat -> rev
     pra = defaultdict(float); pasca = defaultdict(float)
+    per_rev = defaultdict(float)                      # periodkey -> revenue
+    per_cust = defaultdict(set)                       # periodkey -> set(customer)
+    per_bills = defaultdict(set)                      # periodkey -> set(nota)
     for r in rows:
         d = _d(r.get("posting_date"))
         if not d:
             continue
         rev = float(r.get(REV) or 0); c = catcol(r.get("kategori") or "—")
-        cell[period_key(d, reopen)][c] += rev
+        pk = period_key(d, reopen)
+        cell[pk][c] += rev
         (pra if d < reopen else pasca)[c] += rev
+        per_rev[pk] += rev
+        if r.get("customer_code"): per_cust[pk].add(r.get("customer_code"))
+        if r.get("document_number") is not None: per_bills[pk].add(r.get("document_number"))
 
     def order(k):
         m, half = k
@@ -160,6 +167,54 @@ def main():
     ws2.append(["TOTAL", round(ta), round(tb), f"{(tb-ta)/ta*100:+.1f}%" if ta else "—"])
     for c in ws2[ws2.max_row]:
         c.font = BOLD
+
+    # ---------- sheet 3: average spending per customer per periode ----------
+    ws3 = wb.create_sheet("Avg Spending per Customer")
+    ws3.append(["BLOOMIE — Rata-rata spending per customer, per bulan (reopening " + reopen.isoformat() + ")"])
+    ws3["A1"].font = Font(bold=True, size=12)
+    ws3.append(["Avg spending/customer = Revenue ÷ jumlah customer unik aktif di periode itu. AOV = Revenue ÷ nota."])
+    ws3.append([])
+    head3 = ["Periode", "Revenue", "Customer unik", "Nota", "Avg Spending / Customer", "AOV (per nota)"]
+    ws3.append(head3)
+    for c in ws3[ws3.max_row]:
+        c.font = HDR; c.fill = FILL
+
+    def add3(label, rev, ncust, nbills):
+        ws3.append([label, round(rev), ncust, nbills,
+                    round(rev / ncust) if ncust else 0, round(rev / nbills) if nbills else 0])
+        rr = ws3[ws3.max_row]
+        for i in (1, 2, 3, 4, 5):
+            rr[i].number_format = NUM
+
+    prev_half3 = None
+    for k in periods:
+        if k[1] == 1 and prev_half3 == 0:
+            ws3.append([f"———  REOPENING {reopen.isoformat()}  ———"])
+            ws3.merge_cells(start_row=ws3.max_row, start_column=1, end_row=ws3.max_row, end_column=len(head3))
+            cc = ws3.cell(ws3.max_row, 1); cc.fill = REOP; cc.font = BOLD
+            cc.alignment = Alignment(horizontal="center")
+        add3(period_label(k, reopen), per_rev[k], len(per_cust[k]), len(per_bills[k]))
+        prev_half3 = k[1]
+
+    # baris pra vs pasca (customer unik dihitung terpisah per sisi)
+    cust_pra = set(); cust_pasca = set(); bills_pra = set(); bills_pasca = set()
+    for r in rows:
+        d = _d(r.get("posting_date"))
+        if not d: continue
+        if d < reopen:
+            if r.get("customer_code"): cust_pra.add(r.get("customer_code"))
+            if r.get("document_number") is not None: bills_pra.add(r.get("document_number"))
+        else:
+            if r.get("customer_code"): cust_pasca.add(r.get("customer_code"))
+            if r.get("document_number") is not None: bills_pasca.add(r.get("document_number"))
+    ws3.append([])
+    for c in ws3[ws3.max_row]: pass
+    add3("PRA (semua sblm reopening)", sum(pra.values()), len(cust_pra), len(bills_pra))
+    for c in ws3[ws3.max_row]: c.font = BOLD
+    add3("PASCA (semua sejak reopening)", sum(pasca.values()), len(cust_pasca), len(bills_pasca))
+    for c in ws3[ws3.max_row]: c.font = BOLD
+    ws3.append([])
+    ws3.append(["Catatan: customer unik tidak dijumlah antar-periode (satu orang bisa aktif di beberapa bulan)."])
 
     # lebar kolom
     for w in wb.worksheets:
