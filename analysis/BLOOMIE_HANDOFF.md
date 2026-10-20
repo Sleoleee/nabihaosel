@@ -63,7 +63,8 @@ Output Excel ditulis ke **luar repo**: default `~/Bloomie_Analysis/`
 | `bloomie_customer_composition.py` | `bloomie_komposisi_customer.xlsx` | Komposisi **Baru vs Retain** per bulan (jumlah + revenue + %). Baru = pembelian pertama jatuh di periode itu. |
 | `bloomie_qty_category_unit.py` | `bloomie_qty_kategori_unit.xlsx` | 2 sheet: Quantity per **Kategori × Unit** per bulan (tak ada grand-total lintas satuan), dan Avg Qty per Order (total qty ÷ #nota). |
 | `bloomie_behaviour_scorecard.py` | `bloomie_behaviour_scorecard.xlsx` | 4 sheet: scorecard pra vs pasca (metrik VOLUME **dinormalisasi per bulan**, metrik RASIO apa adanya), distribusi ukuran order, sinyal unit, verdict **retail vs grosir**. |
-| `tokox_analisis_lanjutan.py` | workbook 15-sheet | Analisis lanjutan lengkap sesuai brief (lihat §4). |
+| `tokox_analisis_lanjutan.py` | workbook 15-sheet | Analisis lanjutan lengkap sesuai brief 1 (lihat §4). |
+| `tokox_analisis_sku.py` | `TokoX_Analisis_SKU.xlsx` (13 sheet) | **Brief 2**: hitung ulang berbasis **SKU induk** (gabung kode warna) + klasifikasi grosir dari **qty per SKU induk per nota** (segmen S1–S5), bukan total qty/nota. Flag walk-in (JKT-00001/00002) & outlier (JKT-00238). |
 
 ### Cara menjalankan (dari root repo)
 ```bash

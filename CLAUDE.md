@@ -86,3 +86,13 @@ Aturan:
 - Semua panel harus reaktif terhadap filter yang berlaku di page-nya.
 - Jangan memakai data dummy/mockup di page baru kecuali diminta eksplisit. Kalau data belum ada di cache,
   tambahkan agregasinya di compute_cache.py, jangan bikin angka palsu.
+
+## CATATAN ANALISIS TOKO X (bukan aturan dashboard)
+
+> Untuk analisis behaviour Toko X (BLOOMIE), SKU = `sku_induk` (Item_No tanpa akhiran
+> kode warna, sesuai mapping di sheet `01_SKU_Mapping` pada `analysis/tokox_analisis_sku.py`).
+> Klasifikasi grosir/eceran memakai **qty per SKU induk dalam satu nota** (bukan total qty
+> per nota): segmen S1–S5 dari `max_qty_per_sku`, grosir = S4/S5. Akun `JKT-00001` &
+> `JKT-00002` = walk-in (`is_walkin`); `JKT-00238` punya nota outlier (`is_outlier`).
+> Keputusan client, 21 Okt 2026. Aturan ini TIDAK berlaku untuk dashboard (dashboard tetap
+> SKU = item_no apa adanya).
