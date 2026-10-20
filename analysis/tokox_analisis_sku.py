@@ -140,8 +140,10 @@ def build_sku_mapping(items_desc):
             # deskripsi cocok setelah warna dibuang
             lone_b = (variant_polas == {"B"}) and (len(members) == 1)
             if lone_b:
-                merge = False; review = True
-                alasan = "akhiran angka 2 digit, varian tunggal tanpa pembanding -> perlu konfirmasi warna/ukuran"
+                # akhiran -NN tunggal tanpa sibling: indeks item master, bukan kode warna.
+                # Tidak digabung & bukan kasus ambigu -> SKU standalone.
+                merge = False; review = False
+                alasan = "akhiran angka 2 digit varian tunggal (tanpa sibling) -> SKU standalone, tidak digabung"
             else:
                 merge = True; review = False
                 alasan = "deskripsi identik/hanya beda kata warna -> digabung"
