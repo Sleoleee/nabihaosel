@@ -110,6 +110,36 @@ Sesuai `Brief_ClaudeCode_Olah_Data_TokoX.md`. Machine-readable
 
 ---
 
+## 5b. HASIL RUN Brief 2 (SKU induk) — tervalidasi 21 Okt 2026
+
+Dijalankan atas 131.830 baris BLOOMIE (Jan–Sep 2026). **Total rekonsiliasi dengan Brief 1.**
+
+**Validasi (lolos):**
+- PRA Rp9.339.437.720 / 10.860 nota / 984 customer
+- PASCA Rp6.622.181.617 / 9.767 nota / 1.011 customer
+- `01_SKU_Mapping` = 9.805 baris (= item_no unik); tiap nota tepat 1 segmen.
+
+**Uji wajib:**
+| Uji | Nilai |
+|---|---|
+| item_no → sku induk | 9.805 → 9.037 (1.216 item digabung sbg varian warna) |
+| Pola suffix | standar 7.636 · huruf(warna) 1.487 · angka2digit 588 · huruf-nempel 94 |
+| % nota pindah klasifikasi (grosir lama vs SKU) | **11,4%** |
+| % nota walk-in yang grosir-by-SKU | **4,3%** |
+| % revenue grosir-SKU PRA → PASCA | **75,5% → 69,1%** |
+| item perlu_review | **859** (grup multi-varian/seri bernomor dgn deskripsi beda — perlu konfirmasi client) |
+
+**Temuan yang BERUBAH vs analisis lama (total qty/nota):**
+1. 11,4% nota pindah kelas — mayoritas "grosir palsu" (banyak produk @sedikit) kini benar jadi eceran.
+2. Walk-in (kasir + MEMBER, ~72–79% nota) ternyata **hampir murni eceran** (4,3% grosir) — tak ada grosir tersembunyi signifikan.
+3. Share revenue grosir **turun 75,5% → 69,1%** pasca reopening (geser ke eceran).
+
+**Yang TETAP:** total identik; secara revenue toko tetap didominasi grosir (~70%); outlier JKT-00238 diisolasi.
+
+**OPEN ITEM untuk client:** 859 item `perlu_review=TRUE` di `01_SKU_Mapping` — konfirmasi apakah tiap grup varian warna (gabung) atau beda ukuran/model (jangan gabung).
+
+---
+
 ## 6. Status & langkah lanjut
 
 - **Selesai**: 6 skrip analisis BLOOMIE + workbook 15-sheet (tervalidasi vs brief),
