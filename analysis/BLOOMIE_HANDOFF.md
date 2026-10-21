@@ -140,6 +140,29 @@ Dijalankan atas 131.830 baris BLOOMIE (Jan–Sep 2026). **Total rekonsiliasi den
 
 ---
 
+## 5c. HASIL RUN Brief 3 (`--v2`) — tervalidasi 21 Okt 2026
+
+File: `~/Bloomie_Analysis/TokoX_Analisis_SKU_v2.xlsx` (7 sheet). Totals tetap sama.
+Validasi winback DEFAULT tanpa Perbaikan 1 = **143 akun / Rp1.182.581.000** (persis target brief) ✓
+
+| Metrik | Sebelum (Brief 2) | Sesudah Perbaikan 1 |
+|---|---|---|
+| % nota grosir WALK-IN (PRA) | 5,8% | **0,5%** |
+| % revenue grosir PRA | 75,5% | 72,6% |
+| % revenue grosir PASCA | 69,1% | 65,3% |
+| Winback (akun / revenue) | 143 / Rp1,183 M | **119 / Rp1,143 M** |
+| SKU induk DEFAULT vs GABUNG_SEMUA | — | 9.037 vs 8.492 |
+| Share revenue SKU baru pasca — AKUN / WALK-IN | — | **66,3% / 58,6%** |
+
+**Ringkasan §E (yang berubah / tidak berbalik):**
+1. Walk-in kini praktis **nol grosir** (5,8% → 0,5%): teori "grosir tersembunyi di kasir" makin pasti terbantah.
+2. Dominasi grosir **melunak** (revenue grosir −3 s/d −4 poin) tapi **arah tetap**: toko masih didominasi grosir & tetap bergeser ke eceran pasca-reopening. **Tidak ada kesimpulan yang berbalik.**
+3. Winback menyusut 143 → 119 akun, tapi revenue hampir utuh (−3,3%): 24 akun yang gugur adalah "grosir palsu" kecil (gara-gara 1 BOX/PAK). **Daftar winback jadi lebih bersih & layak ditindak.**
+4. GABUNG_SEMUA cuma memangkas 9.037 → 8.492 SKU (−6%): melumat semua varian **tidak** mengubah gambaran grosir secara material → aturan DEFAULT cukup kokoh.
+5. **Temuan terkuat untuk storyline**: ~**66% revenue pasca (AKUN)** dan **59% (WALK-IN)** berasal dari **SKU baru** (pertama terjual ≥ 19 Jul) → reopening = refresh assortment besar, bukan sekadar buka pintu.
+
+---
+
 ## 6. Status & langkah lanjut
 
 - **Selesai**: 6 skrip analisis BLOOMIE + workbook 15-sheet (tervalidasi vs brief),
