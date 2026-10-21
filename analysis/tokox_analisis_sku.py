@@ -169,22 +169,50 @@ def build_sku_mapping(items_desc):
     return mapping
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--reopen", default="2026-07-19")
-    ap.add_argument("--out", default=os.path.join(os.path.expanduser("~"), "Bloomie_Analysis"))
-    args = ap.parse_args()
-    reopen = datetime.fromisoformat(args.reopen).date()
+# ================= Perbaikan Brief 3 (hanya dipakai di --v2) =================
+CONV_PCS = {"LSN": 12, "LUSIN": 12, "KODI": 20, "GROS": 144, "GROSS": 144}   # dikonversi ke pcs
+KEMASAN = {"BOX","PAK","PACK","DUS","CTN","KARTON","BALL","RIM","KG"}        # TIDAK auto-grosir
+_SIZE_RE = re.compile(r"(UK\s*\d+|\d+\s*CM|\d+\s*MM|\(\s*\d+\s*(?:PCS|PC|PIECES|SET)\s*\)|\d+\s*(?:BOX|SET|PAK|PACK|LUSIN|LSN))")
 
+
+def seg_v2(mx):
+    """Segmen tanpa paksaan satuan bulk (Perbaikan 1). Qty lusinan sudah dikonversi ke pcs."""
+    if mx >= 36: return "S5"
+    if mx >= 12: return "S4"
+    if mx >= 6: return "S3"
+    if mx >= 3: return "S2"
+    return "S1"
+
+
+def size_content_sig(desc):
+    """Tanda tangan ukuran/isi/kemasan dari deskripsi -> pengecualian GABUNG_SEMUA."""
+    return frozenset(re.sub(r"\s+", "", m).upper() for m in _SIZE_RE.findall((desc or "").upper()))
+
+
+def build_gabung_mapping(items_desc):
+    """Skenario GABUNG_SEMUA: semua item_no dgn induk 4 segmen sama digabung,
+    KECUALI deskripsi beda ukuran/isi (sub-kelompok per tanda tangan ukuran)."""
+    groups = defaultdict(list)
+    for it in items_desc:
+        segs = it.split("-")
+        induk4 = "-".join(segs[:4]) if len(segs) >= 4 else it
+        groups[induk4].append(it)
+    mp = {}
+    for induk4, members in groups.items():
+        for m in members:
+            sig = size_content_sig(items_desc.get(m, ""))
+            mp[m] = induk4 if not sig else induk4 + "|" + "+".join(sorted(sig))
+    return mp
+
+
+def load_clean(reopen):
+    """Baca + bersihkan data mentah (identik Brief 1/2). Return None bila kosong."""
     raw = B.fetch_bloomie()
     print(f"{len(raw)} baris mentah Toko X.")
     if not raw:
-        print("Tidak ada data. Jalankan local_ingest.py dulu."); return
-
-    # ---------------- CLEANING (sama dengan brief 1) ----------------
+        return None
     dropped_retur = dropped_qty0 = dropped_nodate = unit_empty = 0
-    rows = []
-    desc_count = defaultdict(Counter)       # item_no -> Counter(deskripsi)
+    rows = []; desc_count = defaultdict(Counter)
     for r in raw:
         d = B.d_(r.get("posting_date"))
         if not d:
@@ -204,7 +232,6 @@ def main():
         rows.append({"doc": r.get("document_number"), "date": d, "cust": (r.get("customer_code") or "").strip(),
                      "name": r.get("customer_name"), "item": item, "kat": (r.get("kategori") or "Lainnya"),
                      "qty": q, "unit": u, "rev": rev})
-
     last_date = max(r["date"] for r in rows)
     DAYS = {"PRA": 199, "PASCA": (last_date - reopen).days + 1, "PRA_BASELINE": 181}
     jun30 = date(reopen.year, 6, 30)
@@ -212,11 +239,310 @@ def main():
         r["periode"] = "PRA" if r["date"] < reopen else "PASCA"
         r["bulan"] = month_bucket(r["date"], reopen)
         r["baseline"] = (r["date"] <= jun30)
+    items_desc = {it: c.most_common(1)[0][0] if c else "" for it, c in desc_count.items()}
+    for r in rows:
+        items_desc.setdefault(r["item"], "")
+    stats = {"dropped_retur": dropped_retur, "dropped_qty0": dropped_qty0,
+             "dropped_nodate": dropped_nodate, "unit_empty": unit_empty}
+    return rows, items_desc, desc_count, last_date, DAYS, jun30, stats
+
+
+def build_v2(rows, items_desc, last_date, DAYS, jun30, reopen, outdir):
+    """Brief 3: Perbaikan 1 (konversi lusinan, kemasan bukan auto-grosir) + Perbaikan 2
+    (skenario GABUNG_SEMUA) + sheet C1-C4. Output TokoX_Analisis_SKU_v2.xlsx."""
+    jun1 = date(reopen.year, 6, 1)
+    sku_def = {it: build_sku_mapping(items_desc)[it]["sku_induk"] for it in items_desc}
+    sku_gab = build_gabung_mapping(items_desc)
+
+    def eff(unit, qty):                      # Perbaikan 1: lusinan -> pcs
+        if unit in CONV_PCS: return "PCS", qty * CONV_PCS[unit]
+        return unit, qty
+
+    def seg_calc(mx, units, bulk_force):
+        if bulk_force and (units & BULK):    # replikasi aturan Brief 2 (bulk -> minimal S4)
+            base = seg_v2(mx)
+            return "S4" if base in ("S1", "S2", "S3") else base
+        return seg_v2(mx)
+
+    def build(sku_of, perbaikan1):
+        notas = {}
+        for r in rows:
+            n = notas.get(r["doc"])
+            if n is None:
+                n = notas[r["doc"]] = {"date": r["date"], "cust": r["cust"], "name": r["name"],
+                                       "rev": 0.0, "qty": 0.0, "units": set(), "skus": set(),
+                                       "line": defaultdict(float), "catrev": defaultdict(float), "kemasan": False}
+            elif r["date"] < n["date"]:
+                n["date"] = r["date"]
+            sku = sku_of[r["item"]]
+            u, q = eff(r["unit"], r["qty"]) if perbaikan1 else (r["unit"], r["qty"])
+            n["rev"] += r["rev"]; n["qty"] += r["qty"]
+            n["units"].add(r["unit"]); n["skus"].add(sku)
+            n["line"][(sku, u)] += q
+            n["catrev"][r["kat"]] += r["rev"]
+            if r["unit"] in KEMASAN: n["kemasan"] = True
+        for n in notas.values():
+            n["periode"] = "PRA" if n["date"] < reopen else "PASCA"
+            mx = max(n["line"].values()) if n["line"] else 0
+            n["max_qty_sku"] = mx; n["n_sku"] = len(n["skus"])
+            n["seg"] = seg_calc(mx, n["units"], bulk_force=not perbaikan1)
+            n["grosir"] = n["seg"] in ("S4", "S5")
+            n["walkin"] = n["cust"] in WALKIN
+        return notas
+
+    def grp_of(n): return "WALKIN" if n["walkin"] else "AKUN"
+
+    def cust_tipe(notas):
+        cp = defaultdict(lambda: {"n": 0, "g": 0})
+        for n in notas.values():
+            if n["cust"]:
+                e = cp[(n["cust"], n["periode"])]; e["n"] += 1
+                if n["grosir"]: e["g"] += 1
+        def tipe(c, p):
+            if c in WALKIN: return "Walk-in"
+            e = cp.get((c, p))
+            if not e or not e["n"]: return ""
+            r = e["g"] / e["n"]
+            return "Grosir" if r >= 0.8 else ("Campuran" if r >= 0.2 else "Eceran")
+        return cp, tipe
+
+    def grosir_summary(notas):
+        out = {}
+        for p in ("PRA", "PASCA"):
+            for grp in ("AKUN", "WALKIN"):
+                pn = [n for n in notas.values() if n["periode"] == p and grp_of(n) == grp]
+                totn = len(pn) or 1; totr = sum(n["rev"] for n in pn) or 1
+                gn = [n for n in pn if n["grosir"]]
+                out[(p, grp)] = {"nota": len(pn), "pct_nota_grosir": len(gn)/totn,
+                                 "pct_rev_grosir": sum(n["rev"] for n in gn)/totr}
+        return out
+
+    def tipe_dist(notas):
+        cp, tipe = cust_tipe(notas)
+        out = defaultdict(lambda: defaultdict(int))     # periode -> tipe -> jumlah akun
+        for p in ("PRA", "PASCA"):
+            custs = {c for (c, pp) in cp if pp == p}
+            for c in custs:
+                out[p][tipe(c, p)] += 1
+        return out
+
+    def winback(notas):
+        cp, tipe = cust_tipe(notas)
+        first = {}; last = {}; name = {}; cat = defaultdict(lambda: defaultdict(float))
+        rev_pra = defaultdict(float); nota_pra = defaultdict(int); sku_pra = defaultdict(set)
+        per = defaultdict(set)
+        for n in notas.values():
+            c = n["cust"]
+            if not c: continue
+            first[c] = n["date"] if c not in first else min(first[c], n["date"])
+            last[c] = n["date"] if c not in last else max(last[c], n["date"])
+            name.setdefault(c, n["name"]); per[c].add(n["periode"])
+            if n["periode"] == "PRA":
+                rev_pra[c] += n["rev"]; nota_pra[c] += 1; sku_pra[c] |= n["skus"]
+                for k, v in n["catrev"].items(): cat[c][k] += v
+        out = []
+        for c in rev_pra:
+            if "PASCA" in per[c] or c in WALKIN: continue
+            if last[c] < jun1: continue
+            tp = tipe(c, "PRA")
+            if tp not in ("Grosir", "Campuran"): continue
+            topcat = max(cat[c].items(), key=lambda x: x[1])[0] if cat[c] else ""
+            out.append({"kode_customer": c, "nama_customer": name.get(c, ""), "wilayah": wilayah_of(c),
+                        "tipe_pembeli_pra": tp, "nota_pra": nota_pra[c], "revenue_pra": round(rev_pra[c]),
+                        "tgl_terakhir_beli": last[c].isoformat(), "kategori_utama_pra": topcat,
+                        "jumlah_sku_induk_unik_pra": len(sku_pra[c])})
+        out.sort(key=lambda x: -x["revenue_pra"])
+        return out
+
+    # ---- bangun semua skenario ----
+    nd_old = build(sku_def, False)       # DEFAULT tanpa Perbaikan 1 (= Brief 2) -> validasi 143
+    nd = build(sku_def, True)            # DEFAULT + Perbaikan 1 -> dasar sheet C
+    gab = build(sku_gab, True)           # GABUNG_SEMUA + Perbaikan 1
+    _, tipe_nd = cust_tipe(nd)
+    gs_nd = grosir_summary(nd); gs_gab = grosir_summary(gab)
+    wb_def = winback(nd); wb_old = winback(nd_old); wb_gab = winback(gab)
+
+    # sku first-sold (DEFAULT) utk status baru/lama
+    sku_first = {}
+    for r in rows:
+        s = sku_def[r["item"]]
+        sku_first[s] = r["date"] if s not in sku_first else min(sku_first[s], r["date"])
+
+    # ================= WORKBOOK =================
+    wb = openpyxl.Workbook(); wb.remove(wb.active)
+    def sheet(name, cols, data):
+        ws = wb.create_sheet(name[:31]); ws.append(cols)
+        for row in data: ws.append([row.get(c, "") for c in cols])
+        return ws
+
+    # ---------- 00_README ----------
+    rd = []
+    def rm(i, v, c=""): rd.append({"item": i, "nilai": v, "catatan": c})
+    rm("toko", "Toko X", "skenario v2 (Brief 3)")
+    for p in ("PRA", "PASCA"):
+        sub = [r for r in rows if r["periode"] == p]
+        rm(f"revenue_{p}", round(sum(r["rev"] for r in sub)))
+        rm(f"nota_{p}", len({r["doc"] for r in sub}))
+        rm(f"customer_unik_{p}", len({r["cust"] for r in sub if r["cust"]}))
+    rm("target_brief1_2", "PRA 9.339.437.720/10.860 ; PASCA 6.622.181.617/9.767", "harus tetap sama")
+    # ringkasan wajib Brief 3
+    rm("P1_pct_nota_grosir_walkin_PRA_sebelum", round(grosir_summary(nd_old)[("PRA","WALKIN")]["pct_nota_grosir"], 4))
+    rm("P1_pct_nota_grosir_walkin_PRA_sesudah", round(gs_nd[("PRA","WALKIN")]["pct_nota_grosir"], 4))
+    rm("P1_pct_nota_grosir_walkin_PASCA_sebelum", round(grosir_summary(nd_old)[("PASCA","WALKIN")]["pct_nota_grosir"], 4))
+    rm("P1_pct_nota_grosir_walkin_PASCA_sesudah", round(gs_nd[("PASCA","WALKIN")]["pct_nota_grosir"], 4))
+    for p in ("PRA", "PASCA"):
+        tot_old = sum(n["rev"] for n in nd_old.values() if n["periode"] == p) or 1
+        g_old = sum(n["rev"] for n in nd_old.values() if n["periode"] == p and n["grosir"])
+        tot_new = sum(n["rev"] for n in nd.values() if n["periode"] == p) or 1
+        g_new = sum(n["rev"] for n in nd.values() if n["periode"] == p and n["grosir"])
+        rm(f"P1_pct_revenue_grosir_{p}_sebelum", round(g_old/tot_old, 4))
+        rm(f"P1_pct_revenue_grosir_{p}_sesudah", round(g_new/tot_new, 4))
+    rm("sku_induk_DEFAULT", len(set(sku_def.values())))
+    rm("sku_induk_GABUNG_SEMUA", len(set(sku_gab.values())))
+    rm("winback_DEFAULT_tanpa_P1", f"{len(wb_old)} akun / Rp{round(sum(w['revenue_pra'] for w in wb_old)):,}",
+       "target validasi brief: 143 akun / Rp1.182.581.000")
+    rm("winback_DEFAULT_dgn_P1", f"{len(wb_def)} akun / Rp{round(sum(w['revenue_pra'] for w in wb_def)):,}")
+    rm("winback_GABUNG_SEMUA_dgn_P1", f"{len(wb_gab)} akun / Rp{round(sum(w['revenue_pra'] for w in wb_gab)):,}")
+    sku_baru = {s for s, d in sku_first.items() if d >= reopen}
+    for grp in ("AKUN", "WALKIN"):
+        base = sum(r["rev"] for r in rows if r["periode"] == "PASCA" and grp_of(nd[r["doc"]]) == grp) or 1
+        rb = sum(r["rev"] for r in rows if r["periode"] == "PASCA" and grp_of(nd[r["doc"]]) == grp and sku_def[r["item"]] in sku_baru)
+        rm(f"share_revenue_sku_baru_{grp}", round(rb/base, 4))
+    sheet("00_README", ["item", "nilai", "catatan"], rd)
+
+    # ---------- A_Perbaikan1_Shift ----------
+    shift = defaultdict(lambda: {"pindah": 0, "total": 0})
+    for doc, n in nd.items():
+        key = (n["periode"], grp_of(n)); shift[key]["total"] += 1
+        if nd_old[doc]["grosir"] != n["grosir"]: shift[key]["pindah"] += 1
+    dA = []
+    for (p, grp) in sorted(shift):
+        e = shift[(p, grp)]; g = gs_nd[(p, grp)]
+        dA.append({"periode": p, "kelompok": grp, "nota_pindah_grosir": e["pindah"], "total_nota": e["total"],
+                   "pct_nota_pindah": round(e["pindah"]/e["total"], 4) if e["total"] else "",
+                   "pct_nota_grosir_setelah_P1": round(g["pct_nota_grosir"], 4),
+                   "pct_revenue_grosir_setelah_P1": round(g["pct_rev_grosir"], 4)})
+    sheet("A_Perbaikan1_Shift", ["periode","kelompok","nota_pindah_grosir","total_nota","pct_nota_pindah",
+                                 "pct_nota_grosir_setelah_P1","pct_revenue_grosir_setelah_P1"], dA)
+
+    # ---------- B_Skenario (DEFAULT vs GABUNG_SEMUA) ----------
+    dB = [{"blok": "sku_induk", "dimensi": "jumlah", "DEFAULT": len(set(sku_def.values())),
+           "GABUNG_SEMUA": len(set(sku_gab.values()))}]
+    for (p, grp) in sorted(gs_nd):
+        dB.append({"blok": "pct_nota_grosir", "dimensi": f"{p}/{grp}",
+                   "DEFAULT": round(gs_nd[(p, grp)]["pct_nota_grosir"], 4),
+                   "GABUNG_SEMUA": round(gs_gab[(p, grp)]["pct_nota_grosir"], 4)})
+        dB.append({"blok": "pct_revenue_grosir", "dimensi": f"{p}/{grp}",
+                   "DEFAULT": round(gs_nd[(p, grp)]["pct_rev_grosir"], 4),
+                   "GABUNG_SEMUA": round(gs_gab[(p, grp)]["pct_rev_grosir"], 4)})
+    td_nd = tipe_dist(nd); td_gab = tipe_dist(gab)
+    for p in ("PRA", "PASCA"):
+        for t in ("Grosir", "Campuran", "Eceran", "Walk-in"):
+            dB.append({"blok": "tipe_akun", "dimensi": f"{p}/{t}",
+                       "DEFAULT": td_nd[p].get(t, 0), "GABUNG_SEMUA": td_gab[p].get(t, 0)})
+    dB.append({"blok": "winback", "dimensi": "jumlah_akun", "DEFAULT": len(wb_def), "GABUNG_SEMUA": len(wb_gab)})
+    sheet("B_Skenario", ["blok", "dimensi", "DEFAULT", "GABUNG_SEMUA"], dB)
+
+    # ---------- C1_SKU_Baru ----------
+    c1 = defaultdict(lambda: {"rev": 0.0, "qty": 0.0, "docs": set(), "custs": set()})
+    for r in rows:
+        if r["periode"] != "PASCA": continue
+        n = nd[r["doc"]]; s = sku_def[r["item"]]
+        key = ("baru" if s in sku_baru else "lama", grp_of(n), tipe_nd(r["cust"], "PASCA") or "-", n["seg"])
+        e = c1[key]; e["rev"] += r["rev"]; e["qty"] += r["qty"]; e["docs"].add(r["doc"])
+        if r["cust"]: e["custs"].add(r["cust"])
+    dC1 = [{"sku_status": k[0], "kelompok": k[1], "tipe_akun": k[2], "segmen": k[3],
+            "revenue": round(v["rev"]), "qty": round(v["qty"]), "jumlah_nota": len(v["docs"]),
+            "jumlah_akun": len(v["custs"])} for k, v in sorted(c1.items(), key=lambda x: -x[1]["rev"])]
+    sheet("C1_SKU_Baru", ["sku_status","kelompok","tipe_akun","segmen","revenue","qty","jumlah_nota","jumlah_akun"], dC1)
+
+    # ---------- C2_Kategori_x_Kelompok ----------
+    c2 = defaultdict(lambda: {"rev": 0.0, "rev_gros": 0.0})
+    for r in rows:
+        n = nd[r["doc"]]; key = (r["periode"], r["kat"], grp_of(n))
+        e = c2[key]; e["rev"] += r["rev"]
+        if n["grosir"]: e["rev_gros"] += r["rev"]
+    dC2 = []
+    for (p, kat, grp), e in sorted(c2.items(), key=lambda x: (x[0][0], -x[1]["rev"])):
+        dC2.append({"periode": p, "kategori": kat, "kelompok": grp, "revenue": round(e["rev"]),
+                    "revenue_per30": round(per30(e["rev"], DAYS[p])),
+                    "pct_revenue_grosir": round(e["rev_gros"]/e["rev"], 4) if e["rev"] else ""})
+    sheet("C2_Kategori_x_Kelompok", ["periode","kategori","kelompok","revenue","revenue_per30","pct_revenue_grosir"], dC2)
+
+    # ---------- C3_Tipe_Min2Nota (AKUN non-walkin, >=2 nota) ----------
+    cp_nd, _ = cust_tipe(nd)
+    pra_set = {c for (c, p) in cp_nd if p == "PRA" and c not in WALKIN}
+    pas_set = {c for (c, p) in cp_nd if p == "PASCA" and c not in WALKIN}
+    rev_cp = defaultdict(float)
+    for n in nd.values():
+        if n["cust"] and n["cust"] not in WALKIN: rev_cp[(n["cust"], n["periode"])] += n["rev"]
+    dC3 = []
+    for p, members in (("PRA", pra_set), ("PASCA", pas_set)):
+        min2 = [c for c in members if cp_nd[(c, p)]["n"] >= 2]
+        by = defaultdict(list)
+        for c in min2: by[tipe_nd(c, p)].append(c)
+        for t, custs in sorted(by.items()):
+            if p == "PRA":
+                kembali = sum(1 for c in custs if c in pas_set)
+                pct = round(kembali/len(custs), 4) if custs else ""
+            else:
+                pct = ""
+            dC3.append({"periode": p, "tipe_akun": t, "jumlah_akun": len(custs),
+                        "revenue": round(sum(rev_cp[(c, p)] for c in custs)), "pct_kembali": pct})
+    sheet("C3_Tipe_Min2Nota", ["periode","tipe_akun","jumlah_akun","revenue","pct_kembali"], dC3)
+
+    # ---------- C4_Winback (DEFAULT + Perbaikan 1) ----------
+    sheet("C4_Winback", ["kode_customer","nama_customer","wilayah","tipe_pembeli_pra","nota_pra","revenue_pra",
+                         "tgl_terakhir_beli","kategori_utama_pra","jumlah_sku_induk_unik_pra"], wb_def)
+
+    B.autosize(wb, cap=34)
+    os.makedirs(outdir, exist_ok=True)
+    out = os.path.join(outdir, "TokoX_Analisis_SKU_v2.xlsx")
+    wb.save(out)
+
+    # ---- console ----
+    print("\n=== VALIDASI v2 ===")
+    for p in ("PRA", "PASCA"):
+        sub = [r for r in rows if r["periode"] == p]
+        print(f"  {p}: Rp{round(sum(r['rev'] for r in sub)):,} | nota {len({r['doc'] for r in sub})} | cust {len({r['cust'] for r in sub if r['cust']})}")
+    print(f"  WINBACK DEFAULT tanpa P1: {len(wb_old)} akun / Rp{round(sum(w['revenue_pra'] for w in wb_old)):,}  (target 143 / 1.182.581.000)")
+    print(f"  WINBACK DEFAULT dgn P1  : {len(wb_def)} akun / Rp{round(sum(w['revenue_pra'] for w in wb_def)):,}")
+    print("\n=== RINGKASAN BRIEF 3 (tempel ke chat) ===")
+    print(f"  SKU induk: DEFAULT {len(set(sku_def.values()))} vs GABUNG_SEMUA {len(set(sku_gab.values()))}")
+    print(f"  %nota grosir WALKIN PRA: {grosir_summary(nd_old)[('PRA','WALKIN')]['pct_nota_grosir']:.1%} -> {gs_nd[('PRA','WALKIN')]['pct_nota_grosir']:.1%} (setelah P1)")
+    for p in ("PRA", "PASCA"):
+        tot_old = sum(n["rev"] for n in nd_old.values() if n["periode"] == p) or 1
+        g_old = sum(n["rev"] for n in nd_old.values() if n["periode"] == p and n["grosir"])
+        tot_new = sum(n["rev"] for n in nd.values() if n["periode"] == p) or 1
+        g_new = sum(n["rev"] for n in nd.values() if n["periode"] == p and n["grosir"])
+        print(f"  %revenue grosir {p}: {g_old/tot_old:.1%} -> {g_new/tot_new:.1%} (setelah P1)")
+    for grp in ("AKUN", "WALKIN"):
+        base = sum(r["rev"] for r in rows if r["periode"] == "PASCA" and grp_of(nd[r["doc"]]) == grp) or 1
+        rb = sum(r["rev"] for r in rows if r["periode"] == "PASCA" and grp_of(nd[r["doc"]]) == grp and sku_def[r["item"]] in sku_baru)
+        print(f"  share revenue SKU baru {grp}: {rb/base:.1%}")
+    print(f"\n✓ Excel: {out}")
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--reopen", default="2026-07-19")
+    ap.add_argument("--out", default=os.path.join(os.path.expanduser("~"), "Bloomie_Analysis"))
+    ap.add_argument("--v2", action="store_true", help="Brief 3: Perbaikan 1+2 & sheet C1-C4 -> TokoX_Analisis_SKU_v2.xlsx")
+    args = ap.parse_args()
+    reopen = datetime.fromisoformat(args.reopen).date()
+
+    loaded = load_clean(reopen)
+    if loaded is None:
+        print("Tidak ada data. Jalankan local_ingest.py dulu."); return
+    rows, items_desc, desc_count, last_date, DAYS, jun30, _stats = loaded
+    dropped_retur = _stats["dropped_retur"]; dropped_qty0 = _stats["dropped_qty0"]
+    dropped_nodate = _stats["dropped_nodate"]; unit_empty = _stats["unit_empty"]
+
+    if args.v2:
+        build_v2(rows, items_desc, last_date, DAYS, jun30, reopen, args.out)
+        return
 
     # ---------------- SKU INDUK MAPPING ----------------
-    items_desc = {it: c.most_common(1)[0][0] if c else "" for it, c in desc_count.items()}
-    for r in rows:                          # pastikan semua item ada di mapping (walau tanpa deskripsi)
-        items_desc.setdefault(r["item"], "")
     mapping = build_sku_mapping(items_desc)
     for r in rows:
         r["sku"] = mapping[r["item"]]["sku_induk"]
