@@ -23,6 +23,7 @@ def main():
     ap.add_argument("--branch", default=None, help="paksa nilai branch semua baris")
     ap.add_argument("--only-year", type=int, default=None)
     ap.add_argument("--sheet", default=None, help="hanya proses sheet yang namanya memuat teks ini (mis. Bloomie)")
+    ap.add_argument("--exclude-sheet", default=None, help="lewati sheet yang namanya memuat teks ini (mis. Bloomie)")
     ap.add_argument("--months", default=None, help="hanya bulan tertentu, mis. '1-5', '6', '7,8,9'")
     args = ap.parse_args()
 
@@ -52,9 +53,11 @@ def main():
     for path in args.files:
         if not os.path.exists(path):
             print(f"  ! lewati (tak ada): {path}"); continue
-        print(f"Parsing: {path}" + (f"  [sheet~'{args.sheet}']" if args.sheet else "") + (f"  [bulan {sorted(months)}]" if months else ""))
+        print(f"Parsing: {path}" + (f"  [sheet~'{args.sheet}']" if args.sheet else "")
+              + (f"  [exclude sheet~'{args.exclude_sheet}']" if args.exclude_sheet else "")
+              + (f"  [bulan {sorted(months)}]" if months else ""))
         with open(path, "rb") as f:
-            parsed = parse_excel(io.BytesIO(f.read()), only_sheet=args.sheet)
+            parsed = parse_excel(io.BytesIO(f.read()), only_sheet=args.sheet, exclude_sheet=args.exclude_sheet)
         if not parsed:
             print("  ! tak ada sheet transaksi valid (cek nama --sheet?)."); continue
         for year, (records, skipped) in parsed.items():

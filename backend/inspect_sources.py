@@ -12,16 +12,40 @@ from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import config
+import openpyxl
 from utils.parser import parse_excel
 
 
-def summarize(path, only_sheet=None):
+def list_sheets(path):
+    """Daftar nama sheet + apakah sheet transaksi (punya Posting Date + New_Row_Total)."""
+    from utils.parser import COLUMN_MAP
+    try:
+        wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    except Exception as e:
+        print(f"  ! gagal buka: {str(e)[:70]}"); return
+    print("  SHEET:")
+    for sn in wb.sheetnames:
+        ws = wb[sn]
+        try:
+            header = next(ws.iter_rows(values_only=True))
+        except StopIteration:
+            print(f"    - {sn}  (kosong)"); continue
+        cols = {COLUMN_MAP.get(str(h).strip()) for h in header if h is not None}
+        is_tx = ("posting_date" in cols) and ("new_row_total" in cols)
+        print(f"    - {sn}  {'[TRANSAKSI]' if is_tx else '(bukan transaksi / dilewati)'}")
+    wb.close()
+
+
+def summarize(path, only_sheet=None, exclude_sheet=None):
     print("\n" + "=" * 70)
-    print(f"FILE: {os.path.basename(path)}" + (f"   [sheet~'{only_sheet}']" if only_sheet else ""))
+    print(f"FILE: {os.path.basename(path)}"
+          + (f"   [sheet~'{only_sheet}']" if only_sheet else "")
+          + (f"   [exclude~'{exclude_sheet}']" if exclude_sheet else ""))
     print("=" * 70)
+    list_sheets(path)
     try:
         with open(path, "rb") as f:
-            by_year = parse_excel(io.BytesIO(f.read()), only_sheet=only_sheet)
+            by_year = parse_excel(io.BytesIO(f.read()), only_sheet=only_sheet, exclude_sheet=exclude_sheet)
     except FileNotFoundError:
         print("  ! FILE TIDAK DITEMUKAN"); return
     except Exception as e:
@@ -51,13 +75,15 @@ def summarize(path, only_sheet=None):
 
 def main():
     args = sys.argv[1:]
-    only_sheet = None
+    only_sheet = exclude_sheet = None
     if "--sheet" in args:
         i = args.index("--sheet"); only_sheet = args[i + 1]; del args[i:i + 2]
+    if "--exclude-sheet" in args:
+        i = args.index("--exclude-sheet"); exclude_sheet = args[i + 1]; del args[i:i + 2]
     if not args:
-        print("Pakai: python inspect_sources.py [--sheet NAMA] \"file1.xlsx\" ..."); return
+        print("Pakai: python inspect_sources.py [--sheet NAMA] [--exclude-sheet NAMA] \"file1.xlsx\" ..."); return
     for path in args:
-        summarize(path, only_sheet)
+        summarize(path, only_sheet, exclude_sheet)
     print("\n" + "=" * 70)
     print("Selesai (read-only, DB tidak disentuh).")
 
