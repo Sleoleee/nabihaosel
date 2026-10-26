@@ -63,6 +63,21 @@ def export_customer(dari: str = Query(..., description="YYYY-MM"),
     return _xlsx_response(data, f"Customer_Performance_{dari}_sd_{sampai}.xlsx")
 
 
+@router.get("/product")
+def export_product(dari: str = Query(..., description="YYYY-MM"),
+                   sampai: str = Query(..., description="YYYY-MM"),
+                   channel: Optional[str] = Query(None),
+                   produk_inti: bool = Query(True)):
+    from reports import product as rpt
+    db = get_client()
+    channels = [c.strip() for c in channel.split(",") if c.strip()] if channel else None
+    warns = _coverage_warnings(db, dari, sampai, channels)
+    data = rpt.build(db, dari, sampai, channels=channels, produk_inti=produk_inti, coverage_warnings=warns)
+    if len(data) > 4_400_000:
+        return JSONResponse(status_code=413, content={"error": "File terlalu besar. Persempit periode/channel."})
+    return _xlsx_response(data, f"Product_Performance_{dari}_sd_{sampai}.xlsx")
+
+
 def _xlsx_response(data, fname):
     return StreamingResponse(
         io.BytesIO(data),

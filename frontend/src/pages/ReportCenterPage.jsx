@@ -9,7 +9,7 @@ const REPORTS = [
   { id: 'customer', judul: 'Customer Performance', ikon: '👥',
     desc: 'Ringkasan per customer (status, tier, grup induk) + detail Customer × Kategori × Bulan.', aktif: true },
   { id: 'product', judul: 'Product Performance', ikon: '🛍️',
-    desc: 'Ringkasan per kategori (growth, penetrasi) + detail SKU × Bulan + peluang cross-sell.', aktif: false },
+    desc: 'Ringkasan per kategori (growth, penetrasi) + detail SKU × Bulan + peluang cross-sell.', aktif: true },
   { id: 'kpi', judul: 'KPI Manager', ikon: '📑',
     desc: 'Template KPI dengan kolom Realisasi terisi otomatis dari data penjualan.', aktif: false },
 ]
@@ -22,6 +22,7 @@ export default function ReportCenterPage() {
   const [dari, setDari] = useState('2026-01')
   const [sampai, setSampai] = useState(ym(now))
   const [channels, setChannels] = useState([])
+  const [produkInti, setProdukInti] = useState(true)
   const [busy, setBusy] = useState(null)
   const [err, setErr] = useState('')
 
@@ -40,7 +41,7 @@ export default function ReportCenterPage() {
     if (!rpt.aktif) return
     setErr(''); setBusy(rpt.id)
     try {
-      const params = { dari, sampai }
+      const params = { dari, sampai, produk_inti: produkInti }
       if (channels.length) params.channel = channels.join(',')
       const res = await exportReport(rpt.id, params)
       const url = URL.createObjectURL(res.data)
@@ -91,6 +92,10 @@ export default function ReportCenterPage() {
                          color: channels.includes(c) ? '#fff' : '#333' }}>{c}</button>
             ))}
           </div>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 12, fontSize: 12 }}>
+            <input type="checkbox" checked={produkInti} onChange={e => setProdukInti(e.target.checked)} />
+            Hanya produk inti (buang MARKETPLACE, BIAYA PACKAGING, TAS PAPERBAG) — berlaku untuk Product
+          </label>
         </div>
       </div>
 

@@ -15,6 +15,10 @@ MIN_YEAR = 2025                     # abaikan data < 2025 (dashboard hanya 2025-
 LOST_MULTIPLIER = 3                 # tidak beli >= 3x interval normal => Lost
 REACTIVATE_MULTIPLIER = 2          # sempat tidak aktif >= 2x interval lalu beli lagi => Reactivated
 
+# --- Ambang status tren kategori (Report Center File 3) ---
+TREND_UP_THRESHOLD = 0.05           # Growth YoY > +5% => Tumbuh
+TREND_DOWN_THRESHOLD = -0.05        # Growth YoY < -5% => Turun; di antaranya => Stabil
+
 # --- Kategori non-produk (biaya/pelengkap) ---
 NON_CORE_CATEGORIES = {"MARKETPLACE", "BIAYA PACKAGING", "TAS PAPERBAG"}
 
