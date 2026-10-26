@@ -7,7 +7,7 @@ const REPORTS = [
   { id: 'salesperson', judul: 'Salesperson Performance', ikon: '🏆',
     desc: 'Ringkasan per salesperson (Revenue, Target, % Achieve, Gap, Bills, AOV) + detail SP × Customer × Bulan.', aktif: true },
   { id: 'customer', judul: 'Customer Performance', ikon: '👥',
-    desc: 'Ringkasan per customer (status, tier, grup induk) + detail Customer × Kategori × Bulan.', aktif: false },
+    desc: 'Ringkasan per customer (status, tier, grup induk) + detail Customer × Kategori × Bulan.', aktif: true },
   { id: 'product', judul: 'Product Performance', ikon: '🛍️',
     desc: 'Ringkasan per kategori (growth, penetrasi) + detail SKU × Bulan + peluang cross-sell.', aktif: false },
   { id: 'kpi', judul: 'KPI Manager', ikon: '📑',
