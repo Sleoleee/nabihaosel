@@ -110,6 +110,7 @@ def build_all(rows):
     cm_slp_rev   = defaultdict(lambda: defaultdict(float))  # (code,y,m) -> slp -> rev
 
     asp   = defaultdict(lambda: {"rev":0.0,"docs":set(),"custs":set()})   # (slp,y,m,ch)
+    ascust= defaultdict(lambda: {"rev":0.0,"docs":set()})                 # (slp,code,y,m,ch) -> File 1 detail
     ascm  = defaultdict(lambda: {"rev":0.0,"docs":set()})                 # (slp,kat,y,m,ch)
     askum_year = defaultdict(lambda: {"rev":0.0,"qty":0.0,"unit":"","custs":set()})  # (item,y)
     cm_ch_rev = defaultdict(lambda: defaultdict(float))                   # (code,y,m) -> ch -> rev
@@ -163,6 +164,8 @@ def build_all(rows):
         cm_ch_rev[(code,y,mo)][ch] += rev
         a = asp[(slp,y,mo,ch)]; a["rev"]+=rev; a["custs"].add(code)
         if doc: a["docs"].add(doc)
+        sc = ascust[(slp,code,y,mo,ch)]; sc["rev"]+=rev
+        if doc: sc["docs"].add(doc)
         s2 = ascm[(slp,kat,y,mo,ch)]; s2["rev"]+=rev
         if doc: s2["docs"].add(doc)
         k = acm[(kat,y,mo,ch)]; k["rev"]+=rev; k["custs"].add(code)
@@ -303,6 +306,9 @@ def build_all(rows):
         "harga_rata2":round(v["rev"]/v["qty"]) if v["qty"] else 0} for (it,y,mo),v in askum.items()]
     agg_customer_category = [{"customer_code":c,"kategori":k,"revenue":round(v["rev"]),
         "qty_bills":len(v["docs"]),"last_purchase_date":v["last"] or None} for (c,k),v in acc_cat.items()]
+    agg_salesperson_customer_month = [{"slp_name":slp,"customer_code":c,"tahun":y,"bulan":mo,
+        "channel":ch,"revenue":round(v["rev"]),"bills":len(v["docs"])}
+        for (slp,c,y,mo,ch),v in ascust.items()]
     agg_discount_category_month = []
     for (k,y,mo), v in disc.items():
         gross = v["gross"]; damt = gross - v["net"]
@@ -366,10 +372,13 @@ def build_all(rows):
         if e is None:
             e = _item[it] = {"item_no": it, "item_desc": r.get("item_description"),
                              "kategori": kat, "is_produk_inti": config.is_produk_inti(kat),
+                             "brand": config.brand_of(kat),
                              "first_sold": d, "last_sold": d}
         else:
             if r.get("item_description"): e["item_desc"] = r.get("item_description")
-            if kat: e["kategori"] = kat
+            if kat:
+                e["kategori"] = kat
+                e["brand"] = config.brand_of(kat)
             if config.is_produk_inti(kat): e["is_produk_inti"] = True
             if d and (e["first_sold"] is None or d < e["first_sold"]): e["first_sold"] = d
             if d and (e["last_sold"] is None or d > e["last_sold"]): e["last_sold"] = d
@@ -385,6 +394,7 @@ def build_all(rows):
         "agg_sku_year": agg_sku_year,
         "agg_customer_month": agg_customer_month,
         "agg_customer_category": agg_customer_category,
+        "agg_salesperson_customer_month": agg_salesperson_customer_month,
         "agg_category_pairing": agg_category_pairing,
         "agg_cohort_retention": agg_cohort_retention,
         "agg_discount_category_month": agg_discount_category_month,
@@ -431,6 +441,7 @@ PK = {
     "agg_sku_year":"item_no,tahun",
     "agg_customer_month":"customer_code,tahun,bulan,channel",
     "agg_customer_category":"customer_code,kategori",
+    "agg_salesperson_customer_month":"slp_name,customer_code,tahun,bulan,channel",
     "agg_category_pairing":"kategori_a,kategori_b,tahun",
     "agg_cohort_retention":"cohort_bulan,bulan_ke_n",
     "agg_discount_category_month":"kategori,tahun,bulan",

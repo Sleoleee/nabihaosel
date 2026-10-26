@@ -27,6 +27,22 @@ def is_produk_inti(kategori):
     return (str(kategori).strip().upper() if kategori else "") not in _NON_CORE_UPPER
 
 
+# --- Brand (dari nilai Kategori khusus; keputusan Fase 0 Report Center, 2026) ---
+# Brand = 5 brand bernama saja. Sumber = kolom Kategori (bukan keyword deskripsi).
+BRAND_CATEGORIES = {
+    "ROCHE": "Roche",
+    "MIMORI": "Mimori",
+    "GLIMORE": "Glimore",
+    "BLISS BEAUTY": "Bliss Beauty",
+    "AKSESORIS RAMBUT KAMINO": "Kamino",
+}
+
+
+def brand_of(kategori):
+    """Brand resmi dari Kategori, atau None bila bukan item brand."""
+    return BRAND_CATEGORIES.get(str(kategori or "").strip().upper())
+
+
 # --- Pemetaan branch -> channel (6 kelompok) ---
 BRANCH_GROUP_ORDER = ["E-Commerce", "SUKSES JAYA", "NAMI", "BLOOMIE", "K25", "OTHER CHANNEL"]
 CORE_BRANCH = "1.K25"

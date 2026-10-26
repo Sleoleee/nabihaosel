@@ -11,9 +11,19 @@ CREATE TABLE IF NOT EXISTS dim_item (
   item_desc      TEXT,
   kategori       TEXT,
   is_produk_inti BOOLEAN,
+  brand          TEXT,
   first_sold     DATE,
   last_sold      DATE
 );
+ALTER TABLE dim_item ADD COLUMN IF NOT EXISTS brand TEXT;   -- aman dijalankan ulang
+
+-- ---------- agg_salesperson_customer_month (Report Center File 1) ----------
+CREATE TABLE IF NOT EXISTS agg_salesperson_customer_month (
+  slp_name      TEXT, customer_code TEXT, tahun INT, bulan INT, channel TEXT,
+  revenue NUMERIC, bills INT,
+  PRIMARY KEY (slp_name, customer_code, tahun, bulan, channel)
+);
+CREATE INDEX IF NOT EXISTS idx_ascm_slp ON agg_salesperson_customer_month(slp_name, tahun, bulan);
 
 -- ---------- dim_customer ----------
 CREATE TABLE IF NOT EXISTS dim_customer (
