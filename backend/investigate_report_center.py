@@ -15,22 +15,18 @@ import local_store
 
 REV = config.REVENUE_COLUMN
 TOKO_CHANNELS = {"SUKSES JAYA", "NAMI", "BLOOMIE"}
-BRAND_KEYWORDS = {
-    "Mimori": ["MIMORI"],
-    "Roche": ["ROCHE"],
-    "Glimore": ["GLIMORE", "GLIMOR"],
-    "Bliss Beauty": ["BLISS BEAUTY", "BLISS"],
-    "Kamino": ["KAMINO"],
+# Brand = nilai Kategori khusus (sumber otoritatif, bukan keyword deskripsi).
+BRAND_CATEGORIES = {
+    "ROCHE": "Roche",
+    "MIMORI": "Mimori",
+    "GLIMORE": "Glimore",
+    "BLISS BEAUTY": "Bliss Beauty",
+    "AKSESORIS RAMBUT KAMINO": "Kamino",
 }
 
 
-def brand_of(desc, item_no):
-    s = (str(desc or "") + " " + str(item_no or "")).upper()
-    for brand, kws in BRAND_KEYWORDS.items():
-        for kw in kws:
-            if kw in s:
-                return brand
-    return None
+def brand_of(kategori):
+    return BRAND_CATEGORIES.get(str(kategori or "").strip().upper())
 
 
 def ym_of(posting):
@@ -72,7 +68,7 @@ def main():
         ym = ym_of(r.get("posting_date"))
         y = ym[0] if ym else None
         if it not in brand_cache:
-            brand_cache[it] = brand_of(r.get("item_description"), it)
+            brand_cache[it] = brand_of(r.get("kategori"))
             item_desc.setdefault(it, r.get("item_description"))
         br = brand_cache[it]
         item_rev[it] += rev
