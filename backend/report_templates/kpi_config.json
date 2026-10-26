@@ -1,0 +1,29 @@
+{
+  "_catatan": "Peta KPI otomatis -> sel template. Edit di sini bila KPI direvisi.",
+  "sheets": {
+    "Branding & Digital Marketing": {
+      "realisasi_col": "J", "catatan_col": "O",
+      "period_month_cell": "L9", "period_year_cell": "M9",
+      "kpi": {
+        "1.1": {"row": 13, "metric": "omset_perusahaan"},
+        "1.2": {"row": 14, "metric": "omset_brand"},
+        "4.1": {"row": 24, "metric": "reorder_Kamino"},
+        "4.2": {"row": 25, "metric": "reorder_Roche"},
+        "4.3": {"row": 26, "metric": "reorder_Glimore"},
+        "4.4": {"row": 27, "metric": "reorder_Mimori"},
+        "4.5": {"row": 28, "metric": "reorder_Others"}
+      }
+    },
+    "Commerce & Offline Store": {
+      "realisasi_col": "I", "catatan_col": "N",
+      "period_month_cell": "K8", "period_year_cell": "L8",
+      "kpi": {
+        "1.1": {"row": 12, "metric": "omset_perusahaan"},
+        "1.2": {"row": 13, "metric": "omset_brand"},
+        "1.3": {"row": 14, "metric": "omset_toko"},
+        "2.1": {"row": 16, "metric": "gmv_mom_Mimori", "proxy": true},
+        "2.2": {"row": 17, "metric": "gmv_mom_BrandLain", "proxy": true}
+      }
+    }
+  }
+}

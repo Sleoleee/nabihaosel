@@ -78,6 +78,15 @@ def export_product(dari: str = Query(..., description="YYYY-MM"),
     return _xlsx_response(data, f"Product_Performance_{dari}_sd_{sampai}.xlsx")
 
 
+@router.get("/kpi")
+def export_kpi(bulan: str = Query(..., description="YYYY-MM bulan penilaian"),
+               manager: str = Query("both", description="branding | commerce | both")):
+    from reports import kpi as rpt
+    db = get_client()
+    data = rpt.build(db, bulan, manager=manager)
+    return _xlsx_response(data, f"KPI_Manager_{bulan}.xlsx")
+
+
 def _xlsx_response(data, fname):
     return StreamingResponse(
         io.BytesIO(data),

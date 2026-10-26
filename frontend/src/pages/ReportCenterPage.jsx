@@ -11,7 +11,7 @@ const REPORTS = [
   { id: 'product', judul: 'Product Performance', ikon: '🛍️',
     desc: 'Ringkasan per kategori (growth, penetrasi) + detail SKU × Bulan + peluang cross-sell.', aktif: true },
   { id: 'kpi', judul: 'KPI Manager', ikon: '📑',
-    desc: 'Template KPI dengan kolom Realisasi terisi otomatis dari data penjualan.', aktif: false },
+    desc: 'Template KPI dengan kolom Realisasi terisi otomatis (bulan = "Sampai").', aktif: true },
 ]
 
 // kuartal/bulan helper
@@ -23,6 +23,7 @@ export default function ReportCenterPage() {
   const [sampai, setSampai] = useState(ym(now))
   const [channels, setChannels] = useState([])
   const [produkInti, setProdukInti] = useState(true)
+  const [manager, setManager] = useState('both')
   const [busy, setBusy] = useState(null)
   const [err, setErr] = useState('')
 
@@ -41,8 +42,13 @@ export default function ReportCenterPage() {
     if (!rpt.aktif) return
     setErr(''); setBusy(rpt.id)
     try {
-      const params = { dari, sampai, produk_inti: produkInti }
-      if (channels.length) params.channel = channels.join(',')
+      let params
+      if (rpt.id === 'kpi') {
+        params = { bulan: sampai, manager }
+      } else {
+        params = { dari, sampai, produk_inti: produkInti }
+        if (channels.length) params.channel = channels.join(',')
+      }
       const res = await exportReport(rpt.id, params)
       const url = URL.createObjectURL(res.data)
       const a = document.createElement('a')
@@ -108,6 +114,14 @@ export default function ReportCenterPage() {
             <div style={{ fontSize: 26 }}>{r.ikon}</div>
             <div style={{ fontWeight: 700, fontSize: 15, margin: '6px 0' }}>{r.judul}</div>
             <div style={{ fontSize: 12, color: '#666', minHeight: 48 }}>{r.desc}</div>
+            {r.id === 'kpi' && (
+              <select value={manager} onChange={e => setManager(e.target.value)}
+                style={{ ...btn, width: '100%', marginTop: 4 }}>
+                <option value="both">Kedua manager</option>
+                <option value="branding">Brand &amp; Digital Marketing</option>
+                <option value="commerce">Commerce &amp; Offline Store</option>
+              </select>
+            )}
             <button onClick={() => download(r)} disabled={!r.aktif || busy === r.id}
               style={{ ...btn, marginTop: 10, width: '100%', padding: '9px 0', fontWeight: 600,
                        background: r.aktif ? '#C00000' : '#eee', color: r.aktif ? '#fff' : '#999',
