@@ -14,8 +14,15 @@ _client: Client = None
 def get_client() -> Client:
     global _client
     if _client is None:
-        url = os.getenv("SUPABASE_URL")
-        key = os.getenv("SUPABASE_SERVICE_KEY")
+        url = (os.getenv("SUPABASE_URL") or "").strip().strip('"').strip("'").rstrip("/")
+        key = (os.getenv("SUPABASE_SERVICE_KEY") or "").strip().strip('"').strip("'")
+        # URL harus 'https://<ref>.supabase.co' (Project URL di Settings -> API),
+        # BUKAN URL dashboard 'https://supabase.com/dashboard/project/<ref>'.
+        if "/dashboard/" in url or url.endswith("supabase.com"):
+            raise SystemExit(
+                f"SUPABASE_URL salah: '{url}'.\n"
+                "Pakai Project URL dari Supabase Settings -> API, format: https://<ref>.supabase.co"
+            )
         # timeout eksplisit: socket yang nge-hang -> error yang bisa di-retry, bukan freeze.
         if ClientOptions is not None:
             try:
