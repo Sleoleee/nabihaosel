@@ -440,11 +440,13 @@ CHUNK = 1000
 def write_tables(db, tables, fresh=False):
     for name, recs in tables.items():
         print(f"  {name}: {len(recs)} baris...", end=" ")
-        if fresh:
-            # kosongkan tabel dulu supaya baris tahun lama (< MIN_YEAR) tak tertinggal.
-            first_pk = PK[name].split(",")[0]
-            _retry(lambda n=name, c=first_pk: db.table(n).delete().neq(c, "__wipe_never_match__").execute())
-            print("(wiped)", end=" ")
+        if fresh and "tahun" in PK[name].split(","):
+            # buang baris tahun lama (< MIN_YEAR) via filter valid; best-effort (jangan gagalkan build).
+            try:
+                _retry(lambda n=name: db.table(n).delete().lt("tahun", config.MIN_YEAR).execute())
+                print("(tahun lama dibuang)", end=" ")
+            except Exception as e:
+                print(f"(lewati wipe: {str(e)[:40]})", end=" ")
         for i in range(0, len(recs), CHUNK):
             chunk = recs[i:i+CHUNK]
             _retry(lambda ch=chunk, n=name: db.table(n).upsert(ch, on_conflict=PK[n]).execute())

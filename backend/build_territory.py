@@ -19,6 +19,7 @@ from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import provinces
+import config
 from build_analytics import fetch_clean, _retry, _f, CHUNK
 
 
@@ -447,11 +448,13 @@ def _fetch_agg(db, table, cols):
 
 def _write(db, name, recs, pk, fresh=False):
     print(f"  {name}: {len(recs)} baris...", end=" ")
-    if fresh:
-        # kosongkan dulu supaya baris tahun lama (< MIN_YEAR) tak tertinggal.
-        first_pk = pk.split(",")[0]
-        _retry(lambda n=name, c=first_pk: db.table(n).delete().neq(c, "__wipe_never_match__").execute())
-        print("(wiped)", end=" ")
+    if fresh and "tahun" in pk.split(","):
+        # buang baris tahun lama (< MIN_YEAR) via filter valid; best-effort.
+        try:
+            _retry(lambda n=name: db.table(n).delete().lt("tahun", config.MIN_YEAR).execute())
+            print("(tahun lama dibuang)", end=" ")
+        except Exception as e:
+            print(f"(lewati wipe: {str(e)[:40]})", end=" ")
     for i in range(0, len(recs), CHUNK):
         chunk = recs[i:i+CHUNK]
         _retry(lambda ch=chunk, n=name, p=pk: db.table(n).upsert(ch, on_conflict=p).execute())
