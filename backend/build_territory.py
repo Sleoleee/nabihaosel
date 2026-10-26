@@ -370,6 +370,7 @@ def main():
     use_cache = "--cache" in sys.argv
     dry = "--dry" in sys.argv
     preview = "--preview" in sys.argv
+    fresh = "--fresh" in sys.argv
 
     from utils.db import get_client
     db = get_client()
@@ -432,10 +433,10 @@ def main():
               for m in master]
     _write(db, "dim_customer", dc_upd, "customer_code")
 
-    _write(db, "agg_province_month", apm, "province_code,tahun,bulan")
-    _write(db, "agg_province_category", apc, "province_code,kategori,tahun")
-    _write(db, "agg_province_salesperson", aps, "province_code,slp_name,tahun")
-    _write(db, "dim_province_stats", dps, "province_code,tahun")
+    _write(db, "agg_province_month", apm, "province_code,tahun,bulan", fresh=fresh)
+    _write(db, "agg_province_category", apc, "province_code,kategori,tahun", fresh=fresh)
+    _write(db, "agg_province_salesperson", aps, "province_code,slp_name,tahun", fresh=fresh)
+    _write(db, "dim_province_stats", dps, "province_code,tahun", fresh=fresh)
     print("\n✓ Selesai. Lapisan Territory terisi.")
 
 
@@ -444,11 +445,16 @@ def _fetch_agg(db, table, cols):
     return _retry(lambda: db.table(table).select(cols).limit(1000000).execute().data) or []
 
 
-def _write(db, name, recs, pk):
+def _write(db, name, recs, pk, fresh=False):
     print(f"  {name}: {len(recs)} baris...", end=" ")
+    if fresh:
+        # kosongkan dulu supaya baris tahun lama (< MIN_YEAR) tak tertinggal.
+        first_pk = pk.split(",")[0]
+        _retry(lambda n=name, c=first_pk: db.table(n).delete().neq(c, "\u0000__wipe__").execute())
+        print("(wiped)", end=" ")
     for i in range(0, len(recs), CHUNK):
         chunk = recs[i:i+CHUNK]
-        _retry(lambda: db.table(name).upsert(chunk, on_conflict=pk).execute())
+        _retry(lambda ch=chunk, n=name, p=pk: db.table(n).upsert(ch, on_conflict=p).execute())
     print("ok")
 
 

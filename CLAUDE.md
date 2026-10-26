@@ -6,7 +6,7 @@ Dashboard analitik penjualan berbasis web untuk perusahaan distribusi aksesoris 
 - Mesin agregasi: script Python `compute_cache.py` — membaca transaksi, menghitung agregasi, menulis ke tabel cache
 - Frontend & backend: Vercel
 - Dashboard HANYA membaca tabel cache, TIDAK PERNAH query tabel transaksi mentah secara langsung
-- Cakupan tahun: 2023–2026 (data 2022 diabaikan)
+- Cakupan tahun: 2025–2026 (data < 2025 diabaikan; konstanta `config.MIN_YEAR = 2025`)
 
 ## Struktur kolom tabel transaksi (line-item)
 Document Status, Canceled, Document Number, Posting Date, Due_Date, Customer/Vendor_Code,

@@ -437,12 +437,17 @@ PK = {
 }
 CHUNK = 1000
 
-def write_tables(db, tables):
+def write_tables(db, tables, fresh=False):
     for name, recs in tables.items():
         print(f"  {name}: {len(recs)} baris...", end=" ")
+        if fresh:
+            # kosongkan tabel dulu supaya baris tahun lama (< MIN_YEAR) tak tertinggal.
+            first_pk = PK[name].split(",")[0]
+            _retry(lambda n=name, c=first_pk: db.table(n).delete().neq(c, "\u0000__wipe__").execute())
+            print("(wiped)", end=" ")
         for i in range(0, len(recs), CHUNK):
             chunk = recs[i:i+CHUNK]
-            _retry(lambda: db.table(name).upsert(chunk, on_conflict=PK[name]).execute())
+            _retry(lambda ch=chunk, n=name: db.table(n).upsert(ch, on_conflict=PK[n]).execute())
         print("ok")
 
 
@@ -451,6 +456,7 @@ def main():
     from utils.db import get_client
     db = get_client()
     use_cache = "--cache" in sys.argv
+    fresh = "--fresh" in sys.argv
     rows = fetch_clean(db, use_cache=use_cache)
     if not rows:
         print("Tidak ada data."); return
@@ -463,7 +469,7 @@ def main():
         print("\n❌ Rekonsiliasi GAGAL (selisih > 0.01%). Penulisan dibatalkan.")
         sys.exit(1)
     print("\n✓ Rekonsiliasi lolos. Menulis ke tabel...")
-    write_tables(db, tables)
+    write_tables(db, tables, fresh=fresh)
     print("\nDone! Lapisan analitik terisi.")
 
 

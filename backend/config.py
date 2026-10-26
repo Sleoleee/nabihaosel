@@ -9,7 +9,7 @@ REVENUE_COLUMN = "new_row_total"    # ganti ke "row_total" bila suatu saat dibut
 INCLUDE_OPEN_DOCS = True            # Document Status 'O' ikut dihitung
                                     # (catatan: kolom document_status TIDAK tersimpan di DB,
                                     #  jadi flag ini belum bisa ditegakkan — semua baris terupload dihitung)
-MIN_YEAR = 2023                     # abaikan data < 2023
+MIN_YEAR = 2025                     # abaikan data < 2025 (dashboard hanya 2025-2026)
 
 # --- Ambang lifecycle customer ---
 LOST_MULTIPLIER = 3                 # tidak beli >= 3x interval normal => Lost
