@@ -450,7 +450,7 @@ def _write(db, name, recs, pk, fresh=False):
     if fresh:
         # kosongkan dulu supaya baris tahun lama (< MIN_YEAR) tak tertinggal.
         first_pk = pk.split(",")[0]
-        _retry(lambda n=name, c=first_pk: db.table(n).delete().neq(c, "\u0000__wipe__").execute())
+        _retry(lambda n=name, c=first_pk: db.table(n).delete().neq(c, "__wipe_never_match__").execute())
         print("(wiped)", end=" ")
     for i in range(0, len(recs), CHUNK):
         chunk = recs[i:i+CHUNK]
