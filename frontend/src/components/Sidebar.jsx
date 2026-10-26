@@ -6,6 +6,7 @@ const navItems = [
   { to: '/products', label: 'Produk & Kategori', icon: '🛍️' },
   { to: '/sales', label: 'Sales Performance', icon: '🏆' },
   { to: '/discounts', label: 'Discount & Pricing', icon: '🏷️' },
+  { to: '/reports', label: 'Report Center', icon: '📑' },
 ]
 
 export default function Sidebar() {

@@ -13,6 +13,7 @@ import SettingsTargetsPage from './pages/SettingsTargetsPage'
 import SettingsSalesPage from './pages/SettingsSalesPage'
 import QaPage from './pages/QaPage'
 import Upload from './pages/Upload'
+import ReportCenterPage from './pages/ReportCenterPage'
 import LockPage from './pages/LockPage'
 import { useAuth } from './context/Auth'
 
@@ -39,6 +40,7 @@ export default function App() {
               <Route path="/settings/sales" element={<SettingsSalesPage />} />
               <Route path="/settings/groups" element={<SettingsGroupsPage />} />
               <Route path="/settings/targets" element={<SettingsTargetsPage />} />
+              <Route path="/reports" element={<ReportCenterPage />} />
               <Route path="/upload" element={<Upload />} />
               <Route path="/qa" element={<QaPage />} />
             </Routes>

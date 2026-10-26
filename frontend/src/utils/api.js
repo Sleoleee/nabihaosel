@@ -15,6 +15,10 @@ export const buildParams = (filters = {}) => {
 }
 
 // Overview
+// Report Center — download file Excel (blob)
+export const exportReport = (jenis, params) =>
+  api.get(`/api/export/${jenis}`, { params, responseType: 'blob', timeout: 120000 })
+
 export const getFilters = () => api.get('/api/overview/filters').then(r => r.data)
 export const getKPI = (f) => api.get('/api/overview/kpi', { params: buildParams(f) }).then(r => r.data)
 export const getRevenueTrend = (f) => api.get('/api/overview/revenue-trend', { params: buildParams(f) }).then(r => r.data)
