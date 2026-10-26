@@ -25,6 +25,29 @@ CREATE TABLE IF NOT EXISTS agg_salesperson_customer_month (
 );
 CREATE INDEX IF NOT EXISTS idx_ascm_slp ON agg_salesperson_customer_month(slp_name, tahun, bulan);
 
+-- ---------- agg_customer_category_month (Report Center File 2 detail) ----------
+CREATE TABLE IF NOT EXISTS agg_customer_category_month (
+  customer_code TEXT, kategori TEXT, tahun INT, bulan INT, channel TEXT,
+  revenue NUMERIC, bills INT,
+  PRIMARY KEY (customer_code, kategori, tahun, bulan, channel)
+);
+CREATE INDEX IF NOT EXISTS idx_accm_cust ON agg_customer_category_month(customer_code, tahun, bulan);
+
+-- ---------- agg_brand_customer_month (reorder rate & File 3 brand) ----------
+CREATE TABLE IF NOT EXISTS agg_brand_customer_month (
+  brand TEXT, customer_code TEXT, tahun INT, bulan INT,
+  revenue NUMERIC, bills INT,
+  PRIMARY KEY (brand, customer_code, tahun, bulan)
+);
+CREATE INDEX IF NOT EXISTS idx_abcm_brand ON agg_brand_customer_month(brand, tahun, bulan);
+
+-- ---------- agg_revenue_bucket_month (KPI omset TOKO/BRAND/LAINNYA) ----------
+CREATE TABLE IF NOT EXISTS agg_revenue_bucket_month (
+  kelompok TEXT, tahun INT, bulan INT, channel TEXT,
+  revenue NUMERIC,
+  PRIMARY KEY (kelompok, tahun, bulan, channel)
+);
+
 -- ---------- dim_customer ----------
 CREATE TABLE IF NOT EXISTS dim_customer (
   customer_code                TEXT PRIMARY KEY,

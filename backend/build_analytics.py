@@ -22,6 +22,7 @@ from sales_targets import match_salesperson
 SWEEP = 1000
 TOL = 0.0001   # 0.01%
 PLACEHOLDER_SLP = "-No Sales Employee-"
+_TOKO_CHANNELS = {"SUKSES JAYA", "NAMI", "BLOOMIE"}   # kelompok omset TOKO (Report Center)
 
 COLS = ("id,document_number,posting_date,year,customer_code,customer_name,item_no,"
         "item_description,kategori,quantity,unit,harga_awal,harga_jual,"
@@ -111,6 +112,9 @@ def build_all(rows):
 
     asp   = defaultdict(lambda: {"rev":0.0,"docs":set(),"custs":set()})   # (slp,y,m,ch)
     ascust= defaultdict(lambda: {"rev":0.0,"docs":set()})                 # (slp,code,y,m,ch) -> File 1 detail
+    acckm = defaultdict(lambda: {"rev":0.0,"docs":set()})                 # (code,kat,y,m,ch) -> File 2 detail
+    abcm  = defaultdict(lambda: {"rev":0.0,"docs":set()})                 # (brand,code,y,m) -> reorder/File 3
+    arbm  = defaultdict(float)                                            # (kelompok,y,m,ch) -> KPI omset
     ascm  = defaultdict(lambda: {"rev":0.0,"docs":set()})                 # (slp,kat,y,m,ch)
     askum_year = defaultdict(lambda: {"rev":0.0,"qty":0.0,"unit":"","custs":set()})  # (item,y)
     cm_ch_rev = defaultdict(lambda: defaultdict(float))                   # (code,y,m) -> ch -> rev
@@ -166,6 +170,14 @@ def build_all(rows):
         if doc: a["docs"].add(doc)
         sc = ascust[(slp,code,y,mo,ch)]; sc["rev"]+=rev
         if doc: sc["docs"].add(doc)
+        brand = config.brand_of(kat)
+        kelompok = "TOKO" if ch in _TOKO_CHANNELS else ("BRAND" if brand else "LAINNYA")
+        ck = acckm[(code,kat,y,mo,ch)]; ck["rev"]+=rev
+        if doc: ck["docs"].add(doc)
+        if brand:
+            bc = abcm[(brand,code,y,mo)]; bc["rev"]+=rev
+            if doc: bc["docs"].add(doc)
+        arbm[(kelompok,y,mo,ch)] += rev
         s2 = ascm[(slp,kat,y,mo,ch)]; s2["rev"]+=rev
         if doc: s2["docs"].add(doc)
         k = acm[(kat,y,mo,ch)]; k["rev"]+=rev; k["custs"].add(code)
@@ -309,6 +321,12 @@ def build_all(rows):
     agg_salesperson_customer_month = [{"slp_name":slp,"customer_code":c,"tahun":y,"bulan":mo,
         "channel":ch,"revenue":round(v["rev"]),"bills":len(v["docs"])}
         for (slp,c,y,mo,ch),v in ascust.items()]
+    agg_customer_category_month = [{"customer_code":c,"kategori":k,"tahun":y,"bulan":mo,"channel":ch,
+        "revenue":round(v["rev"]),"bills":len(v["docs"])} for (c,k,y,mo,ch),v in acckm.items()]
+    agg_brand_customer_month = [{"brand":b,"customer_code":c,"tahun":y,"bulan":mo,
+        "revenue":round(v["rev"]),"bills":len(v["docs"])} for (b,c,y,mo),v in abcm.items()]
+    agg_revenue_bucket_month = [{"kelompok":kl,"tahun":y,"bulan":mo,"channel":ch,"revenue":round(rv)}
+        for (kl,y,mo,ch),rv in arbm.items()]
     agg_discount_category_month = []
     for (k,y,mo), v in disc.items():
         gross = v["gross"]; damt = gross - v["net"]
@@ -395,6 +413,9 @@ def build_all(rows):
         "agg_customer_month": agg_customer_month,
         "agg_customer_category": agg_customer_category,
         "agg_salesperson_customer_month": agg_salesperson_customer_month,
+        "agg_customer_category_month": agg_customer_category_month,
+        "agg_brand_customer_month": agg_brand_customer_month,
+        "agg_revenue_bucket_month": agg_revenue_bucket_month,
         "agg_category_pairing": agg_category_pairing,
         "agg_cohort_retention": agg_cohort_retention,
         "agg_discount_category_month": agg_discount_category_month,
@@ -442,6 +463,9 @@ PK = {
     "agg_customer_month":"customer_code,tahun,bulan,channel",
     "agg_customer_category":"customer_code,kategori",
     "agg_salesperson_customer_month":"slp_name,customer_code,tahun,bulan,channel",
+    "agg_customer_category_month":"customer_code,kategori,tahun,bulan,channel",
+    "agg_brand_customer_month":"brand,customer_code,tahun,bulan",
+    "agg_revenue_bucket_month":"kelompok,tahun,bulan,channel",
     "agg_category_pairing":"kategori_a,kategori_b,tahun",
     "agg_cohort_retention":"cohort_bulan,bulan_ke_n",
     "agg_discount_category_month":"kategori,tahun,bulan",
