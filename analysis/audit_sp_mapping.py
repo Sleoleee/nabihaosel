@@ -7,9 +7,31 @@ READ-ONLY. Untuk validasi sebelum ingest master & ubah dashboard.
 
 Output: ~/Bloomie_Analysis/Audit_SP_Mapping.xlsx (+ ringkasan konsol).
 """
-import os, sys, argparse, difflib
+import os, sys, argparse, difflib, re
 from collections import defaultdict
 import openpyxl
+
+# nama generik / platform (bukan orang) — selain yang sudah ada di master
+GENERIK_EXTRA = {"whatsapp", "website", "blibli", "shopee", "tiktok", "tokopedia", "lazada", "web",
+                 "-no sales employee-", "administrator", "anonym"}
+TOKO_PREFIX = ("TENGSE", "ASEMKA", "DOMPET", "NAMI", "FAMILY")
+
+
+def branch_core(b):
+    return re.sub(r"^\d+\.\s*", "", str(b or "").strip().upper()).strip()
+
+
+def fallback_tipe(name, branch_major):
+    """Klasifikasi nama yang TIDAK ada di master (aturan dokumen §5)."""
+    n = str(name or "").strip().lower()
+    if n in GENERIK_EXTRA or n.startswith("kasir ") or "kasir mimori" in n:
+        return "Generik"
+    core = branch_core(branch_major)
+    if "K25" in core:
+        return "SP lapangan"
+    if any(core.startswith(x) for x in TOKO_PREFIX):
+        return "Staf toko"
+    return "Staf toko"   # branch kosong/kecil -> default staf toko
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backend"))
 import local_store
@@ -106,22 +128,17 @@ def main():
                           "branch_mayoritas_data": bm, "status": "EXACT", "master_name": exact["slp_name"],
                           "tipe": exact["tipe"], "kode": exact["kode"] or "", "aktif": exact["aktif"],
                           "branch_master": exact["branch"], "skor": 100.0,
-                          "branch_cocok": "Y" if norm(bm) == norm(exact["branch"] or "") else "N", "kandidat_lain": ""})
+                          "branch_cocok": "Y" if norm(bm) == norm(exact["branch"] or "") else "N", "saran_fuzzy": ""})
             continue
+        # TIDAK exact -> klasifikasi via fallback (aturan §5); fuzzy hanya SARAN (tak menentukan tipe)
         cands = sorted(((score(slp, m["slp_name"]), m) for m in master), key=lambda x: -x[0])[:3]
-        best_s, best = cands[0]
-        if best_s >= 100: matched_master.add(norm(best["slp_name"]))
-        status = "FUZZY" if best_s >= 80 else "TAK COCOK"
-        kl = "; ".join(f"{m['slp_name']} ({s})" for s, m in cands[1:])
+        tipe = fallback_tipe(slp, bm)
+        saran = "; ".join(f"{m['slp_name']} ({s})" for s, m in cands)
         audit.append({"slp_name_data": slp, "revenue": round(rev[slp]), "rev_pct": round(rev[slp]/total_rev*100, 2),
-                      "branch_mayoritas_data": bm, "status": status,
-                      "master_name": best["slp_name"] if best_s >= 80 else "",
-                      "tipe": best["tipe"] if best_s >= 80 else "", "kode": (best["kode"] or "") if best_s >= 80 else "",
-                      "aktif": best["aktif"] if best_s >= 80 else "",
-                      "branch_master": best["branch"] if best_s >= 80 else "",
-                      "skor": best_s,
-                      "branch_cocok": ("Y" if norm(bm) == norm(best["branch"] or "") else "N") if best_s >= 80 else "",
-                      "kandidat_lain": kl})
+                      "branch_mayoritas_data": bm, "status": "FALLBACK-" + ("generik" if tipe == "Generik" else "branch"),
+                      "master_name": "", "tipe": tipe, "kode": "", "aktif": "",
+                      "branch_master": "", "skor": "", "branch_cocok": "",
+                      "saran_fuzzy": saran})
 
     master_missing = [m for m in master if norm(m["slp_name"]) not in matched_master]
 
@@ -141,7 +158,7 @@ def main():
         return ws
 
     cols = ["slp_name_data", "revenue", "rev_pct", "branch_mayoritas_data", "status", "master_name",
-            "tipe", "kode", "aktif", "branch_master", "skor", "branch_cocok", "kandidat_lain"]
+            "tipe", "kode", "aktif", "branch_master", "skor", "branch_cocok", "saran_fuzzy"]
     sheet("01_Audit_SlpName", cols, audit)
     sheet("02_Master_tak_muncul", ["slp_name", "tipe", "kode", "aktif", "branch"],
           [{"slp_name": m["slp_name"], "tipe": m["tipe"], "kode": m["kode"] or "", "aktif": m["aktif"],
@@ -156,8 +173,8 @@ def main():
     aktif_found = sum(1 for a in audit if a["aktif"] == "Y")
     d0 = [{"item": "slpname_data_unik", "nilai": len(rev)},
           {"item": "match_exact", "nilai": st.get("EXACT", 0)},
-          {"item": "match_fuzzy_>=80", "nilai": st.get("FUZZY", 0)},
-          {"item": "tak_cocok_<80", "nilai": st.get("TAK COCOK", 0)},
+          {"item": "fallback_branch", "nilai": st.get("FALLBACK-branch", 0), "catatan": "tak ada di master -> klasifikasi via branch-mayoritas"},
+          {"item": "fallback_generik", "nilai": st.get("FALLBACK-generik", 0)},
           {"item": "master_tak_muncul_di_data", "nilai": len(master_missing)},
           {"item": "SP_aktif_Q4_terdeteksi", "nilai": aktif_found, "catatan": "target 21"}]
     for t, v in sorted(rev_by_tipe.items(), key=lambda x: -x[1]):
@@ -168,12 +185,12 @@ def main():
     out = os.path.join(args.out, "Audit_SP_Mapping.xlsx")
     wb.save(out)
     print("\n=== RINGKASAN ===")
-    print(f"  EXACT {st.get('EXACT',0)} | FUZZY {st.get('FUZZY',0)} | TAK COCOK {st.get('TAK COCOK',0)} | master tak muncul {len(master_missing)}")
+    print(f"  EXACT {st.get('EXACT',0)} | fallback-branch {st.get('FALLBACK-branch',0)} | fallback-generik {st.get('FALLBACK-generik',0)} | master tak muncul {len(master_missing)}")
     print(f"  SP aktif Q4 terdeteksi: {aktif_found}/21")
     print("  rev% per tipe:", {t: round(v/total_rev*100, 1) for t, v in sorted(rev_by_tipe.items(), key=lambda x: -x[1])})
-    print("\n  FUZZY/TAK COCOK yang perlu dilihat (skor<100, by revenue):")
-    for a in [x for x in audit if x["status"] != "EXACT"][:20]:
-        print(f"    {a['slp_name_data'][:28]:28} skor {a['skor']:>5} -> {a['master_name'][:26]:26} | {a['kandidat_lain'][:40]}")
+    print("\n  Nama FALLBACK (tak ada di master -> diklasifikasi via branch):")
+    for a in [x for x in audit if x["status"].startswith("FALLBACK")]:
+        print(f"    {a['slp_name_data'][:28]:28} branch={a['branch_mayoritas_data'][:12]:12} -> {a['tipe']:12} | saran: {a['saran_fuzzy'][:40]}")
     print(f"\n✓ Excel: {out}")
 
 
