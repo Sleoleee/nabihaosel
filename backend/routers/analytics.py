@@ -205,6 +205,9 @@ def sales_performance(years: Optional[str] = Query(None), channels: Optional[str
     gmap = settings_store.get_group_map(gyear)
     reg = settings_store.get_registry(gyear)
     tmap = settings_store.get_target_map(gyear)
+    # Target per-branch (opsi 2b): Σ settings_target_branch utk bulan dalam periode & channel.
+    pmonths = {b for (_, b) in months_present} or None
+    btmap = settings_store.get_branch_target_map(yrs, months=pmonths, channels=(chs or None))
 
     salespeople = []
     for s, a in agg.items():
@@ -212,7 +215,7 @@ def sales_performance(years: Optional[str] = Query(None), channels: Optional[str
         name = m["name"] if m else s
         spv = settings_store.effective_group(s, gmap, reg)   # bisa 'Lainnya'/'Tanpa SPV'
         org_channel = settings_store.effective_channel(s, reg)
-        target = settings_store.effective_target(s, tmap)
+        target = btmap.get(s, settings_store.effective_target(s, tmap) if s in tmap else 0)
         rev = round(a["rev"])
         pf = port.get(s, {"custs":0,"overdue":0,"at_risk":0.0})
         salespeople.append({

@@ -47,6 +47,8 @@ def build(db, dari, sampai, channels=None, coverage_warnings=None):
     gyear = max(years)
     gmap = settings_store.get_group_map(gyear); reg = settings_store.get_registry(gyear)
     tmap = settings_store.get_target_map(gyear)
+    pmonths = {m for (_, m) in months}
+    btmap = settings_store.get_branch_target_map(years, months=pmonths, channels=(channels or None))
 
     # --- agregasi dalam periode ---
     detail = defaultdict(lambda: defaultdict(float))   # (slp,cust) -> ym -> rev
@@ -76,7 +78,7 @@ def build(db, dari, sampai, channels=None, coverage_warnings=None):
     summ = []
     for slp in sp_rev:
         spv = settings_store.effective_group(slp, gmap, reg)
-        target = settings_store.effective_target(slp, tmap)
+        target = btmap.get(slp, settings_store.effective_target(slp, tmap) if slp in tmap else 0)
         rev = sp_rev[slp]; bills = sp_bills[slp]
         pct = (rev / target) if target else None
         summ.append({"slp": slp, "spv": spv, "rev": rev, "target": target,

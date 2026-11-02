@@ -84,6 +84,29 @@ def effective_target(slp_name, tmap):
     return _defaults_for(slp_name)[2]
 
 
+def get_branch_target_map(years, months=None, channels=None):
+    """{slp_name: total target} dari settings_target_branch (opsi 2b).
+    Dijumlah untuk tahun terpilih, bulan dalam `months` (set int; None=semua),
+    dan branch yang channel-nya ada di `channels` (None=semua channel)."""
+    import config
+    from collections import defaultdict
+    db = get_client()
+    yrs = [int(y) for y in years]
+    try:
+        rows = db.table("settings_target_branch").select(
+            "slp_name,branch,tahun,bulan,target").in_("tahun", yrs).limit(200000).execute().data or []
+    except Exception:
+        return {}
+    agg = defaultdict(float)
+    for r in rows:
+        if months is not None and int(r.get("bulan") or 0) not in months:
+            continue
+        if channels and config.branch_group(r.get("branch")) not in channels:
+            continue
+        agg[r["slp_name"]] += float(r.get("target") or 0)
+    return dict(agg)
+
+
 def display_name(slp_name):
     return _defaults_for(slp_name)[1]
 
