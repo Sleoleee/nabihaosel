@@ -57,6 +57,7 @@ export default function Topbar() {
           }}>
             {[
               { to: '/settings/sales', label: 'Pengaturan Salesperson', desc: 'Channel, SPV, target & aktif per tahun' },
+              { to: '/settings/sp-target', label: 'Target SP per Branch', desc: 'Edit target per SP per branch + scan nama' },
             ].map(it => (
               <NavLink key={it.to} to={it.to} onClick={() => setOpen(false)}
                 style={{ display: 'block', padding: '10px 14px', textDecoration: 'none', color: '#2d2d2d', borderBottom: '1px solid #f4f4f5' }}>

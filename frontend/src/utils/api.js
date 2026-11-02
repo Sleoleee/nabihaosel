@@ -19,6 +19,12 @@ export const buildParams = (filters = {}) => {
 export const exportReport = (jenis, params) =>
   api.get(`/api/export/${jenis}`, { params, responseType: 'blob', timeout: 120000 })
 
+// SP mapping & target per-branch (opsi 2b)
+export const getSpMaster = (tahun) => api.get('/api/settings/sp-master', { params: { tahun } }).then(r => r.data)
+export const getSpTargets = (tahun) => api.get('/api/settings/sp-targets', { params: { tahun } }).then(r => r.data)
+export const saveSpTargets = (rows) => api.post('/api/settings/sp-targets', { rows }).then(r => r.data)
+export const spScan = (name) => api.get('/api/settings/sp-scan', { params: { name } }).then(r => r.data)
+
 export const getFilters = () => api.get('/api/overview/filters').then(r => r.data)
 export const getKPI = (f) => api.get('/api/overview/kpi', { params: buildParams(f) }).then(r => r.data)
 export const getRevenueTrend = (f) => api.get('/api/overview/revenue-trend', { params: buildParams(f) }).then(r => r.data)
