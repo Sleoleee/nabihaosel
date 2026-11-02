@@ -12,6 +12,11 @@ import sys, os
 import openpyxl
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+except Exception:
+    pass
 
 MONTHS = {"t_agu": 8, "t_sep": 9, "t_okt": 10, "t_nov": 11, "t_des": 12}
 TARGET_YEAR = 2026
