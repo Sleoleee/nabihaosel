@@ -85,14 +85,16 @@ def effective_target(slp_name, tmap):
 
 
 def get_target_months(years):
-    """Set bulan yang punya target di settings_target_branch (untuk scope achievement)."""
+    """Set bulan yang punya target > 0 (untuk scope achievement). Bulan bertarget 0/kosong
+    tidak dihitung, jadi mengisi 0 di editor tak mengganggu %achieve."""
     db = get_client()
     try:
-        rows = db.table("settings_target_branch").select("bulan").in_(
+        rows = db.table("settings_target_branch").select("bulan,target").in_(
             "tahun", [int(y) for y in years]).limit(200000).execute().data or []
     except Exception:
         return set()
-    return {int(r["bulan"]) for r in rows if r.get("bulan") is not None}
+    return {int(r["bulan"]) for r in rows
+            if r.get("bulan") is not None and float(r.get("target") or 0) > 0}
 
 
 def get_branch_target_map(years, months=None, channels=None):

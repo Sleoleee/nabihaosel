@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { getSpMaster, getSpTargets, saveSpTargets, spScan } from '../utils/api'
 
-const MONTHS = [[8, 'Agu'], [9, 'Sep'], [10, 'Okt'], [11, 'Nov'], [12, 'Des']]
+const MONTHS = [[1, 'Jan'], [2, 'Feb'], [3, 'Mar'], [4, 'Apr'], [5, 'Mei'], [6, 'Jun'],
+  [7, 'Jul'], [8, 'Agu'], [9, 'Sep'], [10, 'Okt'], [11, 'Nov'], [12, 'Des']]
 const fmt = (n) => (n == null || n === '' ? '' : Number(n).toLocaleString('id-ID'))
 
 export default function SettingsSPTargetPage() {
