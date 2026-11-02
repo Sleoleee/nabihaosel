@@ -84,6 +84,17 @@ def effective_target(slp_name, tmap):
     return _defaults_for(slp_name)[2]
 
 
+def get_target_months(years):
+    """Set bulan yang punya target di settings_target_branch (untuk scope achievement)."""
+    db = get_client()
+    try:
+        rows = db.table("settings_target_branch").select("bulan").in_(
+            "tahun", [int(y) for y in years]).limit(200000).execute().data or []
+    except Exception:
+        return set()
+    return {int(r["bulan"]) for r in rows if r.get("bulan") is not None}
+
+
 def get_branch_target_map(years, months=None, channels=None):
     """{slp_name: total target} dari settings_target_branch (opsi 2b).
     Dijumlah untuk tahun terpilih, bulan dalam `months` (set int; None=semua),

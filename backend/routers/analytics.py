@@ -171,8 +171,9 @@ def sales_performance(years: Optional[str] = Query(None), channels: Optional[str
         asp = [r for r in asp if r.get("channel") in chs]
 
     sel = set(yrs)
+    tgt_months = settings_store.get_target_months(yrs)   # bulan yang punya target (achievement scope)
     months_present = set()   # (tahun,bulan) di periode terpilih -> jumlah bulan
-    agg = defaultdict(lambda: {"rev":0.0,"rev_prev":0.0,"bills":0,
+    agg = defaultdict(lambda: {"rev":0.0,"rev_prev":0.0,"rev_tgt":0.0,"bills":0,
                                "new":0,"repeat":0,"react":0,"rev_new":0.0})
     for r in asp:
         y = int(r["tahun"]); s = r["slp_name"]; a = agg[s]
@@ -181,6 +182,8 @@ def sales_performance(years: Optional[str] = Query(None), channels: Optional[str
             b = int(r.get("bulan") or 0)
             if 1 <= b <= 12 and rev:
                 months_present.add((y, b))
+            if b in tgt_months:
+                a["rev_tgt"] += rev
             a["rev"] += rev; a["bills"] += int(r.get("bills") or 0)
             a["new"] += int(r.get("customer_new") or 0)
             a["repeat"] += int(r.get("customer_repeat") or 0)
@@ -205,9 +208,10 @@ def sales_performance(years: Optional[str] = Query(None), channels: Optional[str
     gmap = settings_store.get_group_map(gyear)
     reg = settings_store.get_registry(gyear)
     tmap = settings_store.get_target_map(gyear)
-    # Target per-branch (opsi 2b): Σ settings_target_branch utk bulan dalam periode & channel.
-    pmonths = {b for (_, b) in months_present} or None
-    btmap = settings_store.get_branch_target_map(yrs, months=pmonths, channels=(chs or None))
+    # Target per-branch (opsi 2b): Σ settings_target_branch utk bulan bertarget YANG ADA datanya.
+    pmonths = {b for (_, b) in months_present}
+    tgt_scope = (tgt_months & pmonths) or None
+    btmap = settings_store.get_branch_target_map(yrs, months=tgt_scope, channels=(chs or None))
 
     salespeople = []
     for s, a in agg.items():
@@ -230,8 +234,9 @@ def sales_performance(years: Optional[str] = Query(None), channels: Optional[str
             "customer_repeat": a["repeat"], "customer_reactivated": a["react"],
             "revenue_new": round(a["rev_new"]),
             "overdue_customers": pf["overdue"], "revenue_at_risk": round(pf["at_risk"]),
-            "target": round(target), "pct": round(rev/target*100, 1) if target else None,
-            "gap": round(target - rev) if target else None,
+            "revenue_bulan_target": round(a["rev_tgt"]),
+            "target": round(target), "pct": round(a["rev_tgt"]/target*100, 1) if target else None,
+            "gap": round(target - a["rev_tgt"]) if target else None,
         })
     salespeople.sort(key=lambda x: -x["revenue"])
 
@@ -242,10 +247,11 @@ def sales_performance(years: Optional[str] = Query(None), channels: Optional[str
     for t in team_names:
         members = [s for s in salespeople if s["spv"] == t]
         trev = sum(m["revenue"] for m in members)
+        trev_tgt = sum(m.get("revenue_bulan_target", 0) for m in members)
         ttgt = sum(m["target"] for m in members)
         teams.append({"team": t, "revenue": round(trev), "target": round(ttgt),
-                      "pct": round(trev/ttgt*100, 1) if ttgt else None,
-                      "gap": round(ttgt - trev), "members": len(members)})
+                      "pct": round(trev_tgt/ttgt*100, 1) if ttgt else None,
+                      "gap": round(ttgt - trev_tgt), "members": len(members)})
 
     return {"salespeople": salespeople, "teams": teams, "group_year": gyear,
             "n_months": len(months_present) or 1,

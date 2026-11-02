@@ -48,11 +48,13 @@ def build(db, dari, sampai, channels=None, coverage_warnings=None):
     gmap = settings_store.get_group_map(gyear); reg = settings_store.get_registry(gyear)
     tmap = settings_store.get_target_map(gyear)
     pmonths = {m for (_, m) in months}
-    btmap = settings_store.get_branch_target_map(years, months=pmonths, channels=(channels or None))
+    tgt_months = settings_store.get_target_months(years) & pmonths
+    btmap = settings_store.get_branch_target_map(years, months=(tgt_months or None), channels=(channels or None))
 
     # --- agregasi dalam periode ---
     detail = defaultdict(lambda: defaultdict(float))   # (slp,cust) -> ym -> rev
     sp_rev = defaultdict(float); sp_bills = defaultdict(int); sp_cust = defaultdict(set)
+    sp_rev_tgt = defaultdict(float)   # revenue di bulan bertarget (utk achievement)
     for r in rows:
         y, m = int(r["tahun"]), int(r["bulan"])
         if (y, m) not in monthset:
@@ -62,6 +64,8 @@ def build(db, dari, sampai, channels=None, coverage_warnings=None):
         slp = r["slp_name"]; cust = r["customer_code"]; rev = float(r.get("revenue") or 0)
         detail[(slp, cust)][(y, m)] += rev
         sp_rev[slp] += rev; sp_bills[slp] += int(r.get("bills") or 0); sp_cust[slp].add(cust)
+        if m in tgt_months:
+            sp_rev_tgt[slp] += rev
 
     wb = Workbook()
 
@@ -79,10 +83,10 @@ def build(db, dari, sampai, channels=None, coverage_warnings=None):
     for slp in sp_rev:
         spv = settings_store.effective_group(slp, gmap, reg)
         target = btmap.get(slp, settings_store.effective_target(slp, tmap) if slp in tmap else 0)
-        rev = sp_rev[slp]; bills = sp_bills[slp]
-        pct = (rev / target) if target else None
+        rev = sp_rev[slp]; bills = sp_bills[slp]; rtgt = sp_rev_tgt[slp]
+        pct = (rtgt / target) if target else None
         summ.append({"slp": slp, "spv": spv, "rev": rev, "target": target,
-                     "pct": pct, "gap": (target - rev) if target else None,
+                     "pct": pct, "gap": (target - rtgt) if target else None,
                      "bills": bills, "aov": (rev / bills) if bills else 0,
                      "ncust": len(sp_cust[slp])})
     # urut dari % Achieve terendah (None di akhir)
