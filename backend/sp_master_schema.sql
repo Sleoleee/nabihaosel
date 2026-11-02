@@ -17,3 +17,7 @@ CREATE TABLE IF NOT EXISTS settings_target_branch (
   PRIMARY KEY (slp_name, branch, tahun, bulan)
 );
 CREATE INDEX IF NOT EXISTS idx_stb_slp ON settings_target_branch(slp_name, tahun);
+
+-- Hak akses service_role (dipakai backend) — WAJIB, seperti analytics_schema.sql.
+GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
