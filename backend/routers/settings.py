@@ -163,3 +163,71 @@ def save_targets(payload: dict = Body(...)):
             db.table("settings_target").upsert(
                 rows[i:i+500], on_conflict="slp_name,tahun").execute()
     return {"ok": True, "saved": len(rows)}
+
+
+# ==================== SP MAPPING & TARGET PER-BRANCH (opsi 2b) ====================
+import difflib, re
+
+
+def _score(a, b):
+    na = " ".join(str(a or "").lower().split()); nb = " ".join(str(b or "").lower().split())
+    if not na or not nb:
+        return 0.0
+    if na == nb:
+        return 100.0
+    ta, tb = set(na.split()), set(nb.split())
+    r_full = difflib.SequenceMatcher(None, na, nb).ratio()
+    cont = len(ta & tb) / min(len(ta), len(tb)) if ta and tb else 0
+    short, long = (ta, tb) if len(ta) <= len(tb) else (tb, ta)
+    tp = 0.0
+    for t in short:
+        best = max((difflib.SequenceMatcher(None, t, u).ratio() for u in long), default=0)
+        for u in long:
+            if u.startswith(t) or t.startswith(u):
+                best = max(best, 0.9)
+        tp += best
+    tp = tp / len(short) if short else 0
+    return round(max(r_full, cont, tp) * 100, 1)
+
+
+@router.get("/sp-master")
+def sp_master_list(tahun: Optional[int] = Query(None)):
+    """Daftar SP dari sp_master + konteks revenue (untuk editor)."""
+    db = get_client()
+    master = db.table("sp_master").select(
+        "slp_name,tipe,kode_sp,tim,aktif_q4,branch_utama").limit(100000).execute().data or []
+    rev = _revenue_by_slp(tahun) if tahun else {}
+    for m in master:
+        m["revenue"] = round(rev.get(m["slp_name"], 0))
+    master.sort(key=lambda m: (m.get("tipe") != "SP lapangan", not m.get("aktif_q4"), -m.get("revenue", 0)))
+    branches = sorted({m.get("branch_utama") for m in master if m.get("branch_utama")})
+    return {"salespeople": master, "branches": branches}
+
+
+@router.get("/sp-targets")
+def sp_targets_get(tahun: int = Query(...)):
+    db = get_client()
+    rows = db.table("settings_target_branch").select(
+        "slp_name,branch,tahun,bulan,target").eq("tahun", int(tahun)).limit(100000).execute().data or []
+    return {"targets": rows}
+
+
+@router.post("/sp-targets")
+def sp_targets_post(rows: list = Body(..., embed=True)):
+    """Upsert target per-SP per-branch per-bulan. rows: [{slp_name,branch,tahun,bulan,target}]."""
+    db = get_client()
+    clean = [{"slp_name": r["slp_name"], "branch": r["branch"], "tahun": int(r["tahun"]),
+              "bulan": int(r["bulan"]), "target": float(r.get("target") or 0)} for r in rows]
+    for i in range(0, len(clean), 500):
+        db.table("settings_target_branch").upsert(
+            clean[i:i+500], on_conflict="slp_name,branch,tahun,bulan").execute()
+    return {"ok": True, "saved": len(clean)}
+
+
+@router.get("/sp-scan")
+def sp_scan(name: str = Query(...), limit: int = Query(5)):
+    """Saran kecocokan nama (fuzzy) terhadap sp_master. SARAN saja — konfirmasi manusia."""
+    db = get_client()
+    master = db.table("sp_master").select("slp_name,tipe,kode_sp,aktif_q4,branch_utama").limit(100000).execute().data or []
+    scored = sorted(((_score(name, m["slp_name"]), m) for m in master), key=lambda x: -x[0])[:limit]
+    return {"query": name, "kandidat": [{**m, "skor": s} for s, m in scored]}
