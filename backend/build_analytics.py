@@ -102,7 +102,8 @@ def rfm_segment(r, f, m):
 
 
 # ============================ BUILD ============================
-def build_all(rows):
+def build_all(rows, sp_master=None):
+    sp_master = sp_master or {}
     # akumulator
     cust = defaultdict(lambda: {"rev":0.0,"name":"","months":set(),"docs":set(),
                                 "first":"","last":"","slp_rev":defaultdict(float),
@@ -131,6 +132,7 @@ def build_all(rows):
 
     total_rev = 0.0
     slp_total = defaultdict(float)
+    slp_branch_rev = defaultdict(lambda: defaultdict(float))   # slp -> branch mentah -> rev (utk branch-mayoritas)
 
     for r in rows:
         rev  = _f(r.get(config.REVENUE_COLUMN))
@@ -165,6 +167,7 @@ def build_all(rows):
         cm_slp_rev[(code,y,mo)][slp] += rev
 
         slp_total[slp] += rev
+        slp_branch_rev[slp][r.get("branch") or "(KOSONG)"] += rev
         cm_ch_rev[(code,y,mo)][ch] += rev
         a = asp[(slp,y,mo,ch)]; a["rev"]+=rev; a["custs"].add(code)
         if doc: a["docs"].add(doc)
@@ -370,13 +373,28 @@ def build_all(rows):
             "customer_aktif":len(v["custs"]),"revenue":round(v["rev"]),
             "pct_retained":round(len(v["custs"])/size*100,2)})
 
-    # ---------- dim_salesperson ----------
+    # ---------- dim_salesperson (resolusi dari sp_master + fallback branch-mayoritas) ----------
     dim_salesperson = []
     for slp, rev in slp_total.items():
-        sp = match_salesperson(slp)
-        dim_salesperson.append({"slp_name":slp,"spv":sp["team"] if sp else None,
-            "is_tim_inti_k25":bool(sp),"is_non_person":config.is_non_person_slp(slp),
-            "total_revenue":round(rev)})
+        m = sp_master.get(slp)
+        if m:
+            tipe = m.get("tipe"); kode = m.get("kode_sp"); tim = m.get("tim")
+            aktif = bool(m.get("aktif_q4")); bu = m.get("branch_utama")
+        else:
+            bu = max(slp_branch_rev[slp].items(), key=lambda x: x[1])[0] if slp_branch_rev[slp] else "(KOSONG)"
+            tipe = config.sp_tipe_fallback(slp, bu)
+            kode = None; tim = None; aktif = False
+        is_core = (tipe == "SP lapangan" and aktif)
+        if tipe == "SP lapangan":
+            display = slp
+        elif tipe == "Staf toko":
+            display = f"Toko {config.branch_core(bu)}"
+        else:
+            display = "Tidak teratribusi"
+        dim_salesperson.append({"slp_name":slp,"spv":tim or None,
+            "is_tim_inti_k25":is_core,"is_non_person":(tipe == "Generik"),
+            "total_revenue":round(rev),"tipe":tipe,"kode_sp":kode,"tim":tim,
+            "aktif_q4":aktif,"branch_utama":bu,"display_group":display})
 
     # dim_item (dulu VIEW dari transactions; kini tabel agar Supabase lepas dari data mentah)
     _item = {}
@@ -497,8 +515,14 @@ def main():
     rows = fetch_clean(db, use_cache=use_cache)
     if not rows:
         print("Tidak ada data."); return
+    sp_master = {r["slp_name"]: r for r in (_retry(lambda: db.table("sp_master").select(
+        "slp_name,tipe,kode_sp,tim,aktif_q4,branch_utama").limit(100000).execute().data) or [])}
+    if sp_master:
+        print(f"sp_master: {len(sp_master)} nama (resolusi SP dari master).")
+    else:
+        print("  (sp_master KOSONG — jalankan load_sp_master.py; SP diklasifikasi via fallback branch-mayoritas saja)")
     print("Membangun agregasi...")
-    tables, report = build_all(rows)
+    tables, report = build_all(rows, sp_master)
     print("\n--- VALIDASI REKONSILIASI ---")
     ok, msgs = validate(rows, tables, report)
     print("\n".join(msgs))

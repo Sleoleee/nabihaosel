@@ -47,6 +47,27 @@ def brand_of(kategori):
     return BRAND_CATEGORIES.get(str(kategori or "").strip().upper())
 
 
+# --- Resolusi tipe Salesperson untuk nama yang TIDAK ada di sp_master (fallback §5) ---
+_SP_TOKO_PREFIX = ("TENGSE", "ASEMKA", "DOMPET", "NAMI", "FAMILY")
+_SP_GENERIK_EXTRA = {"whatsapp", "website", "blibli", "shopee", "tiktok", "tokopedia", "lazada", "web"}
+
+
+def branch_core(branch):
+    """Branch tanpa prefix angka, uppercase (mis. '1.K25' -> 'K25')."""
+    return re.sub(r"^\d+\.\s*", "", str(branch or "").strip().upper()).strip()
+
+
+def sp_tipe_fallback(slp_name, branch_utama):
+    """Tipe SP untuk nama di luar sp_master: Generik / SP lapangan / Staf toko (aturan dokumen §5)."""
+    n = str(slp_name or "").strip().lower()
+    if is_non_person_slp(slp_name) or n in _SP_GENERIK_EXTRA or n.startswith("kasir "):
+        return "Generik"
+    core = branch_core(branch_utama)
+    if "K25" in core:
+        return "SP lapangan"
+    return "Staf toko"
+
+
 # --- Pemetaan branch -> channel (6 kelompok) ---
 BRANCH_GROUP_ORDER = ["E-Commerce", "SUKSES JAYA", "NAMI", "BLOOMIE", "K25", "OTHER CHANNEL"]
 CORE_BRANCH = "1.K25"
