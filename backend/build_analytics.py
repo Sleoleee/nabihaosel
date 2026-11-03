@@ -134,6 +134,10 @@ def build_all(rows, sp_master=None):
     slp_total = defaultdict(float)
     slp_first = {}                                             # slp -> tanggal transaksi pertama (tenure)
     slp_branch_rev = defaultdict(lambda: defaultdict(float))   # slp -> branch mentah -> rev (utk branch-mayoritas)
+    cust_yr = defaultdict(lambda: defaultdict(float))          # code -> tahun -> rev (utk YoY tumbuh)
+    slp_year_rev = defaultdict(lambda: defaultdict(float))     # slp -> tahun -> rev (utk AOV trend)
+    slp_year_docs = defaultdict(lambda: defaultdict(set))      # slp -> tahun -> set(nota)
+    cust_item_rev = defaultdict(float)                         # (code,item) -> rev (utk item favorit)
 
     for r in rows:
         rev  = _f(r.get(config.REVENUE_COLUMN))
@@ -171,6 +175,10 @@ def build_all(rows, sp_master=None):
         if pd_s and (slp not in slp_first or pd_s < slp_first[slp]):
             slp_first[slp] = pd_s
         slp_branch_rev[slp][r.get("branch") or "(KOSONG)"] += rev
+        cust_yr[code][y] += rev
+        slp_year_rev[slp][y] += rev
+        if doc: slp_year_docs[slp][y].add(doc)
+        if item: cust_item_rev[(code, item)] += rev
         cm_ch_rev[(code,y,mo)][ch] += rev
         a = asp[(slp,y,mo,ch)]; a["rev"]+=rev; a["custs"].add(code)
         if doc: a["docs"].add(doc)
@@ -252,8 +260,10 @@ def build_all(rows, sp_master=None):
     for code, d in dim_customer.items():
         d["kategori_favorit"] = fav[code][0] if code in fav else ""
 
-    # ---------- SP HEALTH (portofolio by status 90/180) ----------
-    sp_port = defaultdict(lambda: {"n": 0, "aktif": 0, "tidak": 0, "hilang": 0})
+    # ---------- SP HEALTH (portofolio by status 90/180 + YoY tumbuh) ----------
+    _years = sorted({yy for c in cust_yr.values() for yy in c}) or [config.MIN_YEAR]
+    CY = max(_years); PY = CY - 1
+    sp_port = defaultdict(lambda: {"n": 0, "aktif": 0, "tidak": 0, "hilang": 0, "n_yoy": 0, "grown": 0})
     for code, d in dim_customer.items():
         sp = d.get("salesperson_utama")
         if not sp:
@@ -263,6 +273,11 @@ def build_all(rows, sp_master=None):
         if days is None or days <= 90: p["aktif"] += 1
         elif days <= 180: p["tidak"] += 1
         else: p["hilang"] += 1
+        r_py = cust_yr[code].get(PY, 0); r_cy = cust_yr[code].get(CY, 0)
+        if r_py > 0:
+            p["n_yoy"] += 1
+            if r_cy > r_py:
+                p["grown"] += 1
 
     # ---------- RFM (definisi terkoreksi: R=rasio, F=bills/bulan, M=avg/bulan) ----------
     gmed = statistics.median(intervals_all) if intervals_all else 30
@@ -414,9 +429,12 @@ def build_all(rows, sp_master=None):
             display = f"Toko {config.branch_core(bu)}"
         else:
             display = "Tidak teratribusi"
-        ph = sp_port.get(slp, {"n": 0, "aktif": 0, "tidak": 0, "hilang": 0})
+        ph = sp_port.get(slp, {"n": 0, "aktif": 0, "tidak": 0, "hilang": 0, "n_yoy": 0, "grown": 0})
         first = slp_first.get(slp)
         tenure = _month_diff(first[:7], cutoff[:7]) + 1 if first else 0
+        nd_cy = len(slp_year_docs[slp].get(CY, set())); nd_py = len(slp_year_docs[slp].get(PY, set()))
+        aov_cy = slp_year_rev[slp].get(CY, 0) / nd_cy if nd_cy else 0
+        aov_py = slp_year_rev[slp].get(PY, 0) / nd_py if nd_py else 0
         dim_salesperson.append({"slp_name":slp,"spv":tim or None,
             "is_tim_inti_k25":is_core,"is_non_person":(tipe == "Generik"),
             "total_revenue":round(rev),"tipe":tipe,"kode_sp":kode,"tim":tim,
@@ -424,7 +442,10 @@ def build_all(rows, sp_master=None):
             "first_txn":first,"tenure_bulan":tenure,"n_customer":ph["n"],
             "n_aktif":ph["aktif"],"n_tidak_aktif":ph["tidak"],"n_hilang":ph["hilang"],
             "churn_rate":round(ph["hilang"]/ph["n"], 4) if ph["n"] else None,
-            "net_avg_cust":round(rev/ph["n"]) if ph["n"] else 0})
+            "net_avg_cust":round(rev/ph["n"]) if ph["n"] else 0,
+            "pct_cust_tumbuh":round(ph["grown"]/ph["n_yoy"], 4) if ph["n_yoy"] else None,
+            "aov_tahun_ini":round(aov_cy),"aov_tahun_lalu":round(aov_py),
+            "aov_trend":round((aov_cy-aov_py)/aov_py, 4) if aov_py else None})
 
     # dim_item (dulu VIEW dari transactions; kini tabel agar Supabase lepas dari data mentah)
     _item = {}
@@ -448,6 +469,17 @@ def build_all(rows, sp_master=None):
             if config.is_produk_inti(kat): e["is_produk_inti"] = True
             if d and (e["first_sold"] is None or d < e["first_sold"]): e["first_sold"] = d
             if d and (e["last_sold"] is None or d > e["last_sold"]): e["last_sold"] = d
+
+    # ---------- item favorit per customer (revenue tertinggi) ----------
+    cust_topitem = {}
+    for (code, item), rv in cust_item_rev.items():
+        cur = cust_topitem.get(code)
+        if cur is None or rv > cur[1]:
+            cust_topitem[code] = (item, rv)
+    for code, d in dim_customer.items():
+        it = cust_topitem.get(code, ("", 0))[0]
+        d["item_favorit"] = it
+        d["item_favorit_desc"] = (_item.get(it, {}) or {}).get("item_desc", "") if it else ""
 
     tables = {
         "dim_customer": list(dim_customer.values()),
