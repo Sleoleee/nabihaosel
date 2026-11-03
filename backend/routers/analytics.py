@@ -204,6 +204,10 @@ def sales_performance(years: Optional[str] = Query(None), channels: Optional[str
 
     # Grup & target dibaca LIVE dari settings (per tahun terpilih terbaru).
     # Kalau beberapa tahun dipilih, pengelompokan memakai tahun terbaru agar tak ambigu.
+    # Health per SP (tenure, churn, net avg/cust, breakdown status) dari dim_salesperson.
+    dsp = {r["slp_name"]: r for r in _fetch_all_rows("dim_salesperson",
+        "slp_name,tipe,kode_sp,tenure_bulan,n_customer,n_aktif,n_tidak_aktif,n_hilang,churn_rate,net_avg_cust,first_txn")}
+
     gyear = max(yrs)
     gmap = settings_store.get_group_map(gyear)
     reg = settings_store.get_registry(gyear)
@@ -237,6 +241,11 @@ def sales_performance(years: Optional[str] = Query(None), channels: Optional[str
             "revenue_bulan_target": round(a["rev_tgt"]),
             "target": round(target), "pct": round(a["rev_tgt"]/target*100, 1) if target else None,
             "gap": round(target - a["rev_tgt"]) if target else None,
+            "tenure_bulan": (dd := dsp.get(s, {})).get("tenure_bulan"),
+            "first_txn": dd.get("first_txn"), "tipe": dd.get("tipe"),
+            "n_customer_portfolio": dd.get("n_customer"), "n_aktif": dd.get("n_aktif"),
+            "n_tidak_aktif": dd.get("n_tidak_aktif"), "n_hilang": dd.get("n_hilang"),
+            "churn_rate": dd.get("churn_rate"), "net_avg_cust": dd.get("net_avg_cust"),
         })
     salespeople.sort(key=lambda x: -x["revenue"])
 

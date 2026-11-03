@@ -132,6 +132,7 @@ def build_all(rows, sp_master=None):
 
     total_rev = 0.0
     slp_total = defaultdict(float)
+    slp_first = {}                                             # slp -> tanggal transaksi pertama (tenure)
     slp_branch_rev = defaultdict(lambda: defaultdict(float))   # slp -> branch mentah -> rev (utk branch-mayoritas)
 
     for r in rows:
@@ -167,6 +168,8 @@ def build_all(rows, sp_master=None):
         cm_slp_rev[(code,y,mo)][slp] += rev
 
         slp_total[slp] += rev
+        if pd_s and (slp not in slp_first or pd_s < slp_first[slp]):
+            slp_first[slp] = pd_s
         slp_branch_rev[slp][r.get("branch") or "(KOSONG)"] += rev
         cm_ch_rev[(code,y,mo)][ch] += rev
         a = asp[(slp,y,mo,ch)]; a["rev"]+=rev; a["custs"].add(code)
@@ -240,6 +243,26 @@ def build_all(rows, sp_master=None):
             "revenue_at_risk": round(monetary) if status=="Overdue" else 0,
             "jumlah_bills":bills, "jumlah_kategori_pernah_dibeli":len(c["kats"]),
         }
+
+    # ---------- kategori favorit per customer (revenue tertinggi) ----------
+    fav = {}   # code -> (kat, rev)
+    for (code, kat), v in acc_cat.items():
+        if code not in fav or v["rev"] > fav[code][1]:
+            fav[code] = (kat, v["rev"])
+    for code, d in dim_customer.items():
+        d["kategori_favorit"] = fav[code][0] if code in fav else ""
+
+    # ---------- SP HEALTH (portofolio by status 90/180) ----------
+    sp_port = defaultdict(lambda: {"n": 0, "aktif": 0, "tidak": 0, "hilang": 0})
+    for code, d in dim_customer.items():
+        sp = d.get("salesperson_utama")
+        if not sp:
+            continue
+        days = d.get("days_since_last_order")
+        p = sp_port[sp]; p["n"] += 1
+        if days is None or days <= 90: p["aktif"] += 1
+        elif days <= 180: p["tidak"] += 1
+        else: p["hilang"] += 1
 
     # ---------- RFM (definisi terkoreksi: R=rasio, F=bills/bulan, M=avg/bulan) ----------
     gmed = statistics.median(intervals_all) if intervals_all else 30
@@ -391,10 +414,17 @@ def build_all(rows, sp_master=None):
             display = f"Toko {config.branch_core(bu)}"
         else:
             display = "Tidak teratribusi"
+        ph = sp_port.get(slp, {"n": 0, "aktif": 0, "tidak": 0, "hilang": 0})
+        first = slp_first.get(slp)
+        tenure = _month_diff(first[:7], cutoff[:7]) + 1 if first else 0
         dim_salesperson.append({"slp_name":slp,"spv":tim or None,
             "is_tim_inti_k25":is_core,"is_non_person":(tipe == "Generik"),
             "total_revenue":round(rev),"tipe":tipe,"kode_sp":kode,"tim":tim,
-            "aktif_q4":aktif,"branch_utama":bu,"display_group":display})
+            "aktif_q4":aktif,"branch_utama":bu,"display_group":display,
+            "first_txn":first,"tenure_bulan":tenure,"n_customer":ph["n"],
+            "n_aktif":ph["aktif"],"n_tidak_aktif":ph["tidak"],"n_hilang":ph["hilang"],
+            "churn_rate":round(ph["hilang"]/ph["n"], 4) if ph["n"] else None,
+            "net_avg_cust":round(rev/ph["n"]) if ph["n"] else 0})
 
     # dim_item (dulu VIEW dari transactions; kini tabel agar Supabase lepas dari data mentah)
     _item = {}
