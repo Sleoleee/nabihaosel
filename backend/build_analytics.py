@@ -138,6 +138,7 @@ def build_all(rows, sp_master=None):
     slp_year_rev = defaultdict(lambda: defaultdict(float))     # slp -> tahun -> rev (utk AOV trend)
     slp_year_docs = defaultdict(lambda: defaultdict(set))      # slp -> tahun -> set(nota)
     cust_item_rev = defaultdict(float)                         # (code,item) -> rev (utk item favorit)
+    cust_subitem_rev = defaultdict(float)                      # (code,sub_item) -> rev (utk sub item favorit, data 2026)
 
     for r in rows:
         rev  = _f(r.get(config.REVENUE_COLUMN))
@@ -179,6 +180,8 @@ def build_all(rows, sp_master=None):
         slp_year_rev[slp][y] += rev
         if doc: slp_year_docs[slp][y].add(doc)
         if item: cust_item_rev[(code, item)] += rev
+        sub = (r.get("sub_item") or "").strip()
+        if sub and sub.lower() not in ("none", "nan"): cust_subitem_rev[(code, sub)] += rev
         cm_ch_rev[(code,y,mo)][ch] += rev
         a = asp[(slp,y,mo,ch)]; a["rev"]+=rev; a["custs"].add(code)
         if doc: a["docs"].add(doc)
@@ -476,10 +479,17 @@ def build_all(rows, sp_master=None):
         cur = cust_topitem.get(code)
         if cur is None or rv > cur[1]:
             cust_topitem[code] = (item, rv)
+    # ---------- sub item favorit per customer (revenue tertinggi; data 2026) ----------
+    cust_topsub = {}
+    for (code, sub), rv in cust_subitem_rev.items():
+        cur = cust_topsub.get(code)
+        if cur is None or rv > cur[1]:
+            cust_topsub[code] = (sub, rv)
     for code, d in dim_customer.items():
         it = cust_topitem.get(code, ("", 0))[0]
         d["item_favorit"] = it
         d["item_favorit_desc"] = (_item.get(it, {}) or {}).get("item_desc", "") if it else ""
+        d["sub_item_favorit"] = cust_topsub.get(code, ("", 0))[0]
 
     tables = {
         "dim_customer": list(dim_customer.values()),

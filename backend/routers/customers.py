@@ -177,13 +177,14 @@ def customer_list(year: Optional[str] = Query(None), tier: Optional[str] = Query
     codes = [r["code"] for r in page_rows if r.get("code")]
     if codes:
         fav = {d["customer_code"]: d for d in
-               (db.table("dim_customer").select("customer_code,kategori_favorit,item_favorit,item_favorit_desc")
+               (db.table("dim_customer").select("customer_code,kategori_favorit,item_favorit,item_favorit_desc,sub_item_favorit")
                 .in_("customer_code", codes).limit(10000).execute().data or [])}
         for r in page_rows:
             d = fav.get(r.get("code"), {})
             r["kategori_favorit"] = d.get("kategori_favorit", "")
             r["item_favorit"] = d.get("item_favorit", "")
             r["item_favorit_desc"] = d.get("item_favorit_desc", "")
+            r["sub_item_favorit"] = d.get("sub_item_favorit", "")
     return {"data": page_rows, "total": total, "page": page, "limit": limit}
 
 

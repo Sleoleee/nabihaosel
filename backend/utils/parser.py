@@ -30,6 +30,8 @@ COLUMN_MAP = {
     # Varian nama kolom pada file AR (2026)
     "Due_Date": "due_date",
     "Disc% For Document": "disc_for_document",
+    # Sub item (hanya tersedia di file AR 2026)
+    "U_Sub_Item": "sub_item",
 }
 
 NUMERIC_COLS = {"harga_awal", "disc_per_row", "harga_jual", "row_total",
@@ -42,7 +44,7 @@ OUTPUT_COLS = [
     "customer_name", "item_no", "item_description", "kategori",
     "warehouse_code", "quantity", "unit", "harga_awal", "disc_per_row",
     "harga_jual", "row_total", "disc_for_document", "new_row_total",
-    "slp_name", "branch", "status_payment", "year",
+    "slp_name", "branch", "status_payment", "sub_item", "year",
 ]
 
 

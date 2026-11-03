@@ -14,7 +14,7 @@ COLUMNS = [
     "document_number", "posting_date", "due_date", "customer_code", "customer_name",
     "item_no", "item_description", "kategori", "warehouse_code", "quantity", "unit",
     "harga_awal", "disc_per_row", "harga_jual", "row_total", "disc_for_document",
-    "new_row_total", "slp_name", "branch", "status_payment", "year",
+    "new_row_total", "slp_name", "branch", "status_payment", "sub_item", "year",
 ]
 
 
@@ -33,6 +33,11 @@ def connect():
 def ensure_schema(conn):
     cols = ", ".join(f'"{c}" TEXT' for c in COLUMNS)
     conn.execute(f'CREATE TABLE IF NOT EXISTS transactions (id INTEGER PRIMARY KEY AUTOINCREMENT, {cols})')
+    # tambah kolom baru ke DB lama tanpa perlu reset (SQLite: ADD COLUMN)
+    existing = {r[1] for r in conn.execute('PRAGMA table_info(transactions)').fetchall()}
+    for c in COLUMNS:
+        if c not in existing:
+            conn.execute(f'ALTER TABLE transactions ADD COLUMN "{c}" TEXT')
     conn.execute('CREATE INDEX IF NOT EXISTS idx_tx_year ON transactions(year)')
     conn.execute('CREATE INDEX IF NOT EXISTS idx_tx_branch ON transactions(branch)')
     conn.execute('CREATE INDEX IF NOT EXISTS idx_tx_date ON transactions(posting_date)')

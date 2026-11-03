@@ -365,7 +365,7 @@ export default function CustomerIntelligence() {
                   {list.data.map((c,i)=>{ const rowBg=c.status==='Hilang'?'#f1f5f9':c.status==='Tidak Aktif'?'#fff8e1':'transparent'
                     return (
                     <tr key={i} style={{ background:rowBg, borderBottom:'1px solid #f5f5f5' }}>
-                      <td onClick={()=>{ setDetail({loading:true}); getCustomerDetail(c.customer_code).then(d=>setDetail(d&&d.customer?{...d,customer:{...d.customer,kategori_favorit:c.kategori_favorit,item_favorit:c.item_favorit,item_favorit_desc:c.item_favorit_desc}}:d)).catch(()=>setDetail(null)) }}
+                      <td onClick={()=>{ setDetail({loading:true}); getCustomerDetail(c.customer_code).then(d=>setDetail(d&&d.customer?{...d,customer:{...d.customer,kategori_favorit:c.kategori_favorit,item_favorit:c.item_favorit,item_favorit_desc:c.item_favorit_desc,sub_item_favorit:c.sub_item_favorit}}:d)).catch(()=>setDetail(null)) }}
                         style={{ padding:'6px 8px', fontWeight:600, maxWidth:150, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'#d31137', cursor:'pointer' }}>{c.customer_name}</td>
                       <td style={{ padding:'6px 8px' }}><StatusPill s={c.status}/></td>
                       <td style={{ padding:'6px 8px', fontSize:11 }}><span style={{ background:'#f1f5f9', color:'#475569', padding:'2px 6px', borderRadius:4 }}>{String(c.tier||'').split(' — ')[0]}</span></td>
@@ -406,10 +406,11 @@ export default function CustomerIntelligence() {
                   <div style={{ fontSize:16, fontWeight:700 }}>{c.customer_name}</div>
                   <div style={{ fontSize:11.5, color:'#888' }}>{c.customer_code} · {c.channel_utama} · SP: {c.salesperson_utama||'-'}</div>
                 </div>
-                {(c.kategori_favorit||c.item_favorit_desc||c.item_favorit) && (
+                {(c.kategori_favorit||c.item_favorit_desc||c.item_favorit||c.sub_item_favorit) && (
                   <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
                     {c.kategori_favorit && <div style={{ background:'#fdecef', color:'#d31137', borderRadius:6, padding:'6px 10px' }}><div style={{ fontSize:10, color:'#b45309' }}>Kategori favorit</div><div style={{ fontSize:12, fontWeight:600 }}>{c.kategori_favorit}</div></div>}
                     {(c.item_favorit_desc||c.item_favorit) && <div style={{ background:'#eef6ff', color:'#1d4ed8', borderRadius:6, padding:'6px 10px' }}><div style={{ fontSize:10, color:'#64748b' }}>Item favorit</div><div style={{ fontSize:12, fontWeight:600 }}>{c.item_favorit_desc||c.item_favorit}</div></div>}
+                    {c.sub_item_favorit && <div style={{ background:'#eefbf3', color:'#047857', borderRadius:6, padding:'6px 10px' }}><div style={{ fontSize:10, color:'#64748b' }}>Sub item favorit</div><div style={{ fontSize:12, fontWeight:600 }}>{c.sub_item_favorit}</div></div>}
                   </div>
                 )}
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, fontSize:12 }}>
