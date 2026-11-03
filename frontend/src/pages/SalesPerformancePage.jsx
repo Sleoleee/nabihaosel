@@ -266,7 +266,7 @@ export default function SalesPerformancePage() {
       <Card style={{ padding:16 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
           <div style={{ fontSize:13, fontWeight:600 }}>Leaderboard Salesperson</div>
-          <button onClick={()=>downloadCSV(sorted.map(s=>({Nama:s.name,SPV:s.spv||'-',Revenue:s.revenue,Pct_Ach:s.pct??'',Gap:s.gap??'',Growth_YoY:s.growth_yoy??'',Bills:s.bills,AOV:s.aov,Customer:s.customers,New:s.customer_new,RevenueAtRisk:s.revenue_at_risk})),'leaderboard_sales.csv')}
+          <button onClick={()=>downloadCSV(sorted.map(s=>({Nama:s.name,SPV:s.spv||'-',Revenue:s.revenue,Pct_Ach:s.pct??'',Gap:s.gap??'',Growth_YoY:s.growth_yoy??'',Bills:s.bills,AOV:s.aov,Customer:s.customers,New:s.customer_new,RevenueAtRisk:s.revenue_at_risk,Tenure_bln:s.tenure_bulan??'',Net_per_Cust:s.net_avg_cust??'',Churn:s.churn_rate??''})),'leaderboard_sales.csv')}
             style={{ ...selStyle, fontSize:12 }}>⬇ Export CSV</button>
         </div>
         {loading ? <Skeleton height={240}/> : (
@@ -277,6 +277,7 @@ export default function SalesPerformancePage() {
                 <th style={th}>Revenue {sel('revenue')}</th><th style={th}>% Ach {sel('pct')}</th><th style={th}>Gap</th>
                 <th style={th}>Growth YoY {sel('growth_yoy')}</th><th style={th}>MoM</th><th style={th}>Bills {sel('bills')}</th><th style={th}>AOV</th>
                 <th style={th}>Cust</th><th style={th}>New</th><th style={th}>At Risk</th>
+                <th style={th}>Tenure</th><th style={th}>Net/Cust</th><th style={th}>Churn</th>
               </tr></thead>
               <tbody>
                 {sorted.map((s,i)=>(
@@ -291,6 +292,9 @@ export default function SalesPerformancePage() {
                     <td style={td}>{formatNumber(s.bills)}</td><td style={td}>{formatRupiahShort(s.aov)}</td>
                     <td style={td}>{s.customers}</td><td style={td}>{s.customer_new}</td>
                     <td style={{ ...td, color:s.revenue_at_risk>0?'#d31137':'#888' }}>{formatRupiahShort(s.revenue_at_risk)}</td>
+                    <td style={{ ...td, color:'#888' }}>{s.tenure_bulan!=null?`${s.tenure_bulan}b`:'-'}</td>
+                    <td style={td}>{s.net_avg_cust?formatRupiahShort(s.net_avg_cust):'-'}</td>
+                    <td style={{ ...td, color:(s.churn_rate>0.3?'#d31137':s.churn_rate>0.15?'#d08700':'#15803d'), fontWeight:600 }}>{s.churn_rate!=null?`${Math.round(s.churn_rate*100)}%`:'-'}</td>
                   </tr>
                 ))}
               </tbody>
