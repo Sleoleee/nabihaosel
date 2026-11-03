@@ -360,18 +360,20 @@ export default function CustomerIntelligence() {
           <>
             <div style={{ overflowX:'auto' }}>
               <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
-                <thead><tr style={{ borderBottom:'2px solid #f0f0f0' }}>{['Nama','Status','Tier','Total Revenue','Avg/Bulan','Bills','Terakhir Beli'].map(h=><th key={h} style={{ padding:'6px 8px', textAlign:'left', color:'#888', fontSize:11, fontWeight:600, whiteSpace:'nowrap' }}>{h}</th>)}</tr></thead>
+                <thead><tr style={{ borderBottom:'2px solid #f0f0f0' }}>{['Nama','Status','Tier','Total Revenue','Avg/Bulan','Bills','Kategori Fav','Item Fav','Terakhir Beli'].map(h=><th key={h} style={{ padding:'6px 8px', textAlign:'left', color:'#888', fontSize:11, fontWeight:600, whiteSpace:'nowrap' }}>{h}</th>)}</tr></thead>
                 <tbody>
                   {list.data.map((c,i)=>{ const rowBg=c.status==='Hilang'?'#f1f5f9':c.status==='Tidak Aktif'?'#fff8e1':'transparent'
                     return (
                     <tr key={i} style={{ background:rowBg, borderBottom:'1px solid #f5f5f5' }}>
-                      <td onClick={()=>{ setDetail({loading:true}); getCustomerDetail(c.customer_code).then(setDetail).catch(()=>setDetail(null)) }}
+                      <td onClick={()=>{ setDetail({loading:true}); getCustomerDetail(c.customer_code).then(d=>setDetail(d&&d.customer?{...d,customer:{...d.customer,kategori_favorit:c.kategori_favorit,item_favorit:c.item_favorit,item_favorit_desc:c.item_favorit_desc}}:d)).catch(()=>setDetail(null)) }}
                         style={{ padding:'6px 8px', fontWeight:600, maxWidth:150, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'#d31137', cursor:'pointer' }}>{c.customer_name}</td>
                       <td style={{ padding:'6px 8px' }}><StatusPill s={c.status}/></td>
                       <td style={{ padding:'6px 8px', fontSize:11 }}><span style={{ background:'#f1f5f9', color:'#475569', padding:'2px 6px', borderRadius:4 }}>{String(c.tier||'').split(' — ')[0]}</span></td>
                       <td style={{ padding:'6px 8px', whiteSpace:'nowrap' }}>{formatRupiahShort(c.total_revenue)}</td>
                       <td style={{ padding:'6px 8px', whiteSpace:'nowrap' }}>{formatRupiahShort(c.avg_spending_per_month_active)}</td>
                       <td style={{ padding:'6px 8px' }}>{c.jumlah_bills}</td>
+                      <td style={{ padding:'6px 8px', fontSize:11, color:'#555', maxWidth:120, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.kategori_favorit||'—'}</td>
+                      <td style={{ padding:'6px 8px', fontSize:11, color:'#555', maxWidth:140, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={c.item_favorit_desc||''}>{c.item_favorit_desc||c.item_favorit||'—'}</td>
                       <td style={{ padding:'6px 8px', fontSize:11, color:'#666' }}>{c.last_order_date}</td>
                     </tr>
                   )})}
@@ -404,6 +406,12 @@ export default function CustomerIntelligence() {
                   <div style={{ fontSize:16, fontWeight:700 }}>{c.customer_name}</div>
                   <div style={{ fontSize:11.5, color:'#888' }}>{c.customer_code} · {c.channel_utama} · SP: {c.salesperson_utama||'-'}</div>
                 </div>
+                {(c.kategori_favorit||c.item_favorit_desc||c.item_favorit) && (
+                  <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+                    {c.kategori_favorit && <div style={{ background:'#fdecef', color:'#d31137', borderRadius:6, padding:'6px 10px' }}><div style={{ fontSize:10, color:'#b45309' }}>Kategori favorit</div><div style={{ fontSize:12, fontWeight:600 }}>{c.kategori_favorit}</div></div>}
+                    {(c.item_favorit_desc||c.item_favorit) && <div style={{ background:'#eef6ff', color:'#1d4ed8', borderRadius:6, padding:'6px 10px' }}><div style={{ fontSize:10, color:'#64748b' }}>Item favorit</div><div style={{ fontSize:12, fontWeight:600 }}>{c.item_favorit_desc||c.item_favorit}</div></div>}
+                  </div>
+                )}
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, fontSize:12 }}>
                   {[['Total Revenue',formatRupiahShort(c.total_revenue)],['Status',statusOf(c.days_since_last_order)],['Tier',String(c.tier||'').split(' — ')[0]],['Bills',c.jumlah_bills],['Interval normal',`${c.interval_normal_hari??'-'} hari`],['Sejak beli terakhir',c.days_since_last_order==null?'—':`${c.days_since_last_order} hari`],['Terakhir beli',c.last_order_date],['Avg/bulan',formatRupiahShort(c.avg_spending_per_month_active)]].map((x,i)=>(
                     <div key={i} style={{ background:'#f8f8f8', borderRadius:6, padding:'6px 8px' }}><div style={{ fontSize:10, color:'#888' }}>{x[0]}</div><div style={{ fontWeight:600 }}>{x[1]}</div></div>
