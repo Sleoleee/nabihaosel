@@ -266,7 +266,7 @@ def build_all(rows, sp_master=None):
     # ---------- SP HEALTH (portofolio by status 90/180 + YoY tumbuh) ----------
     _years = sorted({yy for c in cust_yr.values() for yy in c}) or [config.MIN_YEAR]
     CY = max(_years); PY = CY - 1
-    sp_port = defaultdict(lambda: {"n": 0, "aktif": 0, "tidak": 0, "hilang": 0, "n_yoy": 0, "grown": 0})
+    sp_port = defaultdict(lambda: {"n": 0, "aktif": 0, "tidak": 0, "hilang": 0, "n_yoy": 0, "grown": 0, "retained": 0})
     for code, d in dim_customer.items():
         sp = d.get("salesperson_utama")
         if not sp:
@@ -279,6 +279,8 @@ def build_all(rows, sp_master=None):
         r_py = cust_yr[code].get(PY, 0); r_cy = cust_yr[code].get(CY, 0)
         if r_py > 0:
             p["n_yoy"] += 1
+            if r_cy > 0:
+                p["retained"] += 1          # beli tahun lalu DAN tahun ini = tertahan
             if r_cy > r_py:
                 p["grown"] += 1
 
@@ -432,7 +434,7 @@ def build_all(rows, sp_master=None):
             display = f"Toko {config.branch_core(bu)}"
         else:
             display = "Tidak teratribusi"
-        ph = sp_port.get(slp, {"n": 0, "aktif": 0, "tidak": 0, "hilang": 0, "n_yoy": 0, "grown": 0})
+        ph = sp_port.get(slp, {"n": 0, "aktif": 0, "tidak": 0, "hilang": 0, "n_yoy": 0, "grown": 0, "retained": 0})
         first = slp_first.get(slp)
         tenure = _month_diff(first[:7], cutoff[:7]) + 1 if first else 0
         nd_cy = len(slp_year_docs[slp].get(CY, set())); nd_py = len(slp_year_docs[slp].get(PY, set()))
@@ -447,6 +449,7 @@ def build_all(rows, sp_master=None):
             "churn_rate":round(ph["hilang"]/ph["n"], 4) if ph["n"] else None,
             "net_avg_cust":round(rev/ph["n"]) if ph["n"] else 0,
             "pct_cust_tumbuh":round(ph["grown"]/ph["n_yoy"], 4) if ph["n_yoy"] else None,
+            "retention_rate":round(ph["retained"]/ph["n_yoy"], 4) if ph["n_yoy"] else None,
             "aov_tahun_ini":round(aov_cy),"aov_tahun_lalu":round(aov_py),
             "aov_trend":round((aov_cy-aov_py)/aov_py, 4) if aov_py else None})
 

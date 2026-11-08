@@ -207,7 +207,7 @@ def sales_performance(years: Optional[str] = Query(None), channels: Optional[str
     # Health per SP (tenure, churn, net avg/cust, breakdown status) dari dim_salesperson.
     dsp = {r["slp_name"]: r for r in _fetch_all_rows("dim_salesperson",
         "slp_name,tipe,kode_sp,tenure_bulan,n_customer,n_aktif,n_tidak_aktif,n_hilang,churn_rate,"
-        "net_avg_cust,first_txn,pct_cust_tumbuh,aov_tahun_ini,aov_tahun_lalu,aov_trend")}
+        "net_avg_cust,first_txn,pct_cust_tumbuh,aov_tahun_ini,aov_tahun_lalu,aov_trend,retention_rate")}
 
     gyear = max(yrs)
     gmap = settings_store.get_group_map(gyear)
@@ -249,6 +249,7 @@ def sales_performance(years: Optional[str] = Query(None), channels: Optional[str
             "churn_rate": dd.get("churn_rate"), "net_avg_cust": dd.get("net_avg_cust"),
             "pct_cust_tumbuh": dd.get("pct_cust_tumbuh"), "aov_trend": dd.get("aov_trend"),
             "aov_tahun_ini": dd.get("aov_tahun_ini"), "aov_tahun_lalu": dd.get("aov_tahun_lalu"),
+            "retention_rate": dd.get("retention_rate"),
         })
     salespeople.sort(key=lambda x: -x["revenue"])
 
