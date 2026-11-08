@@ -373,7 +373,7 @@ export default function CustomerIntelligence() {
                       <td style={{ padding:'6px 8px', whiteSpace:'nowrap' }}>{formatRupiahShort(c.avg_spending_per_month_active)}</td>
                       <td style={{ padding:'6px 8px' }}>{c.jumlah_bills}</td>
                       <td style={{ padding:'6px 8px', fontSize:11, color:'#555', maxWidth:120, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.kategori_favorit||'—'}</td>
-                      <td style={{ padding:'6px 8px', fontSize:11, color:'#555', maxWidth:140, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={c.item_favorit_desc||''}>{c.item_favorit_desc||c.item_favorit||'—'}</td>
+                      <td style={{ padding:'6px 8px', fontSize:11, color:'#555', maxWidth:140, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={c.item_favorit_desc||''}>{c.sub_item_favorit||c.item_favorit_desc||c.item_favorit||'—'}</td>
                       <td style={{ padding:'6px 8px', fontSize:11, color:'#666' }}>{c.last_order_date}</td>
                     </tr>
                   )})}
@@ -409,8 +409,7 @@ export default function CustomerIntelligence() {
                 {(c.kategori_favorit||c.item_favorit_desc||c.item_favorit||c.sub_item_favorit) && (
                   <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
                     {c.kategori_favorit && <div style={{ background:'#fdecef', color:'#d31137', borderRadius:6, padding:'6px 10px' }}><div style={{ fontSize:10, color:'#b45309' }}>Kategori favorit</div><div style={{ fontSize:12, fontWeight:600 }}>{c.kategori_favorit}</div></div>}
-                    {(c.item_favorit_desc||c.item_favorit) && <div style={{ background:'#eef6ff', color:'#1d4ed8', borderRadius:6, padding:'6px 10px' }}><div style={{ fontSize:10, color:'#64748b' }}>Item favorit</div><div style={{ fontSize:12, fontWeight:600 }}>{c.item_favorit_desc||c.item_favorit}</div></div>}
-                    {c.sub_item_favorit && <div style={{ background:'#eefbf3', color:'#047857', borderRadius:6, padding:'6px 10px' }}><div style={{ fontSize:10, color:'#64748b' }}>Sub item favorit</div><div style={{ fontSize:12, fontWeight:600 }}>{c.sub_item_favorit}</div></div>}
+                    {(c.sub_item_favorit||c.item_favorit_desc||c.item_favorit) && <div title={c.item_favorit_desc||''} style={{ background:'#eef6ff', color:'#1d4ed8', borderRadius:6, padding:'6px 10px' }}><div style={{ fontSize:10, color:'#64748b' }}>Item favorit</div><div style={{ fontSize:12, fontWeight:600 }}>{c.sub_item_favorit||c.item_favorit_desc||c.item_favorit}</div></div>}
                   </div>
                 )}
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, fontSize:12 }}>
