@@ -466,7 +466,8 @@ def customer_list(segment: Optional[str] = Query(None), tier: Optional[str] = Qu
     dc = _fetch_all_rows("dim_customer",
         "customer_code,customer_name,tier,segmen_rfm,status,total_revenue,avg_spending_per_month_active,"
         "jumlah_bills,last_order_date,interval_normal_hari,days_since_last_order,recency_ratio,"
-        "revenue_at_risk,salesperson_utama,channel_utama")
+        "revenue_at_risk,salesperson_utama,channel_utama,"
+        "kategori_favorit,item_favorit,item_favorit_desc,sub_item_favorit")
     # status recency dihitung live (menggantikan Active/Overdue/Lost lama)
     for c in dc:
         c["status"] = status_recency(c.get("days_since_last_order"))
