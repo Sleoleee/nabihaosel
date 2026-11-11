@@ -6,7 +6,9 @@ Belum menyentuh pipeline/atribusi dashboard — murni kelola data mapping.
 from fastapi import APIRouter, Query, Body
 from typing import Optional
 from datetime import date, timedelta
+from collections import defaultdict
 from utils.db import get_client
+import config
 
 router = APIRouter()
 
@@ -145,3 +147,62 @@ def c_codes():
                lambda q: q.is_("valid_to", "null"))}
     return [{"kode_c": k, "n_customer": n, "ada_salesperson": k in has_slp}
             for k, n in sorted(cnt.items(), key=lambda x: -x[1])]
+
+
+# ----------------------------- Kesehatan Data (gate Fase 3) -----------------------------
+@router.get("/health")
+def health():
+    """Pindai anchor (dim_customer/dim_salesperson) vs mapping; laporkan gap + dampak revenue.
+    Non-sales C (Non Trade/BLANKS) tidak dihitung sebagai gap."""
+    cur_c = {r["customer_code"]: r["kode_c"] for r in
+             _all("map_customer_c", "customer_code,kode_c", lambda q: q.is_("valid_to", "null"))}
+    csp_now = {r["kode_c"] for r in
+               _all("map_c_salesperson", "kode_c", lambda q: q.is_("valid_to", "null"))}
+    dc = _all("dim_customer", "customer_code,total_revenue")
+    total_rev = sum(float(c.get("total_revenue") or 0) for c in dc) or 1.0
+
+    buckets = {"ok": [0, 0.0], "tanpa_c": [0, 0.0], "c_tanpa_sp": [0, 0.0], "non_sales": [0, 0.0]}
+    c_missing_sp = defaultdict(lambda: [0, 0.0])   # kode_c -> [n_cust, rev]
+    for c in dc:
+        code = c["customer_code"]; rev = float(c.get("total_revenue") or 0)
+        kc = cur_c.get(code)
+        if not kc:
+            b = "tanpa_c"
+        elif config.is_non_sales_c(kc):
+            b = "non_sales"
+        elif kc in csp_now:
+            b = "ok"
+        else:
+            b = "c_tanpa_sp"; m = c_missing_sp[kc]; m[0] += 1; m[1] += rev
+        buckets[b][0] += 1; buckets[b][1] += rev
+
+    # SlpName di transaksi tak dikenal di sp_master (cross-check)
+    spm = {r["slp_name"] for r in _all("sp_master", "slp_name")}
+    ds = _all("dim_salesperson", "slp_name,total_revenue")
+    slp_baru = [{"slp_name": r["slp_name"], "revenue": round(float(r.get("total_revenue") or 0))}
+                for r in ds if r["slp_name"] and r["slp_name"] not in spm
+                and not config.is_non_person_slp(r["slp_name"])]
+    slp_baru.sort(key=lambda x: -x["revenue"])
+
+    # Salesperson di mapping yang tak ada di sp_master (putus ke target/tenure)
+    map_sp = {r["slp_name"] for r in _all("map_c_salesperson", "slp_name")}
+    map_sp_unknown = sorted(s for s in map_sp if s and s not in spm)
+
+    def pct(v): return round(v / total_rev * 100, 1)
+    unheld_rev = buckets["tanpa_c"][1] + buckets["c_tanpa_sp"][1]
+
+    return {
+        "total_customer": len(dc),
+        "total_revenue": round(total_rev),
+        "ringkas": {
+            "teratribusi":      {"n": buckets["ok"][0], "revenue": round(buckets["ok"][1]), "pct": pct(buckets["ok"][1])},
+            "tanpa_pemegang":   {"n": buckets["tanpa_c"][0] + buckets["c_tanpa_sp"][0], "revenue": round(unheld_rev), "pct": pct(unheld_rev)},
+            "non_sales_wajar":  {"n": buckets["non_sales"][0], "revenue": round(buckets["non_sales"][1]), "pct": pct(buckets["non_sales"][1])},
+        },
+        "customer_tanpa_c":  {"n": buckets["tanpa_c"][0], "revenue": round(buckets["tanpa_c"][1]), "pct": pct(buckets["tanpa_c"][1])},
+        "kode_c_tanpa_sp": sorted(
+            [{"kode_c": k, "n_customer": v[0], "revenue": round(v[1])} for k, v in c_missing_sp.items()],
+            key=lambda x: -x["revenue"]),
+        "slp_name_baru": slp_baru[:50],
+        "mapping_sp_tak_dikenal": map_sp_unknown,
+    }

@@ -113,3 +113,4 @@ export const getCSalesperson = () => api.get('/api/mapping/c-salesperson').then(
 export const saveCSalesperson = (payload) => api.post('/api/mapping/c-salesperson', payload).then(r => r.data)
 export const deleteCSalesperson = (kode_c, valid_from) => api.delete('/api/mapping/c-salesperson', { params: { kode_c, valid_from } }).then(r => r.data)
 export const getCCodes = () => api.get('/api/mapping/c-codes').then(r => r.data)
+export const getMappingHealth = () => api.get('/api/mapping/health').then(r => r.data)
