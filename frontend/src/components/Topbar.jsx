@@ -5,6 +5,7 @@ import { useAuth } from '../context/Auth'
 const NAV = [
   { to: '/', label: 'Overview' },
   { to: '/sales', label: 'Sales Performance' },
+  { to: '/pencapaian', label: 'Pencapaian Pos' },
   { to: '/customers', label: 'Customer Dashboard' },
   { to: '/products', label: 'Product Opportunity' },
   { to: '/territory', label: 'Territory' },

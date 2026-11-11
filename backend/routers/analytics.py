@@ -985,3 +985,99 @@ def customer_groups(mode: str = Query("group"),
             "n_entities": len(out), "n_group": n_group,
             "concentration": {"top5": top5, "top10": top10},
             "entities": out}
+
+
+def _fetch_paged(table, cols, year=None):
+    """Ambil semua baris (lewati batas 1000) via range paging."""
+    db = get_client()
+    out, step, i = [], 1000, 0
+    while True:
+        q = db.table(table).select(cols)
+        if year is not None:
+            q = q.eq("tahun", int(year))
+        d = q.range(i, i + step - 1).execute().data or []
+        out.extend(d)
+        if len(d) < step:
+            break
+        i += step
+    return out
+
+
+@router.get("/pos-achievement")
+def pos_achievement(year: Optional[int] = Query(None), channels: Optional[str] = Query(None)):
+    """FASE 3: pencapaian per Kode C (pos) & per orang, dari mapping + target_c.
+    Target menempel ke POS. Achievement per pos (lanjut) + per orang (angka sendiri).
+    'changes' = bulan terjadi pergantian salesperson (utk penanda di line chart)."""
+    from datetime import date
+    if not year:
+        yl = _fetch_all_rows("target_c", "tahun")
+        year = max([int(r["tahun"]) for r in yl], default=2026)
+    chs = set(_csv(channels))
+
+    c2 = {}
+    for r in _fetch_paged("map_customer_c", "customer_code,kode_c,valid_to"):
+        if r.get("valid_to") is None:
+            c2[r["customer_code"]] = r["kode_c"]
+
+    ns = {r["kode_c"] for r in _fetch_all_rows("kode_c_meta", "kode_c,is_non_sales") if r.get("is_non_sales")}
+    def is_ns(k): return k in ns or config.is_non_sales_c(k)
+
+    tgt = defaultdict(dict)
+    for r in _fetch_all_rows("target_c", "kode_c,tahun,bulan,target"):
+        if int(r["tahun"]) == year:
+            tgt[r["kode_c"]][int(r["bulan"])] = float(r.get("target") or 0)
+
+    assign = defaultdict(list)
+    for r in _fetch_all_rows("map_c_salesperson", "kode_c,slp_name,valid_from,valid_to"):
+        assign[r["kode_c"]].append((r["valid_from"], r.get("valid_to"), r["slp_name"]))
+
+    def holder(kc, m):
+        ref = date(year, m, 1)
+        for vf, vt, nm in assign.get(kc, []):
+            f = date.fromisoformat(vf); t = date.fromisoformat(vt) if vt else None
+            if f <= ref and (t is None or t >= ref):
+                return nm
+        return None
+    def holder_now(kc):
+        for vf, vt, nm in assign.get(kc, []):
+            if vt is None:
+                return nm
+        return holder(kc, 12)
+
+    rev = defaultdict(lambda: defaultdict(float)); bil = defaultdict(lambda: defaultdict(int))
+    for r in _fetch_paged("agg_customer_month", "customer_code,tahun,bulan,channel,revenue,bills", year=year):
+        if chs and r.get("channel") not in chs:
+            continue
+        kc = c2.get(r["customer_code"])
+        if not kc:
+            continue
+        m = int(r["bulan"])
+        rev[kc][m] += float(r.get("revenue") or 0); bil[kc][m] += int(r.get("bills") or 0)
+
+    pos = []; person = defaultdict(lambda: {"rev": 0.0, "tgt": 0.0, "pos": set()})
+    for kc in sorted(set(rev) | set(tgt)):
+        if is_ns(kc):
+            continue
+        hb = {m: holder(kc, m) for m in range(1, 13)}
+        changes = [{"bulan": m, "dari": hb[m - 1], "ke": hb[m]}
+                   for m in range(2, 13) if hb[m] and hb[m - 1] and hb[m] != hb[m - 1]]
+        months = []; tr = tt = 0.0
+        for m in range(1, 13):
+            rv = rev[kc].get(m, 0.0); tg = tgt[kc].get(m, 0.0)
+            if rv == 0 and tg == 0:
+                continue
+            months.append({"bulan": m, "revenue": round(rv), "target": round(tg),
+                           "pct": round(rv / tg * 100, 1) if tg else None, "holder": hb[m]})
+            tr += rv; tt += tg
+            if hb[m]:
+                person[hb[m]]["rev"] += rv; person[hb[m]]["tgt"] += tg; person[hb[m]]["pos"].add(kc)
+        pos.append({"kode_c": kc, "salesperson_now": holder_now(kc),
+                    "total_revenue": round(tr), "total_target": round(tt),
+                    "pct": round(tr / tt * 100, 1) if tt else None,
+                    "months": months, "changes": changes})
+    pos.sort(key=lambda x: -x["total_revenue"])
+    persons = [{"slp_name": k, "revenue": round(v["rev"]), "target": round(v["tgt"]),
+                "pct": round(v["rev"] / v["tgt"] * 100, 1) if v["tgt"] else None,
+                "pos": sorted(v["pos"])} for k, v in person.items()]
+    persons.sort(key=lambda x: -x["revenue"])
+    return {"year": year, "pos": pos, "persons": persons}

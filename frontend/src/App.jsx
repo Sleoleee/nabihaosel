@@ -6,6 +6,7 @@ import Overview from './pages/Overview'
 import CustomerIntelligence from './pages/CustomerIntelligence'
 import ScaffoldPage from './pages/ScaffoldPage'
 import SalesPerformancePage from './pages/SalesPerformancePage'
+import PosAchievementPage from './pages/PosAchievementPage'
 import ProductOpportunityPage from './pages/ProductOpportunityPage'
 import TerritoryPage from './pages/TerritoryPage'
 import SettingsGroupsPage from './pages/SettingsGroupsPage'
@@ -36,6 +37,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Overview />} />
               <Route path="/sales" element={<SalesPerformancePage />} />
+              <Route path="/pencapaian" element={<PosAchievementPage />} />
               <Route path="/customers" element={<CustomerIntelligence />} />
               <Route path="/products" element={<ProductOpportunityPage />} />
               <Route path="/territory" element={<TerritoryPage />} />
