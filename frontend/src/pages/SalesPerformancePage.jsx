@@ -1,420 +1,158 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import {
-  BarChart, Bar, ComposedChart, Line, LineChart, ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid,
-  Tooltip, ReferenceLine, ResponsiveContainer, Cell, Legend,
+  ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine, Legend,
 } from 'recharts'
-import Card from '../components/Card'
-import Skeleton, { SkeletonCard } from '../components/Skeleton'
-import { formatRupiah, formatRupiahShort, formatNumber } from '../utils/format'
-import { useGlobalFilters } from '../context/GlobalFilters'
-import { getSalesPerformance, getSalesMix, getSalesTrend } from '../utils/api'
+import { getPosAchievement } from '../utils/api'
+import { formatRupiah, formatRupiahShort } from '../utils/format'
 
-const MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des']
-function momOf(series) {
-  if (!series) return null
-  let last = -1
-  for (let i = 11; i >= 0; i--) { if (series[i] > 0) { last = i; break } }
-  if (last <= 0 || !(series[last-1] > 0)) return null
-  return Math.round((series[last] - series[last-1]) / series[last-1] * 1000) / 10
+const MN = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
+const ac = (p) => (p == null ? '#999' : p >= 100 ? '#15803d' : p >= 80 ? '#d08700' : '#d31137')
+
+function csv(rows, name) {
+  if (!rows?.length) return
+  const cols = Object.keys(rows[0]); const esc = v => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s }
+  const c = [cols.join(','), ...rows.map(r => cols.map(k => esc(r[k])).join(','))].join('\n')
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + c], { type: 'text/csv' })); a.download = name; a.click(); URL.revokeObjectURL(a.href)
 }
-
-const SPV_LIST = ['SPV REGEN', 'SPV ARI', 'SPV ABDUL WAHID']
-const MIX_COLORS = ['#d31137','#5b6b82','#f096a6','#a8b3c4','#3d4a5c','#fbbfc9']
-const tt = { contentStyle:{background:'#1a1a1a',border:'none',borderRadius:8,color:'#fff',fontSize:12}, itemStyle:{color:'#fff'}, cursor:{fill:'rgba(255,255,255,0.06)'} }
-
-const pctColor = (p) => p == null ? '#999' : p >= 100 ? '#15803d' : p >= 70 ? '#f59e0b' : '#d31137'
-const growthColor = (g) => g == null ? '#999' : g >= 0 ? '#15803d' : '#d31137'
-
-function downloadCSV(rows, filename) {
-  if (!rows.length) return
-  const cols = Object.keys(rows[0])
-  const csv = [cols.join(','), ...rows.map(r => cols.map(c => {
-    const v = r[c] ?? ''
-    return typeof v === 'string' && (v.includes(',') || v.includes('"')) ? `"${v.replace(/"/g,'""')}"` : v
-  }).join(','))].join('\n')
-  const blob = new Blob([csv], { type: 'text/csv' })
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob); a.download = filename; a.click()
-}
-
-function KpiCard({ title, value, sub, accent }) {
-  return (
-    <div style={{ background:'#fff', borderRadius:10, padding:16, minHeight:92, boxShadow:'0 1px 4px rgba(0,0,0,0.07)', border:'1px solid #f0f0f0', borderTop:accent?`3px solid ${accent}`:'1px solid #f0f0f0', display:'flex', flexDirection:'column', justifyContent:'space-between', gap:4 }}>
-      <div style={{ fontSize:10.5, color:'#888', fontWeight:600, letterSpacing:'0.04em' }}>{title}</div>
-      <div style={{ fontSize:20, fontWeight:700, lineHeight:1.1, color:accent||'#1a1a1a' }}>{value}</div>
-      <div style={{ fontSize:11, color:'#888' }}>{sub}</div>
-    </div>
-  )
-}
-
-const RANK_BG = ['#d31137', '#3d4a5c', '#9aa7ba']
-function Top3Row({ rank, name, spv, growth, mainRight, subRight }) {
-  return (
-    <div style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 0', borderTop: rank>1?'1px solid #f4f4f5':'none' }}>
-      <div style={{ width:22, height:22, borderRadius:'50%', flexShrink:0, background:RANK_BG[rank-1]||'#9aa7ba', color:'#fff', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>{rank}</div>
-      <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ fontSize:13.5, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{name}</div>
-        <div style={{ fontSize:10.5, color:'#999' }}>
-          {spv || 'Lainnya'}
-          {growth!=null && <span style={{ marginLeft:6, color: growth>=0?'#15803d':'#d31137', fontWeight:600 }}>{growth>=0?'▲':'▼'} {Math.abs(growth)}% YoY</span>}
-        </div>
-      </div>
-      <div style={{ textAlign:'right', whiteSpace:'nowrap' }}>
-        <div>{mainRight}</div>
-        <div style={{ fontSize:10.5, marginTop:1 }}>{subRight}</div>
-      </div>
-    </div>
-  )
-}
-function Empty() { return <div style={{ color:'#888', fontSize:12.5, padding:'20px 0' }}>Tidak ada data untuk filter ini.</div> }
 
 export default function SalesPerformancePage() {
-  const g = useGlobalFilters()
+  const [year, setYear] = useState(2026)
   const [data, setData] = useState(null)
-  const [mix, setMix] = useState(null)
-  const [trend, setTrend] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [chan, setChan] = useState('all')           // org channel filter
-  const [spvSel, setSpvSel] = useState([])          // multi (dinamis)
-  const [activeOnly, setActiveOnly] = useState(false)
-  const [search, setSearch] = useState('')
-  const [sortKey, setSortKey] = useState('revenue')
-  const [sortDir, setSortDir] = useState('desc')
+  const [mode, setMode] = useState('spv')   // spv | orang | pos
+  const [sel, setSel] = useState(null)
+  const [err, setErr] = useState('')
 
-  const years = g?.years?.join(',') || undefined
-  const channels = g?.channels?.join(',') || undefined
+  useEffect(() => { setData(null); setErr(''); setSel(null)
+    getPosAchievement({ year }).then(setData).catch(() => setErr('Gagal memuat. Pastikan backend ter-update & mapping terisi.')) }, [year])
 
-  useEffect(() => {
-    if (!g?.ready) return
-    setLoading(true)
-    Promise.all([getSalesPerformance({ years, channels }), getSalesMix({ years, channels }), getSalesTrend({ years, channels })])
-      .then(([d, m, t]) => { setData(d); setMix(m); setTrend(t) }).catch(()=>{}).finally(()=>setLoading(false))
-  }, [g?.ready, years, channels])
+  const th = { padding: '8px 10px', background: '#f4f4f5', fontSize: 11.5, textAlign: 'left', color: '#555', position: 'sticky', top: 0 }
+  const td = { padding: '7px 10px', borderBottom: '1px solid #f0f0f0', fontSize: 13 }
+  const selPos = data?.pos?.find(p => p.kode_c === sel)
+  const chartData = selPos ? selPos.months.map(m => ({ name: MN[m.bulan], Revenue: m.revenue, Target: m.target })) : []
 
-  const all = data?.salespeople || []
-  const chanList = useMemo(() => [...new Set(all.map(s => s.org_channel).filter(Boolean))].sort(), [all])
-  const spvList = useMemo(() => {
-    const pool = chan === 'all' ? all : all.filter(s => s.org_channel === chan)
-    return [...new Set(pool.map(s => s.spv).filter(Boolean))].sort((a,b)=>(a==='Lainnya'||a==='Tanpa SPV')-(b==='Lainnya'||b==='Tanpa SPV') || (a>b?1:-1))
-  }, [all, chan])
-  const scoped = useMemo(() => {
-    let r = all
-    if (chan !== 'all') r = r.filter(s => s.org_channel === chan)
-    if (spvSel.length) r = r.filter(s => spvSel.includes(s.spv))
-    if (activeOnly) r = r.filter(s => s.aktif !== false)
-    if (search) r = r.filter(s => s.name.toLowerCase().includes(search.toLowerCase()))
-    return r
-  }, [all, chan, spvSel, activeOnly, search])
-
-  const sorted = useMemo(() => {
-    const r = [...scoped].sort((a,b) => {
-      const av = a[sortKey] ?? -Infinity, bv = b[sortKey] ?? -Infinity
-      return sortDir === 'desc' ? (bv>av?1:-1) : (av>bv?1:-1)
-    })
-    return r
-  }, [scoped, sortKey, sortDir])
-
-  // KPI (scoped)
-  const totRev = scoped.reduce((s,x)=>s+x.revenue,0)
-  const totTgt = scoped.reduce((s,x)=>s+(x.target||0),0)
-  const withT = scoped.filter(s=>s.target)
-  const achieved = withT.filter(s=>(s.pct||0)>=100).length
-  const revs = scoped.map(s=>s.revenue).sort((a,b)=>a-b)
-  const nMonths = data?.n_months || 1
-  const meanMonth = revs.length ? (totRev/revs.length)/nMonths : 0
-  const medianMonth = (revs.length ? revs[Math.floor(revs.length/2)] : 0) / nMonths
-
-  const quadrantData = scoped.filter(s=>s.pct!=null && s.growth_yoy!=null)
-    .map(s=>({ ...s, x:s.pct, y:s.growth_yoy, z:s.revenue }))
-
-  // Pareto kontribusi
-  const byRev = [...scoped].sort((a,b)=>b.revenue-a.revenue)
-  const ptot = byRev.reduce((s,x)=>s+x.revenue,0) || 1
-  let _cum = 0
-  const paretoData = byRev.map(s=>{ _cum += s.revenue; return { name:s.name, revenue:s.revenue, cum:Math.round(_cum/ptot*1000)/10 } })
-  const n80 = (paretoData.findIndex(d=>d.cum>=80)+1) || paretoData.length
-
-  // Teams dihitung dari scoped agar ikut filter channel/SPV
-  const teamsScoped = useMemo(() => {
-    const m = {}
-    scoped.forEach(s => { const t = s.spv || 'Tanpa SPV'; (m[t] = m[t] || { team:t, revenue:0, target:0, members:0 }); m[t].revenue += s.revenue; m[t].target += (s.target||0); m[t].members += 1 })
-    return Object.values(m).map(t => ({ ...t, pct: t.target?Math.round(t.revenue/t.target*1000)/10:null, gap: Math.round(t.target-t.revenue) }))
-      .sort((a,b)=>(a.team==='Tanpa SPV')-(b.team==='Tanpa SPV') || b.revenue-a.revenue)
-  }, [scoped])
-
-  // Top 3 penyumbang revenue & top 3 pencapaian target tahunan
-  const top3Rev = byRev.slice(0,3)
-  const top3Pct = scoped.filter(s=>s.target).sort((a,b)=>(b.pct||0)-(a.pct||0)).slice(0,3)
-
-  const sel = (v) => <span onClick={()=>{ setSortKey(v); setSortDir(d=>sortKey===v&&d==='desc'?'asc':'desc') }} style={{cursor:'pointer'}}>⇅</span>
-  const th = { padding:'6px 8px', textAlign:'right', fontSize:10.5, color:'#888', fontWeight:600, whiteSpace:'nowrap' }
-  const td = { padding:'5px 8px', textAlign:'right', fontSize:12, whiteSpace:'nowrap' }
-
-  if (!g) return null
-  const selStyle = { border:'1px solid #ddd', borderRadius:6, padding:'5px 8px', fontSize:12.5, background:'#fff', cursor:'pointer' }
+  const Pct = ({ p }) => <span style={{ fontWeight: 700, color: ac(p) }}>{p != null ? `${p}%` : '—'}</span>
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-      {/* filter lokal */}
-      <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
-        <span style={{ fontSize:11, fontWeight:700, color:'#888' }}>FILTER SALES</span>
-        <select style={selStyle} value={chan} onChange={e=>{ setChan(e.target.value); setSpvSel([]) }}>
-          <option value="all">Semua channel</option>
-          {chanList.map(c=><option key={c} value={c}>{c}</option>)}
-        </select>
-        {spvList.map(t=>(
-          <label key={t} style={{ fontSize:12, display:'flex', alignItems:'center', gap:4, cursor:'pointer' }}>
-            <input type="checkbox" checked={spvSel.includes(t)} onChange={()=>setSpvSel(s=>s.includes(t)?s.filter(x=>x!==t):[...s,t])}/>{t.replace('SPV ','')}
-          </label>
-        ))}
-        <label style={{ fontSize:12, display:'flex', alignItems:'center', gap:4, cursor:'pointer', color:'#666' }}>
-          <input type="checkbox" checked={activeOnly} onChange={e=>setActiveOnly(e.target.checked)}/>hanya aktif
-        </label>
-        <input placeholder="🔍 cari nama" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...selStyle, width:150 }}/>
+    <div style={{ padding: 24, maxWidth: 1180 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 700 }}>Sales Performance</h1>
+          <p style={{ color: '#666', fontSize: 13, maxWidth: 820, margin: '2px 0 0' }}>
+            Berbasis <b>mapping Kode C</b>: target menempel ke pos, pencapaian jalan terus walau pemegang ganti.
+            Yang belum dipetakan (2025, non-K25) tampil sebagai belum ada pemegang.
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <select value={year} onChange={e => setYear(Number(e.target.value))} style={{ padding: '6px 8px', border: '1px solid #ccc', borderRadius: 6 }}>
+            {[2025, 2026].map(y => <option key={y}>{y}</option>)}
+          </select>
+          <div style={{ display: 'flex', border: '1px solid #e8e8e8', borderRadius: 8, overflow: 'hidden' }}>
+            {[['spv', 'Per SPV'], ['orang', 'Per Salesperson'], ['pos', 'Per Pos']].map(([m, l]) => (
+              <button key={m} onClick={() => setMode(m)} style={{ padding: '6px 16px', fontSize: 12.5, border: 'none', cursor: 'pointer', fontWeight: 600, background: mode === m ? '#d31137' : '#fff', color: mode === m ? '#fff' : '#666' }}>{l}</button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Baris 1 — KPI */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12 }}>
-        {loading ? [1,2,3,4,5].map(i=><SkeletonCard key={i} style={{height:92}}/>) : <>
-          <KpiCard title="TOTAL REVENUE TIM" value={formatRupiahShort(totRev)} sub={`${scoped.length} salesperson`} />
-          <KpiCard title="% ACHIEVEMENT TAHUNAN" value={totTgt?`${(totRev/totTgt*100).toFixed(1)}%`:'—'} sub={totTgt?`target ${formatRupiahShort(totTgt)}`:'tanpa target'} accent={totTgt?pctColor(totRev/totTgt*100):null} />
-          <KpiCard title="GAP KE TARGET TAHUNAN" value={totTgt?formatRupiahShort(Math.max(0,totTgt-totRev)):'—'} sub={totTgt&&totRev<totTgt?`kurang untuk capai target`:'target tercapai'} accent="#d31137" />
-          <KpiCard title="MENCAPAI TARGET" value={withT.length?`${achieved} dari ${withT.length}`:'—'} sub="salesperson ≥100%" />
-          <KpiCard title="AVG / SP / MONTH" value={formatRupiahShort(meanMonth)} sub={`median ${formatRupiahShort(medianMonth)} · ${nMonths} bln`} />
-        </>}
-      </div>
+      {err && <div style={{ color: '#d31137', marginTop: 16 }}>{err}</div>}
+      {!data && !err && <div style={{ color: '#888', marginTop: 16 }}>Memuat…</div>}
 
-      {/* Baris 2 — Target vs Actual per SPV */}
-      <Card style={{ padding:16 }}>
-        <div style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Target vs Actual per SPV</div>
-        <div style={{ fontSize:10.5, color:'#aaa', marginBottom:10 }}>Batang = revenue aktual · garis = target · mengikuti filter channel/SPV</div>
-        {loading ? <Skeleton height={180}/> : (
-          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-            {teamsScoped.map((t,i)=>{
-              const pct = t.pct||0, w=Math.min(100,pct)
-              return (
-                <div key={i}>
-                  <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, marginBottom:3 }}>
-                    <b>{t.team}</b>
-                    <span style={{ color:pctColor(pct), fontWeight:600 }}>{t.pct!=null?`${t.pct}%`:'—'} · {formatRupiahShort(t.revenue)} / {formatRupiahShort(t.target)}</span>
-                  </div>
-                  <div style={{ position:'relative', height:14, background:'#f0f0f0', borderRadius:4 }}>
-                    <div style={{ height:14, width:`${w}%`, background:pctColor(pct), borderRadius:4 }}/>
-                    <div style={{ position:'absolute', left:'100%', top:-2, width:2, height:18, background:'#1a1a1a' }}/>
-                  </div>
+      {data && (
+        <div style={{ marginTop: 16 }}>
+          {mode === 'spv' && (
+            <Table cols={['SPV', 'Revenue', 'Target', 'Pencapaian', 'Pos']} right={[1, 2, 3]}
+              rows={data.spvs} dl={() => csv(data.spvs.map(s => ({ spv: s.spv, revenue: s.revenue, target: s.target, pct: s.pct, pos: s.pos.join(' ') })), `spv_${year}.csv`)}
+              render={(s) => (<>
+                <td style={td}><b>{s.spv}</b></td>
+                <td style={{ ...td, textAlign: 'right' }}>{formatRupiahShort(s.revenue)}</td>
+                <td style={{ ...td, textAlign: 'right', color: '#888' }}>{s.target ? formatRupiahShort(s.target) : '—'}</td>
+                <td style={{ ...td, textAlign: 'right' }}><Pct p={s.pct} /></td>
+                <td style={{ ...td, fontSize: 11.5, color: '#666' }}>{s.pos.join(', ')}</td>
+              </>)} th={th} td={td} />
+          )}
+
+          {mode === 'orang' && (
+            <Table cols={['Salesperson', 'Revenue', 'Target (porsi)', 'Pencapaian', 'Pos dipegang']} right={[1, 2, 3]}
+              rows={data.persons} dl={() => csv(data.persons.map(s => ({ salesperson: s.slp_name, revenue: s.revenue, target: s.target, pct: s.pct, pos: s.pos.join(' ') })), `salesperson_${year}.csv`)}
+              render={(s) => (<>
+                <td style={td}><b>{s.slp_name}</b></td>
+                <td style={{ ...td, textAlign: 'right' }}>{formatRupiahShort(s.revenue)}</td>
+                <td style={{ ...td, textAlign: 'right', color: '#888' }}>{s.target ? formatRupiahShort(s.target) : '—'}</td>
+                <td style={{ ...td, textAlign: 'right' }}><Pct p={s.pct} /></td>
+                <td style={{ ...td, fontSize: 11.5, color: '#666' }}>{s.pos.join(', ')}</td>
+              </>)} th={th} td={td} />
+          )}
+
+          {mode === 'pos' && (<>
+            {selPos && (
+              <div style={{ border: '1px solid #e5e5e5', borderRadius: 10, padding: 16, marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontWeight: 700 }}>{selPos.kode_c} · {selPos.salesperson_now || '—'} · <span style={{ color: '#888', fontWeight: 400 }}>{selPos.spv_now || '—'}</span>
+                    <span style={{ fontWeight: 400, color: '#888', fontSize: 12 }}> — {formatRupiahShort(selPos.total_revenue)} / {formatRupiahShort(selPos.total_target)} = </span><Pct p={selPos.pct} /></div>
+                  <button onClick={() => setSel(null)} style={{ border: 'none', background: 'none', color: '#999', cursor: 'pointer' }}>tutup ✕</button>
                 </div>
-              )
-            })}
-          </div>
-        )}
-      </Card>
+                {(selPos.changes.length > 0 || selPos.spv_changes.length > 0) && <div style={{ fontSize: 11.5, color: '#b45309', margin: '4px 0' }}>
+                  {selPos.changes.map(c => `${MN[c.bulan]}: sales ${c.dari}→${c.ke}`).concat(selPos.spv_changes.map(c => `${MN[c.bulan]}: SPV ${c.dari}→${c.ke}`)).join(' · ')}
+                </div>}
+                <ResponsiveContainer width="100%" height={240}>
+                  <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#888' }} />
+                    <YAxis tick={{ fontSize: 10, fill: '#aaa' }} tickFormatter={v => formatRupiahShort(v)} width={54} />
+                    <Tooltip formatter={(v) => formatRupiah(v)} labelStyle={{ fontWeight: 600 }} />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Bar dataKey="Revenue" fill="#d31137" radius={[3, 3, 0, 0]} maxBarSize={34} />
+                    <Line dataKey="Target" stroke="#1d4ed8" strokeWidth={2} dot={false} />
+                    {selPos.changes.map(c => (
+                      <ReferenceLine key={'s' + c.bulan} x={MN[c.bulan]} stroke="#b45309" strokeDasharray="4 3"
+                        label={{ value: `↹ ${c.ke}`, position: 'top', fontSize: 10, fill: '#b45309' }} />
+                    ))}
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+            <Table cols={['Kode C', 'Salesperson', 'SPV', 'Revenue', 'Target', 'Pencapaian', 'Ganti?']} right={[3, 4, 5]}
+              rows={data.pos} dl={() => csv(data.pos.map(p => ({ kode_c: p.kode_c, salesperson: p.salesperson_now || '', spv: p.spv_now || '', revenue: p.total_revenue, target: p.total_target, pct: p.pct })), `pos_${year}.csv`)}
+              rowClick={p => setSel(p.kode_c)} selKey={sel} keyOf={p => p.kode_c}
+              render={(p) => (<>
+                <td style={{ ...td, fontWeight: 600, color: '#d31137' }}>{p.kode_c}</td>
+                <td style={td}>{p.salesperson_now || '—'}</td>
+                <td style={{ ...td, color: '#666' }}>{p.spv_now || '—'}</td>
+                <td style={{ ...td, textAlign: 'right' }}>{formatRupiahShort(p.total_revenue)}</td>
+                <td style={{ ...td, textAlign: 'right', color: '#888' }}>{p.total_target ? formatRupiahShort(p.total_target) : '—'}</td>
+                <td style={{ ...td, textAlign: 'right' }}><Pct p={p.pct} /></td>
+                <td style={td}>{(p.changes.length + p.spv_changes.length) ? <span style={{ fontSize: 11, color: '#b45309' }}>● {p.changes.length + p.spv_changes.length}×</span> : ''}</td>
+              </>)} th={th} td={td} />
+            <div style={{ fontSize: 11.5, color: '#999', marginTop: 6 }}>Klik baris pos untuk lihat grafik bulanan + penanda pergantian sales/SPV.</div>
+          </>)}
+        </div>
+      )}
+    </div>
+  )
+}
 
-      {/* Baris 3 — Quadrant Kualitas Pencapaian */}
-      <Card style={{ padding:16 }}>
-        <div style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Kualitas Pencapaian</div>
-        <div style={{ fontSize:10.5, color:'#aaa', marginBottom:8 }}>X = % achievement · Y = growth YoY · ukuran = revenue. Kanan-bawah = capai target tapi revenue turun (target terlalu rendah).</div>
-        {loading ? <Skeleton height={300}/> : !quadrantData.length ? <div style={{height:300,display:'flex',alignItems:'center',justifyContent:'center',color:'#888',fontSize:13}}>Butuh data target & tahun pembanding</div> : (
-          <ResponsiveContainer width="100%" height={320}>
-            <ScatterChart margin={{ top:10, right:20, bottom:24, left:8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
-              <XAxis type="number" dataKey="x" name="% Ach" unit="%" tick={{fontSize:11,fill:'#888'}} label={{value:'% Achievement',position:'insideBottom',offset:-14,fontSize:11,fill:'#888'}}/>
-              <YAxis type="number" dataKey="y" name="Growth YoY" unit="%" tick={{fontSize:11,fill:'#888'}} label={{value:'Growth YoY',angle:-90,position:'insideLeft',fontSize:11,fill:'#888'}}/>
-              <ZAxis type="number" dataKey="z" range={[100,1400]}/>
-              <ReferenceLine x={100} stroke="#bbb" strokeDasharray="4 4"/>
-              <ReferenceLine y={0} stroke="#bbb" strokeDasharray="4 4"/>
-              <Tooltip content={({active,payload})=>{ if(!active||!payload?.length) return null; const d=payload[0].payload
-                return <div style={{background:'#1a1a1a',borderRadius:8,padding:'8px 12px',fontSize:12,color:'#fff'}}><div style={{fontWeight:700}}>{d.name}</div><div>Ach {d.pct}% · Growth {d.growth_yoy}%</div><div style={{color:'#bbb'}}>{formatRupiah(d.revenue)}</div></div> }}/>
-              <Scatter data={quadrantData}>
-                {quadrantData.map((d,i)=><Cell key={i} fill={d.x>=100&&d.y<0?'#f59e0b':d.x>=100?'#15803d':d.y>=0?'#5b6b82':'#d31137'} fillOpacity={0.72}/>)}
-              </Scatter>
-            </ScatterChart>
-          </ResponsiveContainer>
-        )}
-      </Card>
-
-      {/* Baris 3.5 — Top 3 penyumbang revenue & top 3 pencapaian target */}
-      <div>
-        <div style={{ fontSize:15, fontWeight:700, marginBottom:2 }}>Top 3 penyumbang revenue & top 3 pencapaian target</div>
-        <div style={{ fontSize:11.5, color:'#888', marginBottom:10 }}>Dua sudut pandang: siapa yang membawa uang paling besar, dan siapa yang paling dekat ke target tahunannya sendiri.</div>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-          <Card style={{ padding:16 }}>
-            <div style={{ fontSize:13, fontWeight:600 }}>Revenue tertinggi</div>
-            <div style={{ fontSize:10.5, color:'#aaa', marginBottom:6 }}>Kontribusi rupiah terbesar ke total tim.</div>
-            {loading ? <Skeleton height={190}/> : !top3Rev.length ? <Empty/> : top3Rev.map((s,i)=>(
-              <Top3Row key={s.slp_name} rank={i+1} name={s.name} spv={s.spv}
-                growth={s.growth_yoy}
-                mainRight={<span style={{ fontSize:16, fontWeight:700 }}>{formatRupiahShort(s.revenue)}</span>}
-                subRight={s.target ? <span style={{ color:pctColor(s.pct), fontWeight:600 }}>{s.pct!=null?`${s.pct}% ke target`:'—'}</span> : <span style={{ color:'#bbb' }}>tanpa target</span>}
-              />
-            ))}
-          </Card>
-          <Card style={{ padding:16 }}>
-            <div style={{ fontSize:13, fontWeight:600 }}>Pencapaian target tertinggi</div>
-            <div style={{ fontSize:10.5, color:'#aaa', marginBottom:6 }}>% revenue terhadap target tahunan masing-masing.</div>
-            {loading ? <Skeleton height={190}/> : !top3Pct.length ? <div style={{color:'#888',fontSize:12.5,padding:'20px 0'}}>Belum ada salesperson bertarget pada filter ini.</div> : top3Pct.map((s,i)=>(
-              <Top3Row key={s.slp_name} rank={i+1} name={s.name} spv={s.spv}
-                growth={s.growth_yoy}
-                mainRight={<span style={{ fontSize:16, fontWeight:700, color:pctColor(s.pct) }}>{s.pct!=null?`${s.pct}%`:'—'}</span>}
-                subRight={<span style={{ color:'#888' }}>{formatRupiahShort(s.revenue)} · target {formatRupiahShort(s.target)}</span>}
-              />
-            ))}
-          </Card>
+function Table({ cols, right = [], rows, render, dl, rowClick, selKey, keyOf, th, td }) {
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
+        <button onClick={dl} style={{ padding: '5px 12px', fontSize: 12, border: '1px solid #ccc', borderRadius: 6, background: '#fff', cursor: 'pointer' }}>⬇ CSV</button>
+      </div>
+      <div style={{ border: '1px solid #e5e5e5', borderRadius: 10, overflow: 'hidden' }}>
+        <div style={{ maxHeight: 540, overflow: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead><tr>{cols.map((h, i) => <th key={h} style={{ ...th, textAlign: right.includes(i) ? 'right' : 'left' }}>{h}</th>)}</tr></thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={i} onClick={rowClick ? () => rowClick(r) : undefined}
+                  style={{ cursor: rowClick ? 'pointer' : 'default', background: (selKey != null && keyOf && keyOf(r) === selKey) ? '#fdf2f4' : 'transparent' }}>
+                  {render(r)}
+                </tr>
+              ))}
+              {!rows.length && <tr><td style={td} colSpan={cols.length}>Belum ada data. Lengkapi mapping (Kode C → Salesperson / SPV / Target).</td></tr>}
+            </tbody>
+          </table>
         </div>
       </div>
-
-      {/* Baris 4 — Leaderboard */}
-      <Card style={{ padding:16 }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
-          <div style={{ fontSize:13, fontWeight:600 }}>Leaderboard Salesperson</div>
-          <button onClick={()=>downloadCSV(sorted.map(s=>({Nama:s.name,SPV:s.spv||'-',Revenue:s.revenue,Pct_Ach:s.pct??'',Gap:s.gap??'',Growth_YoY:s.growth_yoy??'',Bills:s.bills,AOV:s.aov,Customer:s.customers,New:s.customer_new,RevenueAtRisk:s.revenue_at_risk,Tenure_bln:s.tenure_bulan??'',Net_per_Cust:s.net_avg_cust??'',Churn:s.churn_rate??'',Retensi:s.retention_rate??'',Pct_Cust_Tumbuh:s.pct_cust_tumbuh??'',AOV_ini:s.aov_tahun_ini??'',AOV_lalu:s.aov_tahun_lalu??'',AOV_trend:s.aov_trend??''})),'leaderboard_sales.csv')}
-            style={{ ...selStyle, fontSize:12 }}>⬇ Export CSV</button>
-        </div>
-        {loading ? <Skeleton height={240}/> : (
-          <div style={{ overflowX:'auto' }}>
-            <table style={{ width:'100%', borderCollapse:'collapse' }}>
-              <thead><tr style={{ borderBottom:'2px solid #f0f0f0' }}>
-                <th style={{ ...th, textAlign:'left' }}>Nama</th><th style={{...th,textAlign:'left'}}>SPV</th>
-                <th style={th}>Revenue {sel('revenue')}</th><th style={th}>% Ach {sel('pct')}</th><th style={th}>Gap</th>
-                <th style={th}>Growth YoY {sel('growth_yoy')}</th><th style={th}>MoM</th><th style={th}>Bills {sel('bills')}</th><th style={th}>AOV</th>
-                <th style={th}>Cust</th><th style={th}>New</th><th style={th}>At Risk</th>
-                <th style={th}>Lama Aktif (bln)</th><th style={th}>Net/Cust</th><th style={th}>Churn</th>
-                <th style={th}>Retensi</th><th style={th}>%Tumbuh</th><th style={th}>AOV Δ</th>
-              </tr></thead>
-              <tbody>
-                {sorted.map((s,i)=>(
-                  <tr key={i} style={{ borderBottom:'1px solid #f5f5f5' }}>
-                    <td style={{ ...td, textAlign:'left', fontWeight:600 }}>{s.name}{!s.is_core&&<span style={{fontSize:10,color:'#bbb'}}> ·nc</span>}</td>
-                    <td style={{ ...td, textAlign:'left', color:'#888', fontSize:11 }}>{s.spv?.replace('SPV ','')||'-'}</td>
-                    <td style={td}>{formatRupiahShort(s.revenue)}</td>
-                    <td style={{ ...td, color:pctColor(s.pct), fontWeight:600 }}>{s.pct!=null?`${s.pct}%`:'-'}</td>
-                    <td style={{ ...td, color:'#888' }}>{s.gap!=null?formatRupiahShort(s.gap):'-'}</td>
-                    <td style={{ ...td, color:growthColor(s.growth_yoy), fontWeight:600 }}>{s.growth_yoy!=null?`${s.growth_yoy>0?'▲':'▼'}${Math.abs(s.growth_yoy)}%`:'-'}</td>
-                    {(()=>{ const mom=momOf(trend?.[s.name]); return <td style={{ ...td, color:growthColor(mom), fontWeight:600 }}>{mom!=null?`${mom>0?'▲':'▼'}${Math.abs(mom)}%`:'-'}</td> })()}
-                    <td style={td}>{formatNumber(s.bills)}</td><td style={td}>{formatRupiahShort(s.aov)}</td>
-                    <td style={td}>{s.customers}</td><td style={td}>{s.customer_new}</td>
-                    <td style={{ ...td, color:s.revenue_at_risk>0?'#d31137':'#888' }}>{formatRupiahShort(s.revenue_at_risk)}</td>
-                    <td style={{ ...td, color:'#888' }}>{s.tenure_bulan!=null?`${s.tenure_bulan} bln`:'-'}</td>
-                    <td style={td}>{s.net_avg_cust?formatRupiahShort(s.net_avg_cust):'-'}</td>
-                    <td style={{ ...td, color:(s.churn_rate>0.3?'#d31137':s.churn_rate>0.15?'#d08700':'#15803d'), fontWeight:600 }}>{s.churn_rate!=null?`${Math.round(s.churn_rate*100)}%`:'-'}</td>
-                    <td style={{ ...td, color:(s.retention_rate==null?'#888':s.retention_rate>=0.6?'#15803d':s.retention_rate>=0.4?'#d08700':'#d31137'), fontWeight:600 }}>{s.retention_rate!=null?`${Math.round(s.retention_rate*100)}%`:'-'}</td>
-                    <td style={td}>{s.pct_cust_tumbuh!=null?`${Math.round(s.pct_cust_tumbuh*100)}%`:'-'}</td>
-                    <td style={{ ...td, color:growthColor(s.aov_trend!=null?Math.round(s.aov_trend*100):null), fontWeight:600 }}>{s.aov_trend!=null?`${s.aov_trend>0?'▲':'▼'}${Math.abs(Math.round(s.aov_trend*100))}%`:'-'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
-
-      {/* Baris 5 — Pareto + Sparklines 12 bulan */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-        <Card style={{ padding:16 }}>
-          <div style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Pareto Kontribusi Revenue</div>
-          <div style={{ fontSize:10.5, color:'#aaa', marginBottom:8 }}>
-            {byRev.length ? <><b>{n80}</b> orang menyumbang 80% revenue dari total {byRev.length} salesperson.</> : '—'}
-          </div>
-          {loading ? <Skeleton height={220}/> : !paretoData.length ? <div style={{height:220,display:'flex',alignItems:'center',justifyContent:'center',color:'#888',fontSize:13}}>Tidak ada data</div> : (
-            <ResponsiveContainer width="100%" height={230}>
-              <ComposedChart data={paretoData.slice(0,20)}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
-                <XAxis dataKey="name" tick={false} height={6}/>
-                <YAxis yAxisId="l" tickFormatter={formatRupiahShort} tick={{fontSize:10,fill:'#888'}} width={54}/>
-                <YAxis yAxisId="r" orientation="right" domain={[0,100]} tickFormatter={v=>v+'%'} tick={{fontSize:10,fill:'#888'}} width={38}/>
-                <Tooltip {...tt} formatter={(v,n)=>n==='cum'?`${v}%`:formatRupiah(v)}/>
-                <Bar yAxisId="l" dataKey="revenue" name="Revenue" fill="#fc93a6"/>
-                <Line yAxisId="r" type="monotone" dataKey="cum" name="cum" stroke="#d31137" strokeWidth={2} dot={false}/>
-                <ReferenceLine yAxisId="r" y={80} stroke="#bbb" strokeDasharray="4 4"/>
-              </ComposedChart>
-            </ResponsiveContainer>
-          )}
-        </Card>
-        <Card style={{ padding:16 }}>
-          <div style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Tren 12 Bulan per Salesperson</div>
-          <div style={{ fontSize:10.5, color:'#aaa', marginBottom:8 }}>Bentuk tren revenue tiap salesperson (top 9).</div>
-          {loading ? <Skeleton height={220}/> : (
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
-              {byRev.slice(0,9).map((s,i)=>{
-                const ser=(trend?.[s.name]||[]).map((v,m)=>({m:MONTHS[m],v}))
-                return (
-                  <div key={i} style={{ border:'1px solid #f0f0f0', borderRadius:6, padding:'6px 8px' }}>
-                    <div style={{ fontSize:10.5, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{s.name}</div>
-                    <ResponsiveContainer width="100%" height={40}>
-                      <LineChart data={ser}><Line type="monotone" dataKey="v" stroke="#d31137" strokeWidth={1.5} dot={false}/></LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </Card>
-      </div>
-
-      {/* Baris 6 & 7 — Portfolio quality + Mix kategori */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-        <Card style={{ padding:16 }}>
-          <div style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Kualitas Portfolio</div>
-          <div style={{ fontSize:10.5, color:'#aaa', marginBottom:8 }}>Membedakan yang menambah customer baru dari yang hanya menjaga customer lama.</div>
-          {loading ? <Skeleton height={240}/> : (
-            <ResponsiveContainer width="100%" height={Math.max(200, sorted.slice(0,12).length*26)}>
-              <BarChart data={sorted.slice(0,12).map(s=>({name:s.name,New:s.customer_new,Repeat:s.customer_repeat,Reactivated:s.customer_reactivated}))} layout="vertical" margin={{left:10}}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
-                <XAxis type="number" tick={{fontSize:10,fill:'#888'}}/>
-                <YAxis type="category" dataKey="name" width={80} tick={{fontSize:10,fill:'#666'}}/>
-                <Tooltip {...tt}/><Legend wrapperStyle={{fontSize:10}}/>
-                <Bar dataKey="New" stackId="a" fill="#15803d"/><Bar dataKey="Repeat" stackId="a" fill="#9aa7ba"/><Bar dataKey="Reactivated" stackId="a" fill="#f59e0b"/>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </Card>
-        <Card style={{ padding:16 }}>
-          <div style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Mix Kategori per Salesperson</div>
-          <div style={{ fontSize:10.5, color:'#aaa', marginBottom:8 }}>Komposisi revenue (top 5 kategori). Sorot yang terlalu bergantung 1 kategori.</div>
-          {loading ? <Skeleton height={240}/> : (
-            <div style={{ maxHeight:260, overflowY:'auto', display:'flex', flexDirection:'column', gap:8 }}>
-              {sorted.slice(0,12).map((s,i)=>{
-                const km = (mix?.[s.name])||[]; const tot=km.reduce((a,x)=>a+x.revenue,0)||1
-                const dom = km[0] ? km[0].revenue/tot*100 : 0
-                return (
-                  <div key={i}>
-                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, marginBottom:2 }}>
-                      <span>{s.name} {dom>70&&<span style={{color:'#d31137'}} title="terlalu bergantung 1 kategori">⚠</span>}</span>
-                    </div>
-                    <div style={{ display:'flex', height:12, borderRadius:3, overflow:'hidden', background:'#f0f0f0' }}>
-                      {km.map((k,j)=><div key={j} title={`${k.kategori}: ${formatRupiahShort(k.revenue)}`} style={{ width:`${k.revenue/tot*100}%`, background:MIX_COLORS[j%MIX_COLORS.length] }}/>)}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </Card>
-      </div>
-
-      {/* Baris 8 — Action List */}
-      <Card style={{ padding:16 }}>
-        <div style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Action List per Salesperson</div>
-        <div style={{ fontSize:10.5, color:'#aaa', marginBottom:8 }}>Customer overdue & revenue at risk yang dipegang tiap salesperson.</div>
-        {loading ? <Skeleton height={160}/> : (
-          <div style={{ overflowX:'auto' }}>
-            <table style={{ width:'100%', borderCollapse:'collapse' }}>
-              <thead><tr style={{ borderBottom:'2px solid #f0f0f0' }}>
-                <th style={{...th,textAlign:'left'}}>Salesperson</th><th style={th}>Customer Overdue</th><th style={th}>Revenue at Risk</th><th style={{...th,textAlign:'left'}}>Aksi</th>
-              </tr></thead>
-              <tbody>
-                {[...scoped].filter(s=>s.overdue_customers>0).sort((a,b)=>b.revenue_at_risk-a.revenue_at_risk).slice(0,10).map((s,i)=>(
-                  <tr key={i} style={{ borderBottom:'1px solid #f5f5f5' }}>
-                    <td style={{...td,textAlign:'left',fontWeight:600}}>{s.name}</td>
-                    <td style={td}>{s.overdue_customers}</td>
-                    <td style={{...td,color:'#d31137',fontWeight:600}}>{formatRupiahShort(s.revenue_at_risk)}</td>
-                    <td style={{...td,textAlign:'left'}}><a href="/customers" style={{color:'#d31137',textDecoration:'none',fontSize:11,fontWeight:600}}>Buka daftar customer →</a></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
     </div>
   )
 }

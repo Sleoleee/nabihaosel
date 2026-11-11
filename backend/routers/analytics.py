@@ -1044,6 +1044,22 @@ def pos_achievement(year: Optional[int] = Query(None), channels: Optional[str] =
                 return nm
         return holder(kc, 12)
 
+    spv_assign = defaultdict(list)
+    for r in _fetch_all_rows("map_c_spv", "kode_c,spv,valid_from,valid_to"):
+        spv_assign[r["kode_c"]].append((r["valid_from"], r.get("valid_to"), r["spv"]))
+    def spv_holder(kc, m):
+        ref = date(year, m, 1)
+        for vf, vt, nm in spv_assign.get(kc, []):
+            f = date.fromisoformat(vf); t = date.fromisoformat(vt) if vt else None
+            if f <= ref and (t is None or t >= ref):
+                return nm
+        return None
+    def spv_now(kc):
+        for vf, vt, nm in spv_assign.get(kc, []):
+            if vt is None:
+                return nm
+        return spv_holder(kc, 12)
+
     rev = defaultdict(lambda: defaultdict(float)); bil = defaultdict(lambda: defaultdict(int))
     for r in _fetch_paged("agg_customer_month", "customer_code,tahun,bulan,channel,revenue,bills", year=year):
         if chs and r.get("channel") not in chs:
@@ -1054,7 +1070,9 @@ def pos_achievement(year: Optional[int] = Query(None), channels: Optional[str] =
         m = int(r["bulan"])
         rev[kc][m] += float(r.get("revenue") or 0); bil[kc][m] += int(r.get("bills") or 0)
 
-    pos = []; person = defaultdict(lambda: {"rev": 0.0, "tgt": 0.0, "pos": set()})
+    pos = []
+    person = defaultdict(lambda: {"rev": 0.0, "tgt": 0.0, "pos": set()})
+    spv = defaultdict(lambda: {"rev": 0.0, "tgt": 0.0, "pos": set()})
     for kc in sorted(set(rev) | set(tgt)):
         if is_ns(kc):
             continue
@@ -1071,13 +1089,22 @@ def pos_achievement(year: Optional[int] = Query(None), channels: Optional[str] =
             tr += rv; tt += tg
             if hb[m]:
                 person[hb[m]]["rev"] += rv; person[hb[m]]["tgt"] += tg; person[hb[m]]["pos"].add(kc)
-        pos.append({"kode_c": kc, "salesperson_now": holder_now(kc),
+            sh = spv_holder(kc, m)
+            if sh:
+                spv[sh]["rev"] += rv; spv[sh]["tgt"] += tg; spv[sh]["pos"].add(kc)
+        spv_changes = [{"bulan": m, "dari": spv_holder(kc, m - 1), "ke": spv_holder(kc, m)}
+                       for m in range(2, 13) if spv_holder(kc, m) and spv_holder(kc, m - 1) and spv_holder(kc, m) != spv_holder(kc, m - 1)]
+        pos.append({"kode_c": kc, "salesperson_now": holder_now(kc), "spv_now": spv_now(kc),
                     "total_revenue": round(tr), "total_target": round(tt),
                     "pct": round(tr / tt * 100, 1) if tt else None,
-                    "months": months, "changes": changes})
+                    "months": months, "changes": changes, "spv_changes": spv_changes})
     pos.sort(key=lambda x: -x["total_revenue"])
     persons = [{"slp_name": k, "revenue": round(v["rev"]), "target": round(v["tgt"]),
                 "pct": round(v["rev"] / v["tgt"] * 100, 1) if v["tgt"] else None,
                 "pos": sorted(v["pos"])} for k, v in person.items()]
     persons.sort(key=lambda x: -x["revenue"])
-    return {"year": year, "pos": pos, "persons": persons}
+    spvs = [{"spv": k, "revenue": round(v["rev"]), "target": round(v["tgt"]),
+             "pct": round(v["rev"] / v["tgt"] * 100, 1) if v["tgt"] else None,
+             "pos": sorted(v["pos"])} for k, v in spv.items()]
+    spvs.sort(key=lambda x: -x["revenue"])
+    return {"year": year, "pos": pos, "persons": persons, "spvs": spvs}
