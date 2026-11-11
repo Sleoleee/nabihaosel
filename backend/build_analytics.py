@@ -105,7 +105,7 @@ def rfm_segment(r, f, m):
 def build_all(rows, sp_master=None):
     sp_master = sp_master or {}
     # akumulator
-    cust = defaultdict(lambda: {"rev":0.0,"name":"","months":set(),"docs":set(),
+    cust = defaultdict(lambda: {"rev":0.0,"names":defaultdict(float),"months":set(),"docs":set(),
                                 "first":"","last":"","slp_rev":defaultdict(float),
                                 "ch_rev":defaultdict(float),"kats":set(),"doc_date":{}})
     cm_firstdate = defaultdict(dict)                 # code -> {ym -> min tanggal}
@@ -158,7 +158,8 @@ def build_all(rows, sp_master=None):
         hawal = _f(r.get("harga_awal"))
 
         c = cust[code]
-        c["rev"] += rev; c["name"] = r.get("customer_name") or code
+        c["rev"] += rev
+        c["names"][(r.get("customer_name") or "").strip() or code] += rev   # gabung nama per revenue
         c["months"].add(ym); c["kats"].add(kat)
         c["slp_rev"][slp] += rev; c["ch_rev"][ch] += rev
         if doc: c["docs"].add(doc)
@@ -240,7 +241,8 @@ def build_all(rows, sp_master=None):
         monetary = avg_monthly
         frequency = round(bills/months_active, 3)
         dim_customer[code] = {
-            "customer_code":code, "customer_name":c["name"],
+            "customer_code":code,
+            "customer_name": "/".join(n for n,_ in sorted(c["names"].items(), key=lambda x:-x[1]) if n) or code,
             "first_order_date":c["first"] or None, "last_order_date":c["last"] or None,
             "total_revenue":round(c["rev"]), "jumlah_bulan_aktif":months_active,
             "avg_spending_per_month_active":round(avg_monthly),
