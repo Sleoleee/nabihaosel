@@ -85,12 +85,15 @@ def parse(path, valid, start_month, n_months):
     return out
 
 
+def _nn(s):
+    return " ".join(str(s or "").strip().upper().split())
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--master", required=True)
     ap.add_argument("--janjul", required=True, help="file Jan-Jul (Part 1)")
     ap.add_argument("--agudes", required=True, help="file Agu-Des (Revisi IV)")
-    ap.add_argument("--valid-from", default="2025-01-01", help="tanggal mulai pemegang (default awal data)")
     ap.add_argument("--dry", action="store_true")
     args = ap.parse_args()
 
@@ -99,17 +102,35 @@ def main():
     b = parse(args.agudes, valid, 8, 5)    # Agu..Des
 
     codes = sorted(set(a) | set(b))
-    merged = {}
+    merged = {}; changes = []
     for kc in codes:
-        name = (a.get(kc, {}).get("name") or b.get(kc, {}).get("name") or "").strip()
+        njj = (a.get(kc, {}).get("name") or "").strip()
+        nad = (b.get(kc, {}).get("name") or "").strip()
+        if njj and nad and _nn(njj) != _nn(nad):
+            periods = [(njj, "2026-01-01", "2026-07-31"), (nad, "2026-08-01", None)]
+            changes.append((kc, njj, nad))
+        elif njj:
+            periods = [(njj, "2026-01-01", None)]
+        elif nad:
+            periods = [(nad, "2026-08-01", None)]   # hanya ada di Agu-Des
+        else:
+            periods = []
         tgt = {}; tgt.update(a.get(kc, {}).get("tgt", {})); tgt.update(b.get(kc, {}).get("tgt", {}))
-        merged[kc] = {"name": name, "tgt": tgt}
+        merged[kc] = {"periods": periods, "tgt": tgt}
 
-    print(f"{len(merged)} Kode C tercover file target:")
+    print(f"{len(merged)} Kode C tercover file target (periode mulai 2026; 2025 dibiarkan kosong):")
     for kc in codes:
         m = merged[kc]
         total = sum(v for v in m["tgt"].values() if v)
-        print(f"  {kc:8} -> {m['name']:22} | {len(m['tgt'])} bln target | total {total:,.0f}")
+        who = " ; ".join(f"{nm}({vf[5:]}→{vt[5:] if vt else 'kini'})" for nm, vf, vt in m["periods"])
+        print(f"  {kc:8} -> {who:48} | {len(m['tgt'])} bln | total {total:,.0f}")
+
+    if changes:
+        print(f"\n⚠ {len(changes)} Kode C GANTI salesperson antara Jan-Jul vs Agu-Des (dibuat 2 periode):")
+        for kc, x, y in changes:
+            print(f"    {kc:8} {x}  →  {y}")
+    else:
+        print("\n✓ Tidak ada Kode C yang berganti salesperson antara Jan-Jul dan Agu-Des.")
 
     if args.dry:
         print("\n[DRY] belum menulis ke DB. Buang --dry untuk menyimpan.")
@@ -117,15 +138,19 @@ def main():
 
     from utils.db import get_client
     db = get_client()
-    sp_rows = [{"kode_c": kc, "slp_name": m["name"], "valid_from": args.valid_from, "valid_to": None}
-               for kc, m in merged.items() if m["name"]]
+    # bersihkan baris lama utk kode-kode ini (hindari periode dobel dari run sebelumnya)
+    for kc in codes:
+        db.table("map_c_salesperson").delete().eq("kode_c", kc).execute()
+    sp_rows = [{"kode_c": kc, "slp_name": nm, "valid_from": vf, "valid_to": vt}
+               for kc, m in merged.items() for (nm, vf, vt) in m["periods"]]
     for i in range(0, len(sp_rows), 500):
-        db.table("map_c_salesperson").upsert(sp_rows[i:i+500], on_conflict="kode_c,valid_from").execute()
+        db.table("map_c_salesperson").insert(sp_rows[i:i+500]).execute()
     tg_rows = [{"kode_c": kc, "tahun": YEAR, "bulan": b_, "target": v}
                for kc, m in merged.items() for b_, v in m["tgt"].items() if v]
     for i in range(0, len(tg_rows), 500):
         db.table("target_c").upsert(tg_rows[i:i+500], on_conflict="kode_c,tahun,bulan").execute()
-    print(f"\n✓ Ditulis: {len(sp_rows)} C->salesperson, {len(tg_rows)} baris target_c (tahun {YEAR}).")
+    print(f"\n✓ Ditulis: {len(sp_rows)} baris C->salesperson ({len(changes)} dgn pergantian), "
+          f"{len(tg_rows)} baris target_c (tahun {YEAR}).")
 
 
 if __name__ == "__main__":
