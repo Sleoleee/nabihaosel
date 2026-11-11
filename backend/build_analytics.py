@@ -102,7 +102,7 @@ def rfm_segment(r, f, m):
 
 
 # ============================ BUILD ============================
-def build_all(rows, sp_master=None):
+def build_all(rows, sp_master=None, resolver=None):
     sp_master = sp_master or {}
     # akumulator
     cust = defaultdict(lambda: {"rev":0.0,"names":defaultdict(float),"months":set(),"docs":set(),
@@ -139,6 +139,7 @@ def build_all(rows, sp_master=None):
     slp_year_docs = defaultdict(lambda: defaultdict(set))      # slp -> tahun -> set(nota)
     cust_item_rev = defaultdict(float)                         # (code,item) -> rev (utk item favorit)
     cust_subitem_rev = defaultdict(float)                      # (code,sub_item) -> rev (utk sub item favorit, data 2026)
+    slp_spv_rev = defaultdict(lambda: defaultdict(float))      # slp -> spv -> rev (utk SPV dominan, mode mapping)
 
     for r in rows:
         rev  = _f(r.get(config.REVENUE_COLUMN))
@@ -152,7 +153,11 @@ def build_all(rows, sp_master=None):
         ym = pd_s[:7]
         kat = (r.get("kategori") or "Lainnya")
         item = r.get("item_no")
-        slp = r.get("slp_name") or PLACEHOLDER_SLP
+        if resolver:
+            slp, _spv = resolver(code, pd_s)
+            slp_spv_rev[slp][_spv or "(Tanpa SPV)"] += rev
+        else:
+            slp = r.get("slp_name") or PLACEHOLDER_SLP
         ch  = config.branch_group(r.get("branch"))
         qty = _f(r.get("quantity"))
         hawal = _f(r.get("harga_awal"))
@@ -442,7 +447,12 @@ def build_all(rows, sp_master=None):
         nd_cy = len(slp_year_docs[slp].get(CY, set())); nd_py = len(slp_year_docs[slp].get(PY, set()))
         aov_cy = slp_year_rev[slp].get(CY, 0) / nd_cy if nd_cy else 0
         aov_py = slp_year_rev[slp].get(PY, 0) / nd_py if nd_py else 0
-        dim_salesperson.append({"slp_name":slp,"spv":tim or None,
+        if resolver and slp in slp_spv_rev:                    # mode mapping: SPV dominan dari mapping
+            spv_val = max(slp_spv_rev[slp].items(), key=lambda x: x[1])[0]
+            if spv_val == "(Tanpa SPV)": spv_val = None
+        else:
+            spv_val = tim or None
+        dim_salesperson.append({"slp_name":slp,"spv":spv_val,
             "is_tim_inti_k25":is_core,"is_non_person":(tipe == "Generik"),
             "total_revenue":round(rev),"tipe":tipe,"kode_sp":kode,"tim":tim,
             "aktif_q4":aktif,"branch_utama":bu,"display_group":display,
@@ -596,10 +606,45 @@ def main():
         "slp_name,tipe,kode_sp,tim,aktif_q4,branch_utama").limit(100000).execute().data) or [])}
     if sp_master:
         print(f"sp_master: {len(sp_master)} nama (resolusi SP dari master).")
+
+    # Resolver atribusi MURNI MAPPING: customer->Kode C->salesperson/SPV per tanggal.
+    # Unmapped (2025, non-K25, kode kosong) -> 'Tanpa Pemegang'. Bandingan tanggal string ISO.
+    def _load(tbl, cols):
+        out, step, i = [], 1000, 0
+        while True:
+            d = _retry(lambda: db.table(tbl).select(cols).range(i, i + step - 1).execute().data) or []
+            out.extend(d)
+            if len(d) < step:
+                break
+            i += step
+        return out
+    mcust, mslp, mspv = {}, {}, {}
+    for r in _load("map_customer_c", "customer_code,kode_c,valid_from,valid_to"):
+        mcust.setdefault(r["customer_code"], []).append((r["valid_from"], r.get("valid_to"), r["kode_c"]))
+    for r in _load("map_c_salesperson", "kode_c,slp_name,valid_from,valid_to"):
+        mslp.setdefault(r["kode_c"], []).append((r["valid_from"], r.get("valid_to"), r["slp_name"]))
+    for r in _load("map_c_spv", "kode_c,spv,valid_from,valid_to"):
+        mspv.setdefault(r["kode_c"], []).append((r["valid_from"], r.get("valid_to"), r["spv"]))
+
+    def _pick(lst, pd):
+        for vf, vt, val in lst:
+            if pd >= vf and (vt is None or pd <= vt):
+                return val
+        return None
+    resolver = None
+    if mcust and mslp:
+        def resolver(code, pd):
+            kc = _pick(mcust.get(code, []), pd)
+            if not kc:
+                return ("Tanpa Pemegang", None)
+            return (_pick(mslp.get(kc, []), pd) or "Tanpa Pemegang", _pick(mspv.get(kc, []), pd))
+        print(f"mapping: {len(mcust)} customer->C, {len(mslp)} C->salesperson, {len(mspv)} C->SPV "
+              f"(ATRIBUSI MURNI MAPPING; unmapped -> 'Tanpa Pemegang').")
     else:
-        print("  (sp_master KOSONG — jalankan load_sp_master.py; SP diklasifikasi via fallback branch-mayoritas saja)")
+        print("  (mapping kosong -> pakai SlpName transaksi seperti biasa)")
+
     print("Membangun agregasi...")
-    tables, report = build_all(rows, sp_master)
+    tables, report = build_all(rows, sp_master, resolver)
     print("\n--- VALIDASI REKONSILIASI ---")
     ok, msgs = validate(rows, tables, report)
     print("\n".join(msgs))

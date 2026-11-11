@@ -207,7 +207,7 @@ def sales_performance(years: Optional[str] = Query(None), channels: Optional[str
     # Health per SP (tenure, churn, net avg/cust, breakdown status) dari dim_salesperson.
     dsp = {r["slp_name"]: r for r in _fetch_all_rows("dim_salesperson",
         "slp_name,tipe,kode_sp,tenure_bulan,n_customer,n_aktif,n_tidak_aktif,n_hilang,churn_rate,"
-        "net_avg_cust,first_txn,pct_cust_tumbuh,aov_tahun_ini,aov_tahun_lalu,aov_trend,retention_rate")}
+        "net_avg_cust,first_txn,pct_cust_tumbuh,aov_tahun_ini,aov_tahun_lalu,aov_trend,retention_rate,spv")}
 
     gyear = max(yrs)
     gmap = settings_store.get_group_map(gyear)
@@ -218,14 +218,34 @@ def sales_performance(years: Optional[str] = Query(None), channels: Optional[str
     tgt_scope = (tgt_months & pmonths) or None
     btmap = settings_store.get_branch_target_map(yrs, months=tgt_scope, channels=(chs or None))
 
+    # Target per salesperson dari target_c (mapping): Σ target pos yang dia pegang per bulan.
+    _asg = defaultdict(list)
+    for r in _fetch_all_rows("map_c_salesperson", "kode_c,slp_name,valid_from,valid_to"):
+        _asg[r["kode_c"]].append((r["valid_from"], r.get("valid_to"), r["slp_name"]))
+    def _hold(kc, y, mo):
+        ref = f"{y:04d}-{mo:02d}-01"
+        for vf, vt, nm in _asg.get(kc, []):
+            if ref >= vf and (vt is None or ref <= vt):
+                return nm
+        return None
+    slp_target = defaultdict(float)
+    for r in _fetch_all_rows("target_c", "kode_c,tahun,bulan,target"):
+        if int(r["tahun"]) != gyear:
+            continue
+        nm = _hold(r["kode_c"], gyear, int(r["bulan"]))
+        if nm:
+            slp_target[nm] += float(r.get("target") or 0)
+    use_map_target = bool(slp_target)   # kalau target_c terisi -> target basis mapping
+
     salespeople = []
     for s, a in agg.items():
         m = match_salesperson(s)
         name = m["name"] if m else s
-        spv = settings_store.effective_group(s, gmap, reg)   # bisa 'Lainnya'/'Tanpa SPV'
+        spv = (dsp.get(s, {}) or {}).get("spv") or settings_store.effective_group(s, gmap, reg)
         org_channel = settings_store.effective_channel(s, reg)
-        target = btmap.get(s, settings_store.effective_target(s, tmap) if s in tmap else 0)
+        target = slp_target.get(s, 0) if use_map_target else btmap.get(s, settings_store.effective_target(s, tmap) if s in tmap else 0)
         rev = round(a["rev"])
+        ach_rev = rev if use_map_target else a["rev_tgt"]   # basis pencapaian
         pf = port.get(s, {"custs":0,"overdue":0,"at_risk":0.0})
         salespeople.append({
             "slp_name": s, "name": name, "spv": spv, "org_channel": org_channel,
@@ -239,9 +259,9 @@ def sales_performance(years: Optional[str] = Query(None), channels: Optional[str
             "customer_repeat": a["repeat"], "customer_reactivated": a["react"],
             "revenue_new": round(a["rev_new"]),
             "overdue_customers": pf["overdue"], "revenue_at_risk": round(pf["at_risk"]),
-            "revenue_bulan_target": round(a["rev_tgt"]),
-            "target": round(target), "pct": round(a["rev_tgt"]/target*100, 1) if target else None,
-            "gap": round(target - a["rev_tgt"]) if target else None,
+            "revenue_bulan_target": round(ach_rev),
+            "target": round(target), "pct": round(ach_rev/target*100, 1) if target else None,
+            "gap": round(target - ach_rev) if target else None,
             "tenure_bulan": (dd := dsp.get(s, {})).get("tenure_bulan"),
             "first_txn": dd.get("first_txn"), "tipe": dd.get("tipe"),
             "n_customer_portfolio": dd.get("n_customer"), "n_aktif": dd.get("n_aktif"),
