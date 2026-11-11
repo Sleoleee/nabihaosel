@@ -13,6 +13,11 @@ import sys, os
 import openpyxl
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+except Exception:
+    pass
 
 COLMAP = {"code cust": "customer_code", "cust name": "customer_name",
           "sales employee": "sales_employee", "group": "group_name"}
