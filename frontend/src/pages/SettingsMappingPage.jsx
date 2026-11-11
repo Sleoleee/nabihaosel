@@ -3,7 +3,8 @@ import { DataEditor, GridCellKind } from '@glideapps/glide-data-grid'
 import '@glideapps/glide-data-grid/dist/index.css'
 import {
   getMapCustomerC, saveMapCustomerC, getCSalesperson, saveCSalesperson,
-  deleteCSalesperson, getCCodes, getSpMaster, getMappingHealth,
+  deleteCSalesperson, getCCodes, getMappingHealth,
+  setKodeMeta, getTargetC, saveTargetC, getSlpSuggest,
 } from '../utils/api'
 import { formatRupiahShort } from '../utils/format'
 
@@ -20,7 +21,7 @@ export default function SettingsMappingPage() {
         berganti, kamu catat tanggal pergantiannya supaya penjualan lama tetap dihitung ke orang yang benar.
       </p>
       <div style={{ display: 'flex', gap: 8, margin: '14px 0' }}>
-        {[['cust', '1. Customer → Kode C'], ['csp', '2. Kode C → Salesperson'], ['health', '3. Cek Kelengkapan']].map(([k, l]) => (
+        {[['cust', '1. Customer → Kode C'], ['csp', '2. Kode C → Salesperson'], ['target', '3. Target per Kode C'], ['health', '4. Cek Kelengkapan']].map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)}
             style={{ padding: '7px 14px', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13,
               border: tab === k ? '0' : '1px solid #ccc', background: tab === k ? '#C00000' : '#fff', color: tab === k ? '#fff' : '#333' }}>
@@ -30,6 +31,7 @@ export default function SettingsMappingPage() {
       </div>
       {tab === 'cust' && <CustomerCGrid />}
       {tab === 'csp' && <CSalespersonEditor />}
+      {tab === 'target' && <TargetCGrid />}
       {tab === 'health' && <HealthPanel goTab={setTab} />}
     </div>
   )
@@ -148,83 +150,182 @@ function CustomerCGrid() {
 
 // ----------------------------- Kode C -> Salesperson -----------------------------
 function CSalespersonEditor() {
-  const [rows, setRows] = useState([])
-  const [codes, setCodes] = useState([])
-  const [sps, setSps] = useState([])
+  const [rows, setRows] = useState([])      // riwayat penugasan
+  const [codes, setCodes] = useState([])    // semua Kode C + salesperson skrg + non-sales
+  const [suggest, setSuggest] = useState([])
   const [form, setForm] = useState({ kode_c: '', slp_name: '', valid_from: today() })
   const [msg, setMsg] = useState('')
+  const [showHist, setShowHist] = useState(false)
 
   const load = () => {
     getCSalesperson().then(setRows)
     getCCodes().then(setCodes)
-    getSpMaster(2026).then(m => setSps(m.salespeople || [])).catch(() => setSps([]))
+    getSlpSuggest().then(setSuggest).catch(() => setSuggest([]))
   }
   useEffect(() => { load() }, [])
 
   const add = async () => {
-    if (!form.kode_c || !form.slp_name) { setMsg('Pilih Kode C & salesperson dulu.'); return }
-    await saveCSalesperson(form)
-    setMsg(`Tersimpan: ${form.kode_c} → ${form.slp_name} (sejak ${form.valid_from}).`)
+    if (!form.kode_c || !form.slp_name.trim()) { setMsg('Pilih Kode C & isi nama salesperson.'); return }
+    await saveCSalesperson({ ...form, slp_name: form.slp_name.trim() })
+    setMsg(`Tersimpan: ${form.kode_c} → ${form.slp_name.trim()} (sejak ${form.valid_from}).`)
     setForm({ ...form, slp_name: '' }); load()
   }
   const del = async (r) => { await deleteCSalesperson(r.kode_c, r.valid_from); load() }
+  const toggleNS = async (kode_c, val) => { await setKodeMeta({ kode_c, is_non_sales: val }); load() }
 
-  const th = { padding: '6px 8px', background: '#f4f4f5', fontSize: 12, textAlign: 'left' }
+  const th = { padding: '6px 8px', background: '#f4f4f5', fontSize: 12, textAlign: 'left', position: 'sticky', top: 0 }
   const td = { padding: '5px 8px', borderBottom: '1px solid #eee', fontSize: 12 }
   const inp = { padding: '6px 8px', border: '1px solid #ccc', borderRadius: 6, fontSize: 13 }
-  const noSlp = codes.filter(c => !c.ada_salesperson)
+  const sales = codes.filter(c => !c.is_non_sales)
+  const belum = sales.filter(c => !c.ada_salesperson).length
 
   return (
     <div>
       <div style={{ fontSize: 12.5, color: '#555', marginBottom: 12, background: '#f8fafc', padding: '8px 12px', borderRadius: 6 }}>
-        Tentukan <b>salesperson yang memegang tiap Kode C</b>. Kalau terjadi pergantian (misal C2 dulu Budi, sekarang Ani),
-        tambahkan baris baru dengan <b>tanggal mulai</b>-nya — penjualan sebelum tanggal itu tetap dihitung ke orang lama.
+        Tentukan <b>salesperson yang memegang tiap Kode C</b>. Nama diisi bebas (ada saran otomatis). Kalau ganti pemegang,
+        isi lagi dengan <b>tanggal mulai</b> baru — penjualan sebelum tanggal itu tetap ke orang lama. Centang <b>non-sales</b>
+        untuk Kode C yang memang bukan salesperson (mis. Non Trade, Forwarder) supaya tak dihitung sebagai kekurangan.
       </div>
+
+      <datalist id="slp-suggest-list">{suggest.map(s => <option key={s} value={s} />)}</datalist>
+
       <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-        <div style={{ flex: '1 1 520px' }}>
-          <div style={{ fontWeight: 700, marginBottom: 8 }}>Daftar pemegang Kode C</div>
+        <div style={{ flex: '1 1 560px' }}>
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>Semua Kode C <span style={{ fontWeight: 400, color: '#888', fontSize: 12 }}>· {belum} slot sales belum ada salesperson</span></div>
           <div style={{ maxHeight: 460, overflow: 'auto', border: '1px solid #e5e5e5', borderRadius: 8 }}>
             <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+              <thead><tr><th style={th}>Kode C</th><th style={th}>#cust</th><th style={th}>Salesperson sekarang</th><th style={{ ...th, textAlign: 'center' }}>Non-sales</th></tr></thead>
+              <tbody>
+                {codes.map(c => (
+                  <tr key={c.kode_c} style={{ background: c.is_non_sales ? '#f8fafc' : (c.ada_salesperson ? 'transparent' : '#fff7ed') }}>
+                    <td style={{ ...td, fontWeight: 600 }}>{c.kode_c}</td>
+                    <td style={td}>{c.n_customer}</td>
+                    <td style={td}>{c.is_non_sales ? <span style={{ color: '#94a3b8' }}>—</span>
+                      : (c.salesperson || <span style={{ color: '#b45309' }}>belum diisi</span>)}</td>
+                    <td style={{ ...td, textAlign: 'center' }}>
+                      <input type="checkbox" checked={!!c.is_non_sales} onChange={e => toggleNS(c.kode_c, e.target.checked)} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <button onClick={() => setShowHist(s => !s)} style={{ marginTop: 8, fontSize: 12, background: 'none', border: 'none', color: '#C00000', cursor: 'pointer' }}>
+            {showHist ? '▾ sembunyikan riwayat pergantian' : '▸ lihat riwayat pergantian'}
+          </button>
+          {showHist && (
+            <table style={{ borderCollapse: 'collapse', width: '100%', marginTop: 6 }}>
               <thead><tr><th style={th}>Kode C</th><th style={th}>Salesperson</th><th style={th}>Mulai</th><th style={th}>Sampai</th><th style={th}></th></tr></thead>
               <tbody>
                 {rows.map((r, i) => (
                   <tr key={i}>
-                    <td style={{ ...td, fontWeight: 600 }}>{r.kode_c}</td>
-                    <td style={td}>{r.slp_name}</td>
-                    <td style={td}>{r.valid_from}</td>
-                    <td style={{ ...td, color: r.valid_to ? '#333' : '#15803d' }}>{r.valid_to || 'sekarang'}</td>
+                    <td style={{ ...td, fontWeight: 600 }}>{r.kode_c}</td><td style={td}>{r.slp_name}</td>
+                    <td style={td}>{r.valid_from}</td><td style={{ ...td, color: r.valid_to ? '#333' : '#15803d' }}>{r.valid_to || 'sekarang'}</td>
                     <td style={td}><button onClick={() => del(r)} style={{ border: 'none', background: 'none', color: '#d31137', cursor: 'pointer' }}>hapus</button></td>
                   </tr>
                 ))}
-                {!rows.length && <tr><td style={td} colSpan={5}>Belum ada yang diisi. Tambahkan di sebelah kanan →</td></tr>}
+                {!rows.length && <tr><td style={td} colSpan={5}>Belum ada.</td></tr>}
               </tbody>
             </table>
-          </div>
+          )}
         </div>
-        <div style={{ flex: '0 0 320px' }}>
-          <div style={{ fontWeight: 700, marginBottom: 8 }}>Tambah / ganti pemegang</div>
+
+        <div style={{ flex: '0 0 300px' }}>
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>Tetapkan / ganti salesperson</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <select value={form.kode_c} onChange={e => setForm({ ...form, kode_c: e.target.value })} style={inp}>
               <option value="">— pilih Kode C —</option>
-              {codes.map(c => <option key={c.kode_c} value={c.kode_c}>{c.kode_c} ({c.n_customer} customer){c.ada_salesperson ? '' : ' • belum diisi'}</option>)}
+              {sales.map(c => <option key={c.kode_c} value={c.kode_c}>{c.kode_c} ({c.n_customer}){c.ada_salesperson ? ` — ${c.salesperson}` : ' • belum diisi'}</option>)}
             </select>
-            <select value={form.slp_name} onChange={e => setForm({ ...form, slp_name: e.target.value })} style={inp}>
-              <option value="">— pilih salesperson —</option>
-              {sps.map(s => <option key={s.slp_name} value={s.slp_name}>{s.slp_name}</option>)}
-            </select>
+            <input list="slp-suggest-list" placeholder="ketik nama salesperson…" value={form.slp_name}
+              onChange={e => setForm({ ...form, slp_name: e.target.value })} style={inp} />
             <label style={{ fontSize: 13 }}>Mulai berlaku:
               <input type="date" value={form.valid_from} onChange={e => setForm({ ...form, valid_from: e.target.value })} style={{ ...inp, marginLeft: 6 }} />
             </label>
             <button onClick={add} style={{ padding: '8px 16px', background: '#C00000', color: '#fff', border: 0, borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>Simpan</button>
             {msg && <span style={{ fontSize: 12.5, color: '#2d7d2d' }}>{msg}</span>}
           </div>
-          {noSlp.length > 0 && (
-            <div style={{ marginTop: 16, fontSize: 12 }}>
-              <div style={{ fontWeight: 600, color: '#b45309', marginBottom: 4 }}>⚠ {noSlp.length} Kode C belum ada salesperson-nya:</div>
-              <div style={{ color: '#666' }}>{noSlp.slice(0, 20).map(c => `${c.kode_c}(${c.n_customer})`).join(', ')}{noSlp.length > 20 ? ' …' : ''}</div>
-            </div>
-          )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ----------------------------- Target per Kode C per bulan -----------------------------
+const MONTHS = [[1, 'Jan'], [2, 'Feb'], [3, 'Mar'], [4, 'Apr'], [5, 'Mei'], [6, 'Jun'],
+  [7, 'Jul'], [8, 'Agu'], [9, 'Sep'], [10, 'Okt'], [11, 'Nov'], [12, 'Des']]
+const fmtNum = (n) => (n == null || n === '' ? '' : Number(n).toLocaleString('id-ID'))
+
+function TargetCGrid() {
+  const [tahun, setTahun] = useState(2026)
+  const [codes, setCodes] = useState([])
+  const [grid, setGrid] = useState({})   // kode_c -> {bulan: target}
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  const load = async () => {
+    setMsg('')
+    const [cc, tg] = await Promise.all([getCCodes(), getTargetC(tahun)])
+    setCodes((cc || []).filter(c => !c.is_non_sales))
+    const g = {}
+    for (const r of (tg || [])) { (g[r.kode_c] = g[r.kode_c] || {})[r.bulan] = r.target }
+    setGrid(g)
+  }
+  useEffect(() => { load() }, [tahun])
+
+  const setCell = (kc, b, val) => {
+    const num = val.replace(/[^\d]/g, '')
+    setGrid(prev => ({ ...prev, [kc]: { ...prev[kc], [b]: num === '' ? '' : Number(num) } }))
+  }
+  const save = async () => {
+    setBusy(true); setMsg('')
+    try {
+      const rows = []
+      for (const c of codes) for (const [b] of MONTHS) rows.push({ kode_c: c.kode_c, tahun, bulan: b, target: Number(grid[c.kode_c]?.[b] || 0) })
+      const res = await saveTargetC(rows)
+      setMsg(`Tersimpan ${res.saved} baris target.`)
+    } catch { setMsg('Gagal menyimpan.') } finally { setBusy(false) }
+  }
+
+  const th = { padding: '6px 8px', background: '#f4f4f5', fontSize: 12, textAlign: 'left', position: 'sticky', top: 0 }
+  const td = { padding: '4px 6px', borderBottom: '1px solid #eee', fontSize: 12 }
+  const inp = { width: 86, padding: '4px 6px', textAlign: 'right', border: '1px solid #ccc', borderRadius: 4, fontSize: 12 }
+
+  return (
+    <div>
+      <div style={{ fontSize: 12.5, color: '#555', marginBottom: 12, background: '#f8fafc', padding: '8px 12px', borderRadius: 6 }}>
+        Target revenue <b>per Kode C per bulan</b>. Karena target dipasang ke slot (Kode C), target tidak berubah walau
+        salesperson pemegangnya berganti. Hanya Kode C slot-sales yang muncul (non-sales disembunyikan).
+      </div>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
+        <label style={{ fontSize: 13 }}>Tahun:
+          <select value={tahun} onChange={e => setTahun(Number(e.target.value))} style={{ marginLeft: 6, padding: 4 }}>
+            {[2025, 2026].map(y => <option key={y}>{y}</option>)}
+          </select>
+        </label>
+        <button onClick={save} disabled={busy} style={{ padding: '7px 16px', background: '#C00000', color: '#fff', border: 0, borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>
+          {busy ? 'Menyimpan…' : 'Simpan semua'}
+        </button>
+        {msg && <span style={{ fontSize: 13, color: '#2d7d2d' }}>{msg}</span>}
+      </div>
+      <div style={{ maxHeight: 520, overflow: 'auto', border: '1px solid #e5e5e5', borderRadius: 8 }}>
+        <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+          <thead><tr><th style={th}>Kode C</th><th style={th}>#cust</th><th style={th}>Salesperson</th>
+            {MONTHS.map(([, n]) => <th key={n} style={{ ...th, textAlign: 'right' }}>{n}</th>)}</tr></thead>
+          <tbody>
+            {codes.map(c => (
+              <tr key={c.kode_c}>
+                <td style={{ ...td, fontWeight: 600 }}>{c.kode_c}</td>
+                <td style={td}>{c.n_customer}</td>
+                <td style={{ ...td, color: c.salesperson ? '#333' : '#b45309' }}>{c.salesperson || 'belum diisi'}</td>
+                {MONTHS.map(([b]) => (
+                  <td style={td} key={b}><input style={inp} value={fmtNum(grid[c.kode_c]?.[b])} onChange={e => setCell(c.kode_c, b, e.target.value)} /></td>
+                ))}
+              </tr>
+            ))}
+            {!codes.length && <tr><td style={td} colSpan={15}>Belum ada Kode C slot-sales.</td></tr>}
+          </tbody>
+        </table>
       </div>
     </div>
   )

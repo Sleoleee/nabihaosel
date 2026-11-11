@@ -114,3 +114,7 @@ export const saveCSalesperson = (payload) => api.post('/api/mapping/c-salesperso
 export const deleteCSalesperson = (kode_c, valid_from) => api.delete('/api/mapping/c-salesperson', { params: { kode_c, valid_from } }).then(r => r.data)
 export const getCCodes = () => api.get('/api/mapping/c-codes').then(r => r.data)
 export const getMappingHealth = () => api.get('/api/mapping/health').then(r => r.data)
+export const setKodeMeta = (payload) => api.post('/api/mapping/kode-meta', payload).then(r => r.data)
+export const getTargetC = (tahun) => api.get('/api/mapping/target-c', { params: { tahun } }).then(r => r.data)
+export const saveTargetC = (rows) => api.post('/api/mapping/target-c', { rows }).then(r => r.data)
+export const getSlpSuggest = () => api.get('/api/mapping/slp-suggest').then(r => r.data)

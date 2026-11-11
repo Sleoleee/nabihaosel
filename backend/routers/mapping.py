@@ -143,10 +143,60 @@ def c_codes():
     from collections import Counter
     cnt = Counter(r["kode_c"] for r in _all("map_customer_c", "kode_c",
                   lambda q: q.is_("valid_to", "null")))
-    has_slp = {r["kode_c"] for r in _all("map_c_salesperson", "kode_c",
-               lambda q: q.is_("valid_to", "null"))}
-    return [{"kode_c": k, "n_customer": n, "ada_salesperson": k in has_slp}
+    sp_now = {r["kode_c"]: r["slp_name"] for r in
+              _all("map_c_salesperson", "kode_c,slp_name", lambda q: q.is_("valid_to", "null"))}
+    ns = {r["kode_c"] for r in _all("kode_c_meta", "kode_c,is_non_sales") if r.get("is_non_sales")}
+    return [{"kode_c": k, "n_customer": n, "ada_salesperson": k in sp_now,
+             "salesperson": sp_now.get(k, ""), "is_non_sales": (k in ns or config.is_non_sales_c(k))}
             for k, n in sorted(cnt.items(), key=lambda x: -x[1])]
+
+
+# ----------------------------- Non-sales flag per Kode C -----------------------------
+@router.post("/kode-meta")
+def set_kode_meta(payload: dict = Body(...)):
+    """Tandai Kode C non-sales (atau balikkan). body: {kode_c, is_non_sales, catatan?}"""
+    kc = (payload.get("kode_c") or "").strip()
+    if not kc:
+        return {"error": "kode_c wajib"}
+    get_client().table("kode_c_meta").upsert(
+        {"kode_c": kc, "is_non_sales": bool(payload.get("is_non_sales")), "catatan": payload.get("catatan")},
+        on_conflict="kode_c").execute()
+    return {"ok": True}
+
+
+# ----------------------------- Target per Kode C per bulan -----------------------------
+@router.get("/target-c")
+def get_target_c(tahun: int = Query(...)):
+    rows = _all("target_c", "kode_c,tahun,bulan,target", lambda q: q.eq("tahun", tahun))
+    return rows
+
+
+@router.post("/target-c")
+def save_target_c(payload: dict = Body(...)):
+    """body: {rows:[{kode_c,tahun,bulan,target}]}"""
+    rows = payload.get("rows") or []
+    pl = [{"kode_c": r["kode_c"], "tahun": int(r["tahun"]), "bulan": int(r["bulan"]),
+           "target": float(r.get("target") or 0)} for r in rows if r.get("kode_c")]
+    db = get_client()
+    for i in range(0, len(pl), 500):
+        db.table("target_c").upsert(pl[i:i+500], on_conflict="kode_c,tahun,bulan").execute()
+    return {"saved": len(pl)}
+
+
+# ----------------------------- Saran nama salesperson -----------------------------
+@router.get("/slp-suggest")
+def slp_suggest():
+    """Nama yg pernah dipakai (transaksi + mapping) utk autosuggest, bukan daftar terkunci."""
+    names = set()
+    for r in _all("dim_salesperson", "slp_name"):
+        n = (r.get("slp_name") or "").strip()
+        if n and not config.is_non_person_slp(n):
+            names.add(n)
+    for r in _all("map_c_salesperson", "slp_name"):
+        n = (r.get("slp_name") or "").strip()
+        if n:
+            names.add(n)
+    return sorted(names)
 
 
 # ----------------------------- Kesehatan Data (gate Fase 3) -----------------------------
@@ -158,6 +208,8 @@ def health():
              _all("map_customer_c", "customer_code,kode_c", lambda q: q.is_("valid_to", "null"))}
     csp_now = {r["kode_c"] for r in
                _all("map_c_salesperson", "kode_c", lambda q: q.is_("valid_to", "null"))}
+    ns_meta = {r["kode_c"] for r in _all("kode_c_meta", "kode_c,is_non_sales") if r.get("is_non_sales")}
+    def is_ns(kc): return kc in ns_meta or config.is_non_sales_c(kc)
     dc = _all("dim_customer", "customer_code,total_revenue")
     total_rev = sum(float(c.get("total_revenue") or 0) for c in dc) or 1.0
 
@@ -168,7 +220,7 @@ def health():
         kc = cur_c.get(code)
         if not kc:
             b = "tanpa_c"
-        elif config.is_non_sales_c(kc):
+        elif is_ns(kc):
             b = "non_sales"
         elif kc in csp_now:
             b = "ok"
