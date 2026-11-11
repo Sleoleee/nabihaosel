@@ -104,3 +104,12 @@ export const uploadFile = (file, mode) => {
 export const getUploadHistory = () => api.get('/api/upload/history').then(r => r.data)
 export const getChannelStatus = () => api.get('/api/upload/channel-status').then(r => r.data)
 export const deleteData = (payload) => api.post('/api/upload/delete', payload).then(r => r.data)
+
+// Mapping atribusi SP (Kode C)
+export const getMapCustomerC = (p) => api.get('/api/mapping/customer-c', { params: p }).then(r => r.data)
+export const saveMapCustomerC = (payload) => api.post('/api/mapping/customer-c', payload).then(r => r.data)
+export const getCustomerCHistory = (code) => api.get('/api/mapping/customer-c/history', { params: { customer_code: code } }).then(r => r.data)
+export const getCSalesperson = () => api.get('/api/mapping/c-salesperson').then(r => r.data)
+export const saveCSalesperson = (payload) => api.post('/api/mapping/c-salesperson', payload).then(r => r.data)
+export const deleteCSalesperson = (kode_c, valid_from) => api.delete('/api/mapping/c-salesperson', { params: { kode_c, valid_from } }).then(r => r.data)
+export const getCCodes = () => api.get('/api/mapping/c-codes').then(r => r.data)

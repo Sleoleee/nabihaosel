@@ -116,6 +116,15 @@ NON_PERSON_SLPNAMES = {
 }
 
 
+# Kode C yang BUKAN slot salesperson: tak dihitung pencapaian, tak dialarmkan sbg gap.
+# Customer di sini BOLEH diberi salesperson sewaktu-waktu (lalu ikut dihitung).
+NON_SALES_C = {"NON TRADE", "BLANKS"}
+
+
+def is_non_sales_c(kode_c):
+    return str(kode_c or "").strip().upper() in NON_SALES_C
+
+
 def is_non_person_slp(slp_name):
     if not slp_name:
         return True

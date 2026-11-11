@@ -12,6 +12,7 @@ import SettingsGroupsPage from './pages/SettingsGroupsPage'
 import SettingsTargetsPage from './pages/SettingsTargetsPage'
 import SettingsSalesPage from './pages/SettingsSalesPage'
 import SettingsSPTargetPage from './pages/SettingsSPTargetPage'
+import SettingsMappingPage from './pages/SettingsMappingPage'
 import QaPage from './pages/QaPage'
 import Upload from './pages/Upload'
 import ReportCenterPage from './pages/ReportCenterPage'
@@ -40,6 +41,7 @@ export default function App() {
               <Route path="/territory" element={<TerritoryPage />} />
               <Route path="/settings/sales" element={<SettingsSalesPage />} />
               <Route path="/settings/sp-target" element={<SettingsSPTargetPage />} />
+              <Route path="/settings/mapping" element={<SettingsMappingPage />} />
               <Route path="/settings/groups" element={<SettingsGroupsPage />} />
               <Route path="/settings/targets" element={<SettingsTargetsPage />} />
               <Route path="/reports" element={<ReportCenterPage />} />
