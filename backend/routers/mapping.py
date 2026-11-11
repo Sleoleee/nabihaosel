@@ -194,10 +194,50 @@ def c_codes():
                   lambda q: q.is_("valid_to", "null")))
     sp_now = {r["kode_c"]: r["slp_name"] for r in
               _all("map_c_salesperson", "kode_c,slp_name", lambda q: q.is_("valid_to", "null"))}
+    spv_now = {r["kode_c"]: r["spv"] for r in
+               _all("map_c_spv", "kode_c,spv", lambda q: q.is_("valid_to", "null"))}
     ns = {r["kode_c"] for r in _all("kode_c_meta", "kode_c,is_non_sales") if r.get("is_non_sales")}
     return [{"kode_c": k, "n_customer": n, "ada_salesperson": k in sp_now,
-             "salesperson": sp_now.get(k, ""), "is_non_sales": (k in ns or config.is_non_sales_c(k))}
+             "salesperson": sp_now.get(k, ""), "spv": spv_now.get(k, ""),
+             "is_non_sales": (k in ns or config.is_non_sales_c(k))}
             for k, n in sorted(cnt.items(), key=lambda x: -x[1])]
+
+
+# ----------------------------- SPV -> Kode C (effective-dated) -----------------------------
+@router.get("/c-spv")
+def list_c_spv():
+    rows = _all("map_c_spv", "kode_c,spv,valid_from,valid_to")
+    rows.sort(key=lambda r: (r.get("spv") or "", r["kode_c"], r["valid_from"]))
+    return rows
+
+
+@router.post("/c-spv")
+def save_c_spv(payload: dict = Body(...)):
+    """body: {kode_c, spv, valid_from} — menutup periode SPV terbuka sebelumnya utk kode_c itu."""
+    db = get_client()
+    kc = (payload.get("kode_c") or "").strip()
+    spv = (payload.get("spv") or "").strip()
+    vf = (payload.get("valid_from") or date.today().isoformat())
+    if not kc or not spv:
+        return {"error": "kode_c & spv wajib"}
+    db.table("map_c_spv").update({"valid_to": _prev_day(vf)}) \
+        .eq("kode_c", kc).is_("valid_to", "null").execute()
+    db.table("map_c_spv").upsert(
+        {"kode_c": kc, "spv": spv, "valid_from": vf, "valid_to": None},
+        on_conflict="kode_c,valid_from").execute()
+    return {"ok": True}
+
+
+@router.delete("/c-spv")
+def delete_c_spv(kode_c: str = Query(...), valid_from: str = Query(...)):
+    get_client().table("map_c_spv").delete() \
+        .eq("kode_c", kode_c).eq("valid_from", valid_from).execute()
+    return {"ok": True}
+
+
+@router.get("/spv-suggest")
+def spv_suggest():
+    return sorted({(r.get("spv") or "").strip() for r in _all("map_c_spv", "spv") if (r.get("spv") or "").strip()})
 
 
 # ----------------------------- Non-sales flag per Kode C -----------------------------

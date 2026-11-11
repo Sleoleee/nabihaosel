@@ -121,3 +121,7 @@ export const getSlpSuggest = () => api.get('/api/mapping/slp-suggest').then(r =>
 export const saveCustomerGroup = (changes) => api.post('/api/mapping/customer-group', { changes }).then(r => r.data)
 export const getGroupMembers = (group) => api.get('/api/mapping/group-members', { params: { group } }).then(r => r.data)
 export const getPosAchievement = (p) => api.get('/api/analytics/pos-achievement', { params: p }).then(r => r.data)
+export const getCSpv = () => api.get('/api/mapping/c-spv').then(r => r.data)
+export const saveCSpv = (payload) => api.post('/api/mapping/c-spv', payload).then(r => r.data)
+export const deleteCSpv = (kode_c, valid_from) => api.delete('/api/mapping/c-spv', { params: { kode_c, valid_from } }).then(r => r.data)
+export const getSpvSuggest = () => api.get('/api/mapping/spv-suggest').then(r => r.data)

@@ -5,8 +5,21 @@ import {
   getMapCustomerC, saveMapCustomerC, getCSalesperson, saveCSalesperson,
   deleteCSalesperson, getCCodes, getMappingHealth,
   setKodeMeta, getTargetC, saveTargetC, getSlpSuggest, saveCustomerGroup,
+  getCSpv, saveCSpv, deleteCSpv, getSpvSuggest,
 } from '../utils/api'
 import { formatRupiahShort } from '../utils/format'
+
+// unduh array-of-objects jadi CSV
+function downloadCSV(rows, filename) {
+  if (!rows || !rows.length) return
+  const cols = Object.keys(rows[0])
+  const esc = (v) => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s }
+  const csv = [cols.join(','), ...rows.map(r => cols.map(c => esc(r[c])).join(','))].join('\n')
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click()
+  URL.revokeObjectURL(a.href)
+}
+const dlBtn = { padding: '6px 12px', fontSize: 12, border: '1px solid #ccc', borderRadius: 6, background: '#fff', cursor: 'pointer' }
 
 const today = () => new Date().toISOString().slice(0, 10)
 
@@ -21,7 +34,7 @@ export default function SettingsMappingPage() {
         berganti, kamu catat tanggal pergantiannya supaya penjualan lama tetap dihitung ke orang yang benar.
       </p>
       <div style={{ display: 'flex', gap: 8, margin: '14px 0' }}>
-        {[['cust', '1. Customer → Kode C'], ['csp', '2. Kode C → Salesperson'], ['target', '3. Target per Kode C'], ['health', '4. Cek Kelengkapan']].map(([k, l]) => (
+        {[['cust', '1. Customer → Kode C'], ['csp', '2. Kode C → Salesperson'], ['spv', '3. SPV → Kode C'], ['target', '4. Target per Kode C'], ['health', '5. Cek Kelengkapan']].map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)}
             style={{ padding: '7px 14px', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13,
               border: tab === k ? '0' : '1px solid #ccc', background: tab === k ? '#C00000' : '#fff', color: tab === k ? '#fff' : '#333' }}>
@@ -31,6 +44,7 @@ export default function SettingsMappingPage() {
       </div>
       {tab === 'cust' && <CustomerCGrid />}
       {tab === 'csp' && <CSalespersonEditor />}
+      {tab === 'spv' && <SpvEditor />}
       {tab === 'target' && <TargetCGrid />}
       {tab === 'health' && <HealthPanel goTab={setTab} />}
     </div>
@@ -127,6 +141,11 @@ function CustomerCGrid() {
           style={{ padding: '7px 16px', background: nEdit ? '#C00000' : '#bbb', color: '#fff', border: 0, borderRadius: 6, cursor: nEdit ? 'pointer' : 'default', fontWeight: 600 }}>
           {busy ? 'Menyimpan…' : `Simpan ${nEdit || ''} perubahan`}
         </button>
+        <button onClick={async () => {
+          const all = []; let p = 1
+          while (true) { const r = await getMapCustomerC({ only_unmapped: true, page: p, limit: 1000 }); all.push(...(r.data || [])); if ((r.data || []).length < 1000) break; p++ }
+          downloadCSV(all.map(c => ({ customer_code: c.customer_code, customer_name: c.customer_name, revenue: c.total_revenue, slp_name_transaksi: c.slp_name_transaksi || '' })), 'customer_tanpa_kode_c.csv')
+        }} style={dlBtn}>⬇ CSV yang kosong</button>
         {msg && <span style={{ fontSize: 13, color: '#2d7d2d' }}>{msg}</span>}
       </div>
       <div style={{ fontSize: 11.5, color: '#888', marginBottom: 6 }}>
@@ -164,6 +183,7 @@ function CSalespersonEditor() {
   const [form, setForm] = useState({ kode_c: '', slp_name: '', valid_from: today() })
   const [msg, setMsg] = useState('')
   const [showHist, setShowHist] = useState(false)
+  const [onlyEmpty, setOnlyEmpty] = useState(false)
 
   const load = () => {
     getCSalesperson().then(setRows)
@@ -186,6 +206,8 @@ function CSalespersonEditor() {
   const inp = { padding: '6px 8px', border: '1px solid #ccc', borderRadius: 6, fontSize: 13 }
   const sales = codes.filter(c => !c.is_non_sales)
   const belum = sales.filter(c => !c.ada_salesperson).length
+  const shown = onlyEmpty ? codes.filter(c => !c.is_non_sales && !c.ada_salesperson) : codes
+  const dl = () => downloadCSV(codes.map(c => ({ kode_c: c.kode_c, n_customer: c.n_customer, salesperson: c.salesperson || '', is_non_sales: c.is_non_sales ? 'Y' : '', status: c.is_non_sales ? 'non-sales' : (c.ada_salesperson ? 'terisi' : 'KOSONG') })), 'kode_c_salesperson.csv')
 
   return (
     <div>
@@ -199,12 +221,20 @@ function CSalespersonEditor() {
 
       <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
         <div style={{ flex: '1 1 560px' }}>
-          <div style={{ fontWeight: 700, marginBottom: 8 }}>Semua Kode C <span style={{ fontWeight: 400, color: '#888', fontSize: 12 }}>· {belum} slot sales belum ada salesperson</span></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ fontWeight: 700 }}>Semua Kode C <span style={{ fontWeight: 400, color: '#888', fontSize: 12 }}>· {belum} slot sales belum ada salesperson</span></div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <label style={{ fontSize: 12, display: 'flex', gap: 5, alignItems: 'center' }}>
+                <input type="checkbox" checked={onlyEmpty} onChange={e => setOnlyEmpty(e.target.checked)} /> hanya yang kosong
+              </label>
+              <button onClick={dl} style={dlBtn}>⬇ CSV</button>
+            </div>
+          </div>
           <div style={{ maxHeight: 460, overflow: 'auto', border: '1px solid #e5e5e5', borderRadius: 8 }}>
             <table style={{ borderCollapse: 'collapse', width: '100%' }}>
               <thead><tr><th style={th}>Kode C</th><th style={th}>#cust</th><th style={th}>Salesperson sekarang</th><th style={{ ...th, textAlign: 'center' }}>Non-sales</th></tr></thead>
               <tbody>
-                {codes.map(c => (
+                {shown.map(c => (
                   <tr key={c.kode_c} style={{ background: c.is_non_sales ? '#f8fafc' : (c.ada_salesperson ? 'transparent' : '#fff7ed') }}>
                     <td style={{ ...td, fontWeight: 600 }}>{c.kode_c}</td>
                     <td style={td}>{c.n_customer}</td>
@@ -314,6 +344,7 @@ function TargetCGrid() {
         <button onClick={save} disabled={busy} style={{ padding: '7px 16px', background: '#C00000', color: '#fff', border: 0, borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>
           {busy ? 'Menyimpan…' : 'Simpan semua'}
         </button>
+        <button onClick={() => downloadCSV(codes.map(c => { const o = { kode_c: c.kode_c, salesperson: c.salesperson || '' }; for (const [b, n] of MONTHS) o[n] = grid[c.kode_c]?.[b] || 0; return o }), `target_c_${tahun}.csv`)} style={dlBtn}>⬇ CSV</button>
         {msg && <span style={{ fontSize: 13, color: '#2d7d2d' }}>{msg}</span>}
       </div>
       <div style={{ maxHeight: 520, overflow: 'auto', border: '1px solid #e5e5e5', borderRadius: 8 }}>
@@ -431,3 +462,121 @@ function HealthPanel({ goTab }) {
   )
 }
 
+
+// ----------------------------- SPV -> Kode C (effective-dated) -----------------------------
+function SpvEditor() {
+  const [codes, setCodes] = useState([])
+  const [hist, setHist] = useState([])
+  const [suggest, setSuggest] = useState([])
+  const [form, setForm] = useState({ kode_c: '', spv: '', valid_from: today() })
+  const [onlyEmpty, setOnlyEmpty] = useState(false)
+  const [showHist, setShowHist] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  const load = () => {
+    getCCodes().then(setCodes)
+    getCSpv().then(setHist)
+    getSpvSuggest().then(setSuggest).catch(() => setSuggest([]))
+  }
+  useEffect(() => { load() }, [])
+
+  const add = async () => {
+    if (!form.kode_c || !form.spv.trim()) { setMsg('Pilih Kode C & isi SPV.'); return }
+    await saveCSpv({ ...form, spv: form.spv.trim() })
+    setMsg(`Tersimpan: ${form.kode_c} → ${form.spv.trim()} (sejak ${form.valid_from}).`)
+    setForm({ ...form, spv: '' }); load()
+  }
+  const del = async (r) => { await deleteCSpv(r.kode_c, r.valid_from); load() }
+
+  const th = { padding: '6px 8px', background: '#f4f4f5', fontSize: 12, textAlign: 'left', position: 'sticky', top: 0 }
+  const td = { padding: '5px 8px', borderBottom: '1px solid #eee', fontSize: 12 }
+  const inp = { padding: '6px 8px', border: '1px solid #ccc', borderRadius: 6, fontSize: 13 }
+  const sales = codes.filter(c => !c.is_non_sales)
+  const belum = sales.filter(c => !c.spv).length
+  const shown = onlyEmpty ? sales.filter(c => !c.spv) : codes
+  const dl = () => downloadCSV(codes.map(c => ({ kode_c: c.kode_c, n_customer: c.n_customer, spv: c.spv || '', salesperson: c.salesperson || '', status: c.is_non_sales ? 'non-sales' : (c.spv ? 'terisi' : 'KOSONG') })), 'spv_kode_c.csv')
+
+  // kelompok SPV -> daftar C (current)
+  const bySpv = {}
+  for (const c of sales) if (c.spv) (bySpv[c.spv] = bySpv[c.spv] || []).push(c.kode_c)
+
+  return (
+    <div>
+      <div style={{ fontSize: 12.5, color: '#555', marginBottom: 12, background: '#f8fafc', padding: '8px 12px', borderRadius: 6 }}>
+        Tentukan <b>SPV yang memegang tiap Kode C</b>. Satu Kode C punya satu SPV pada satu waktu, tapi bisa
+        <b> berpindah SPV</b> — isi lagi dengan <b>tanggal mulai</b> baru, histori tersimpan.
+      </div>
+      <datalist id="spv-suggest-list">{suggest.map(s => <option key={s} value={s} />)}</datalist>
+
+      <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 540px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ fontWeight: 700 }}>Kode C → SPV <span style={{ fontWeight: 400, color: '#888', fontSize: 12 }}>· {belum} slot sales belum ada SPV</span></div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <label style={{ fontSize: 12, display: 'flex', gap: 5, alignItems: 'center' }}>
+                <input type="checkbox" checked={onlyEmpty} onChange={e => setOnlyEmpty(e.target.checked)} /> hanya yang kosong
+              </label>
+              <button onClick={dl} style={dlBtn}>⬇ CSV</button>
+            </div>
+          </div>
+          <div style={{ maxHeight: 440, overflow: 'auto', border: '1px solid #e5e5e5', borderRadius: 8 }}>
+            <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+              <thead><tr><th style={th}>Kode C</th><th style={th}>#cust</th><th style={th}>Salesperson</th><th style={th}>SPV sekarang</th></tr></thead>
+              <tbody>
+                {shown.map(c => (
+                  <tr key={c.kode_c} style={{ background: c.is_non_sales ? '#f8fafc' : (c.spv ? 'transparent' : '#fff7ed') }}>
+                    <td style={{ ...td, fontWeight: 600 }}>{c.kode_c}</td>
+                    <td style={td}>{c.n_customer}</td>
+                    <td style={{ ...td, color: '#666' }}>{c.salesperson || '—'}</td>
+                    <td style={td}>{c.is_non_sales ? <span style={{ color: '#94a3b8' }}>—</span> : (c.spv || <span style={{ color: '#b45309' }}>belum diisi</span>)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <button onClick={() => setShowHist(s => !s)} style={{ marginTop: 8, fontSize: 12, background: 'none', border: 'none', color: '#C00000', cursor: 'pointer' }}>
+            {showHist ? '▾ sembunyikan riwayat perpindahan SPV' : '▸ lihat riwayat perpindahan SPV'}
+          </button>
+          {showHist && (
+            <table style={{ borderCollapse: 'collapse', width: '100%', marginTop: 6 }}>
+              <thead><tr><th style={th}>Kode C</th><th style={th}>SPV</th><th style={th}>Mulai</th><th style={th}>Sampai</th><th style={th}></th></tr></thead>
+              <tbody>
+                {hist.map((r, i) => (
+                  <tr key={i}><td style={{ ...td, fontWeight: 600 }}>{r.kode_c}</td><td style={td}>{r.spv}</td>
+                    <td style={td}>{r.valid_from}</td><td style={{ ...td, color: r.valid_to ? '#333' : '#15803d' }}>{r.valid_to || 'sekarang'}</td>
+                    <td style={td}><button onClick={() => del(r)} style={{ border: 'none', background: 'none', color: '#d31137', cursor: 'pointer' }}>hapus</button></td></tr>
+                ))}
+                {!hist.length && <tr><td style={td} colSpan={5}>Belum ada.</td></tr>}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <div style={{ flex: '0 0 300px' }}>
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>Tetapkan / pindah SPV</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <select value={form.kode_c} onChange={e => setForm({ ...form, kode_c: e.target.value })} style={inp}>
+              <option value="">— pilih Kode C —</option>
+              {sales.map(c => <option key={c.kode_c} value={c.kode_c}>{c.kode_c} ({c.n_customer}){c.spv ? ` — ${c.spv}` : ' • belum diisi'}</option>)}
+            </select>
+            <input list="spv-suggest-list" placeholder="ketik nama SPV…" value={form.spv}
+              onChange={e => setForm({ ...form, spv: e.target.value })} style={inp} />
+            <label style={{ fontSize: 13 }}>Mulai berlaku:
+              <input type="date" value={form.valid_from} onChange={e => setForm({ ...form, valid_from: e.target.value })} style={{ ...inp, marginLeft: 6 }} />
+            </label>
+            <button onClick={add} style={{ padding: '8px 16px', background: '#C00000', color: '#fff', border: 0, borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>Simpan</button>
+            {msg && <span style={{ fontSize: 12.5, color: '#2d7d2d' }}>{msg}</span>}
+          </div>
+          {Object.keys(bySpv).length > 0 && (
+            <div style={{ marginTop: 16, fontSize: 12 }}>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>Ringkas SPV → Kode C:</div>
+              {Object.entries(bySpv).sort().map(([s, cs]) => (
+                <div key={s} style={{ marginBottom: 4 }}><b>{s}</b>: <span style={{ color: '#666' }}>{cs.join(', ')}</span></div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
