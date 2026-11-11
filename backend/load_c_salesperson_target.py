@@ -21,6 +21,7 @@ try:
     load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 except Exception:
     pass
+import re
 import openpyxl
 
 YEAR = 2026
@@ -28,6 +29,13 @@ YEAR = 2026
 
 def norm(v):
     return str(v).strip().upper() if v is not None else ""
+
+
+def clean_name(s):
+    """Buang anotasi 'ex ...' (penanda menggantikan siapa). 'Marlina Ex.Alysia' -> 'Marlina'."""
+    s = str(s or "").strip()
+    s = re.split(r"\s+ex\b\.?\s*", s, maxsplit=1, flags=re.IGNORECASE)[0].strip()
+    return s
 
 
 def _num(v):
@@ -74,7 +82,7 @@ def parse(path, valid, start_month, n_months):
                     continue
                 if _num(cells[j]) is None:
                     ni = j; break
-            name = str(cells[ni]).strip() if ni is not None else ""
+            name = clean_name(cells[ni]) if ni is not None else ""
             # angka setelah nama
             nums = [_num(cells[j]) for j in range((ni or ci) + 1, len(cells)) if _num(cells[j]) is not None]
             tgt = {start_month + k: nums[k] for k in range(min(n_months, len(nums)))}
