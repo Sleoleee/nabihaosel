@@ -31,6 +31,15 @@ def norm(v):
     return str(v).strip().upper() if v is not None else ""
 
 
+def match_code(cell, valid):
+    """cocokkan ke kode valid: persis atau ganti huruf O->0 (typo 'COG' vs 'C0G')."""
+    k = norm(cell)
+    if k in valid:
+        return k
+    k2 = k.replace("O", "0")
+    return k2 if k2 in valid else None
+
+
 def clean_name(s):
     """Buang anotasi 'ex ...' (penanda menggantikan siapa). 'Marlina Ex.Alysia' -> 'Marlina'."""
     s = str(s or "").strip()
@@ -71,10 +80,13 @@ def parse(path, valid, start_month, n_months):
     for sn in wb.sheetnames:
         for row in wb[sn].iter_rows(values_only=True):
             cells = list(row)
-            ci = next((i for i, c in enumerate(cells) if norm(c) in valid), None)
+            ci = kc = None
+            for i, c in enumerate(cells):
+                m = match_code(c, valid)
+                if m:
+                    ci, kc = i, m; break
             if ci is None:
                 continue
-            kc = norm(cells[ci])
             # nama = cell non-numerik pertama setelah kode
             ni = None
             for j in range(ci + 1, len(cells)):
