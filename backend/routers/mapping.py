@@ -41,6 +41,8 @@ def list_customer_c(search: Optional[str] = Query(None), kode_c: Optional[str] =
     """Daftar customer (dari dim_customer = anchor) + Kode C aktifnya (valid_to NULL)."""
     cur = {r["customer_code"]: r["kode_c"] for r in
            _all("map_customer_c", "customer_code,kode_c", lambda q: q.is_("valid_to", "null"))}
+    grp = {r["customer_code"]: r.get("group_name") or "" for r in
+           _all("customer_group", "customer_code,group_name")}
     dc = _all("dim_customer", "customer_code,customer_name,total_revenue,salesperson_utama")
     rows = []
     for c in dc:
@@ -48,7 +50,7 @@ def list_customer_c(search: Optional[str] = Query(None), kode_c: Optional[str] =
         kc = cur.get(code, "")
         rows.append({"customer_code": code, "customer_name": c.get("customer_name"),
                      "total_revenue": c.get("total_revenue"), "slp_name_transaksi": c.get("salesperson_utama"),
-                     "kode_c": kc})
+                     "kode_c": kc, "group_head": grp.get(code, "")})
     if only_unmapped:
         rows = [r for r in rows if not r["kode_c"]]
     if kode_c:
@@ -92,6 +94,53 @@ def save_customer_c(payload: dict = Body(...)):
             on_conflict="customer_code,valid_from").execute()
         written += 1
     return {"written": written}
+
+
+@router.post("/customer-group")
+def save_customer_group(payload: dict = Body(...)):
+    """Simpan Group induk (head) per customer (snapshot, tanpa tanggal).
+    body: {"changes":[{"customer_code","group_head"}]}"""
+    db = get_client()
+    changes = payload.get("changes") or []
+    # nama customer utk disimpan bareng (opsional)
+    names = {}
+    pl = []
+    for ch in changes:
+        code = (ch.get("customer_code") or "").strip()
+        g = (ch.get("group_head") or "").strip()
+        if not code:
+            continue
+        pl.append({"customer_code": code, "group_name": g or None})
+    written = 0
+    for i in range(0, len(pl), 500):
+        db.table("customer_group").upsert(pl[i:i+500], on_conflict="customer_code").execute()
+        written += len(pl[i:i+500])
+    return {"written": written}
+
+
+@router.get("/group-members")
+def group_members(group: str = Query(...)):
+    """Anak-anak di dalam satu Group induk + salesperson & revenue masing-masing (utk Customer Dashboard)."""
+    codes = [r["customer_code"] for r in
+             _all("customer_group", "customer_code,group_name") if (r.get("group_name") or "") == group]
+    if not codes:
+        return {"group": group, "members": []}
+    dcset = {r["customer_code"]: r for r in _all("dim_customer",
+             "customer_code,customer_name,total_revenue,salesperson_utama,days_since_last_order")}
+    cur_c = {r["customer_code"]: r["kode_c"] for r in
+             _all("map_customer_c", "customer_code,kode_c", lambda q: q.is_("valid_to", "null"))}
+    csp = {r["kode_c"]: r["slp_name"] for r in
+           _all("map_c_salesperson", "kode_c,slp_name", lambda q: q.is_("valid_to", "null"))}
+    members = []
+    for code in codes:
+        d = dcset.get(code, {})
+        kc = cur_c.get(code, "")
+        members.append({"customer_code": code, "customer_name": d.get("customer_name") or code,
+                        "revenue": d.get("total_revenue") or 0, "kode_c": kc,
+                        "salesperson": csp.get(kc) or d.get("salesperson_utama") or "",
+                        "days_since_last_order": d.get("days_since_last_order")})
+    members.sort(key=lambda m: -(float(m["revenue"] or 0)))
+    return {"group": group, "members": members}
 
 
 @router.get("/customer-c/history")

@@ -9,7 +9,7 @@ import { formatRupiah, formatRupiahShort, formatNumber } from '../utils/format'
 import { useGlobalFilters } from '../context/GlobalFilters'
 import {
   getCustomerAnalytics, getCustomerLifecycle, getCustomerCohort, getCustomerListNew,
-  getCustomerBridge, getCustomerDetail, getCustomerGroups,
+  getCustomerBridge, getCustomerDetail, getCustomerGroups, getGroupMembers,
 } from '../utils/api'
 
 const RFM_COLORS = {
@@ -51,6 +51,7 @@ export default function CustomerIntelligence() {
   const [lifeMode, setLifeMode] = useState('count')
   const [groupMode, setGroupMode] = useState('group')   // group | individu
   const [ranking, setRanking] = useState(null)
+  const [grpDetail, setGrpDetail] = useState(null)      // {group, members, loading}
   const [rankLoading, setRankLoading] = useState(true)
 
   const years = g?.years?.join(',') || undefined
@@ -175,7 +176,10 @@ export default function CustomerIntelligence() {
                   <tr key={e.key} style={{ borderBottom:'1px solid #f6f6f6' }}>
                     <td style={{ padding:'5px 7px', color:'#bbb' }}>{i+1}</td>
                     <td style={{ padding:'5px 7px', fontWeight:500 }}>
-                      {e.label}
+                      {e.is_group ? (
+                        <span onClick={()=>{ setGrpDetail({group:e.label,loading:true}); getGroupMembers(e.label).then(setGrpDetail).catch(()=>setGrpDetail(null)) }}
+                          style={{ color:'#d31137', cursor:'pointer' }}>{e.label}</span>
+                      ) : e.label}
                       {e.is_group && <span style={{ marginLeft:6, fontSize:9.5, padding:'1px 6px', borderRadius:10, background:'#fde3e9', color:'#d31137', fontWeight:700 }}>GROUP</span>}
                     </td>
                     <td style={{ padding:'5px 7px', color:'#888' }}>{e.salesperson||'—'}</td>
@@ -191,6 +195,37 @@ export default function CustomerIntelligence() {
           </div>
         </>)}
       </Card>
+
+      {/* Drawer: anggota & salesperson per Group (head) */}
+      {grpDetail && (
+        <div onClick={()=>setGrpDetail(null)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.25)', zIndex:300 }}>
+          <div onClick={e=>e.stopPropagation()} style={{ position:'absolute', top:0, right:0, bottom:0, width:460, maxWidth:'92vw', background:'#fff', boxShadow:'-4px 0 20px rgba(0,0,0,0.15)', padding:20, overflowY:'auto' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
+              <div style={{ fontSize:15, fontWeight:700 }}>Group: {grpDetail.group}</div>
+              <button onClick={()=>setGrpDetail(null)} style={{ border:'none', background:'none', fontSize:18, cursor:'pointer', color:'#999' }}>✕</button>
+            </div>
+            {grpDetail.loading ? <Skeleton height={200}/> : !grpDetail.members?.length ? <div style={{color:'#888'}}>Tidak ada anggota.</div> : (()=>{
+              const sps=[...new Set(grpDetail.members.map(m=>m.salesperson).filter(Boolean))]
+              return (<>
+                <div style={{ fontSize:11.5, color:'#888', marginBottom:12 }}>{grpDetail.members.length} customer · {sps.length} salesperson berbeda: {sps.join(', ')||'—'}</div>
+                <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+                  <thead><tr style={{ borderBottom:'2px solid #f0f0f0' }}>{['Customer','Kode C','Salesperson','Revenue'].map((h,i)=><th key={h} style={{ padding:'6px 7px', textAlign:i>=3?'right':'left', color:'#888', fontSize:10.5 }}>{h}</th>)}</tr></thead>
+                  <tbody>
+                    {grpDetail.members.map((m,i)=>(
+                      <tr key={i} style={{ borderBottom:'1px solid #f6f6f6' }}>
+                        <td style={{ padding:'5px 7px', fontWeight:500 }}>{m.customer_name}</td>
+                        <td style={{ padding:'5px 7px', color:'#666' }}>{m.kode_c||'—'}</td>
+                        <td style={{ padding:'5px 7px', color:'#666' }}>{m.salesperson||'—'}</td>
+                        <td style={{ padding:'5px 7px', textAlign:'right', fontWeight:600 }}>{formatRupiahShort(m.revenue)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>)
+            })()}
+          </div>
+        </div>
+      )}
 
       {/* Baris 2 — Lifecycle Flow */}
       <Card style={{ padding:16 }}>

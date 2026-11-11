@@ -4,7 +4,7 @@ import '@glideapps/glide-data-grid/dist/index.css'
 import {
   getMapCustomerC, saveMapCustomerC, getCSalesperson, saveCSalesperson,
   deleteCSalesperson, getCCodes, getMappingHealth,
-  setKodeMeta, getTargetC, saveTargetC, getSlpSuggest,
+  setKodeMeta, getTargetC, saveTargetC, getSlpSuggest, saveCustomerGroup,
 } from '../utils/api'
 import { formatRupiahShort } from '../utils/format'
 
@@ -46,7 +46,8 @@ function CustomerCGrid() {
   const [search, setSearch] = useState('')
   const [onlyUnmapped, setOnlyUnmapped] = useState(false)
   const [validFrom, setValidFrom] = useState(today())
-  const [edits, setEdits] = useState({})
+  const [edits, setEdits] = useState({})         // customer_code -> kode_c baru
+  const [gedits, setGedits] = useState({})       // customer_code -> group_head baru
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
 
@@ -62,10 +63,12 @@ function CustomerCGrid() {
     { title: 'Nama', width: 230 },
     { title: 'Revenue', width: 110 },
     { title: 'Nama sales di nota', width: 180 },
-    { title: 'Kode C', width: 120 },
+    { title: 'Kode C', width: 110 },
+    { title: 'Group (Head)', width: 150 },
   ]), [])
 
   const kodeOf = (r) => (r.customer_code in edits ? edits[r.customer_code] : (r.kode_c || ''))
+  const groupOf = (r) => (r.customer_code in gedits ? gedits[r.customer_code] : (r.group_head || ''))
 
   const getCellContent = useCallback(([col, row]) => {
     const r = rows[row]
@@ -74,30 +77,35 @@ function CustomerCGrid() {
     if (col === 1) return { kind: GridCellKind.Text, data: r.customer_name || '', displayData: r.customer_name || '', allowOverlay: false }
     if (col === 2) { const v = formatRupiahShort(r.total_revenue || 0); return { kind: GridCellKind.Text, data: v, displayData: v, allowOverlay: false } }
     if (col === 3) return { kind: GridCellKind.Text, data: r.slp_name_transaksi || '', displayData: r.slp_name_transaksi || '', allowOverlay: false }
-    const kc = kodeOf(r)
-    return { kind: GridCellKind.Text, data: kc, displayData: kc, allowOverlay: true,
-      themeOverride: (r.customer_code in edits) ? { bgCell: '#fff7ed' } : undefined }
-  }, [rows, edits])
+    if (col === 4) { const kc = kodeOf(r); return { kind: GridCellKind.Text, data: kc, displayData: kc, allowOverlay: true,
+      themeOverride: (r.customer_code in edits) ? { bgCell: '#fff7ed' } : undefined } }
+    const g = groupOf(r)
+    return { kind: GridCellKind.Text, data: g, displayData: g, allowOverlay: true,
+      themeOverride: (r.customer_code in gedits) ? { bgCell: '#eef6ff' } : undefined }
+  }, [rows, edits, gedits])
 
   const onCellEdited = useCallback(([col, row], newVal) => {
-    if (col !== 4) return
     const r = rows[row]; if (!r) return
     const v = String(newVal.data ?? '').trim()
-    setEdits(prev => ({ ...prev, [r.customer_code]: v }))
+    if (col === 4) setEdits(prev => ({ ...prev, [r.customer_code]: v }))
+    else if (col === 5) setGedits(prev => ({ ...prev, [r.customer_code]: v }))
   }, [rows])
 
   const save = async () => {
     const changes = Object.entries(edits).map(([customer_code, kode_c]) => ({ customer_code, kode_c, valid_from: validFrom }))
-    if (!changes.length) { setMsg('Tidak ada perubahan.'); return }
+    const gchanges = Object.entries(gedits).map(([customer_code, group_head]) => ({ customer_code, group_head }))
+    if (!changes.length && !gchanges.length) { setMsg('Tidak ada perubahan.'); return }
     setBusy(true); setMsg('')
     try {
-      const res = await saveMapCustomerC({ changes, default_valid_from: validFrom })
-      setMsg(`Tersimpan ${res.written} perubahan (berlaku sejak ${validFrom}).`)
-      setEdits({}); load()
+      let a = 0, b = 0
+      if (changes.length) a = (await saveMapCustomerC({ changes, default_valid_from: validFrom })).written
+      if (gchanges.length) b = (await saveCustomerGroup(gchanges)).written
+      setMsg(`Tersimpan: ${a} Kode C, ${b} Group.`)
+      setEdits({}); setGedits({}); load()
     } catch { setMsg('Gagal menyimpan.') } finally { setBusy(false) }
   }
 
-  const nEdit = Object.keys(edits).length
+  const nEdit = Object.keys(edits).length + Object.keys(gedits).length
   const inp = { padding: '6px 8px', border: '1px solid #ccc', borderRadius: 6, fontSize: 13 }
 
   return (
@@ -122,8 +130,8 @@ function CustomerCGrid() {
         {msg && <span style={{ fontSize: 13, color: '#2d7d2d' }}>{msg}</span>}
       </div>
       <div style={{ fontSize: 11.5, color: '#888', marginBottom: 6 }}>
-        Edit kolom <b>Kode C</b> langsung — bisa copy-paste dari keyboard, tarik ke bawah, dan pilih banyak baris sekaligus.
-        Baris oranye = ada perubahan yang belum disimpan.
+        Edit kolom <b>Kode C</b> (siapa yang memegang) dan <b>Group (Head)</b> (induk customer) langsung —
+        bisa copy-paste keyboard, tarik ke bawah, pilih banyak baris. Sel oranye = Kode C berubah; biru = Group berubah.
       </div>
       <div style={{ border: '1px solid #e5e5e5', borderRadius: 8, overflow: 'hidden' }}>
         <DataEditor
