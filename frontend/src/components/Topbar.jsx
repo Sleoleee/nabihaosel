@@ -28,9 +28,9 @@ export default function Topbar() {
       background: '#1a1a1a', height: 54, display: 'flex', alignItems: 'center',
       padding: '0 28px', gap: 0,
     }}>
-      <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: 600, letterSpacing: '0.03em', marginRight: 20, whiteSpace: 'nowrap', flexShrink: 0 }}>
-        Sales Analytics
-      </span>
+      <NavLink to={{ pathname: '/', search }} style={{ display: 'flex', alignItems: 'center', marginRight: 20, flexShrink: 0 }}>
+        <img src="/sync-logo.png" alt="SYNC" style={{ height: 30, width: 'auto', display: 'block' }} />
+      </NavLink>
       <nav style={{ display: 'flex', gap: 2, minWidth: 0, overflowX: 'auto', flexShrink: 1 }}>
         {NAV.map(({ to, label }) => (
           <NavLink key={to} to={{ pathname: to, search }} end={to === '/'}
