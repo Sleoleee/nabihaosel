@@ -577,10 +577,28 @@ PK = {
 }
 CHUNK = 1000
 
+# Tabel ber-key slp_name: saat atribusi mapping, key-nya berubah (nama transaksi -> nama
+# pemegang), jadi baris lama TIDAK tertimpa upsert. Wajib dihapus total sebelum tulis ulang,
+# kalau tidak data lama + data mapping bercampur (nama ganda + grup "Tim" bocor).
+WIPE_FULL = {
+    "dim_salesperson", "agg_salesperson_month",
+    "agg_salesperson_category_month", "agg_salesperson_customer_month",
+}
+
 def write_tables(db, tables, fresh=False):
     for name, recs in tables.items():
         print(f"  {name}: {len(recs)} baris...", end=" ")
-        if fresh and "tahun" in PK[name].split(","):
+        if name in WIPE_FULL:
+            # hapus SEMUA baris dulu (key bisa berubah akibat mapping). Filter 'match-all'.
+            try:
+                if "tahun" in PK[name].split(","):
+                    _retry(lambda n=name: db.table(n).delete().gte("tahun", 0).execute())
+                else:
+                    _retry(lambda n=name: db.table(n).delete().neq("slp_name", "___never_exists___").execute())
+                print("(wipe penuh)", end=" ")
+            except Exception as e:
+                print(f"(GAGAL wipe: {str(e)[:40]})", end=" ")
+        elif fresh and "tahun" in PK[name].split(","):
             # buang baris tahun lama (< MIN_YEAR) via filter valid; best-effort (jangan gagalkan build).
             try:
                 _retry(lambda n=name: db.table(n).delete().lt("tahun", config.MIN_YEAR).execute())
