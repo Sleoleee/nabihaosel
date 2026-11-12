@@ -7,7 +7,7 @@ import Card from '../components/Card'
 import Skeleton, { SkeletonCard } from '../components/Skeleton'
 import { formatRupiah, formatRupiahShort, formatNumber } from '../utils/format'
 import { useGlobalFilters } from '../context/GlobalFilters'
-import { getSalesPerformance, getSalesMix, getSalesTrend } from '../utils/api'
+import { getSalesPerformance, getSalesMix, getSalesTrend, getSalespersonMonths } from '../utils/api'
 
 const MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des']
 function momOf(series) {
@@ -24,6 +24,7 @@ const tt = { contentStyle:{background:'#1a1a1a',border:'none',borderRadius:8,col
 
 const pctColor = (p) => p == null ? '#999' : p >= 100 ? '#15803d' : p >= 70 ? '#f59e0b' : '#d31137'
 const growthColor = (g) => g == null ? '#999' : g >= 0 ? '#15803d' : '#d31137'
+const gradeColor = (gr) => gr === 'A' ? '#15803d' : gr === 'B' ? '#65a30d' : gr === 'C' ? '#d08700' : '#d31137'
 
 function downloadCSV(rows, filename) {
   if (!rows.length) return
@@ -80,6 +81,7 @@ export default function SalesPerformancePage() {
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState('revenue')
   const [sortDir, setSortDir] = useState('desc')
+  const [drawer, setDrawer] = useState(null)        // salesperson row dipilih
 
   const years = g?.years?.join(',') || undefined
   const channels = g?.channels?.join(',') || undefined
@@ -283,7 +285,10 @@ export default function SalesPerformancePage() {
               <tbody>
                 {sorted.map((s,i)=>(
                   <tr key={i} style={{ borderBottom:'1px solid #f5f5f5' }}>
-                    <td style={{ ...td, textAlign:'left', fontWeight:600 }}>{s.name}{!s.is_core&&<span style={{fontSize:10,color:'#bbb'}}> ·nc</span>}</td>
+                    <td style={{ ...td, textAlign:'left', fontWeight:600 }}>
+                      <span onClick={()=>setDrawer(s)} style={{ cursor:'pointer', color:'#d31137', textDecoration:'underline', textDecorationColor:'rgba(211,17,55,0.3)' }} title="Lihat detail & skor">{s.name}</span>
+                      {s.score!=null&&<span style={{fontSize:10,marginLeft:6,padding:'1px 5px',borderRadius:4,fontWeight:700,color:'#fff',background:gradeColor(s.grade)}}>{s.grade} {s.score}</span>}
+                      {!s.is_core&&<span style={{fontSize:10,color:'#bbb'}}> ·nc</span>}</td>
                     <td style={{ ...td, textAlign:'left', color:'#888', fontSize:11 }}>{s.spv?.replace('SPV ','')||'-'}</td>
                     <td style={td}>{formatRupiahShort(s.revenue)}</td>
                     <td style={{ ...td, color:pctColor(s.pct), fontWeight:600 }}>{s.pct!=null?`${s.pct}%`:'-'}</td>
@@ -415,6 +420,144 @@ export default function SalesPerformancePage() {
           </div>
         )}
       </Card>
+
+      {drawer && <SalesDrawer s={drawer} channels={channels} onClose={()=>setDrawer(null)} />}
+    </div>
+  )
+}
+
+function SalesDrawer({ s, channels, onClose }) {
+  const [year, setYear] = useState(null)
+  const [d, setD] = useState(null)
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    setLoading(true)
+    const y = year || new Date().getFullYear()
+    getSalespersonMonths(s.slp_name, y, channels)
+      .then(r => { setD(r); if (!year) setYear(r.year) }).catch(()=>setD(null)).finally(()=>setLoading(false))
+  }, [s.slp_name, year, channels])
+
+  const Bar3 = ({ label, val, raw }) => (
+    <div style={{ marginBottom:7 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, marginBottom:2 }}>
+        <span style={{ color:'#666' }}>{label}</span>
+        <span style={{ fontWeight:600 }}>{val==null?'-':`${val}`}{raw?<span style={{color:'#aaa',fontWeight:400}}> · {raw}</span>:''}</span>
+      </div>
+      <div style={{ height:6, background:'#eee', borderRadius:3, overflow:'hidden' }}>
+        <div style={{ width:`${Math.max(0,Math.min(val||0,100))}%`, height:'100%', background:gradeColor(s.grade) }} />
+      </div>
+    </div>
+  )
+
+  const DrawerTooltip = ({ active, payload }) => {
+    if (!active || !payload?.length) return null
+    const p = payload[0].payload
+    const contribs = d?.contributors?.[p.bulan] || []
+    return (
+      <div style={{ background:'#1a1a1a', color:'#fff', borderRadius:8, padding:'10px 12px', fontSize:11.5, maxWidth:260 }}>
+        <div style={{ fontWeight:700, marginBottom:3 }}>{p.label} {d?.year}</div>
+        <div>Revenue: <b>{formatRupiah(p.revenue)}</b></div>
+        <div style={{ color:'#bbb' }}>Target: {formatRupiah(p.target)} {p.pct!=null&&`· ${p.pct}%`}</div>
+        <div style={{ color: p.mom==null?'#bbb':p.mom>=0?'#4ade80':'#f87171' }}>MoM: {p.mom==null?'—':`${p.mom>0?'▲':'▼'}${Math.abs(p.mom)}%`}</div>
+        {contribs.length>0 && <div style={{ marginTop:6, borderTop:'1px solid #444', paddingTop:5 }}>
+          <div style={{ color:'#999', fontSize:10, marginBottom:2 }}>Penyumbang teratas</div>
+          {contribs.map((c,i)=>(<div key={i} style={{ display:'flex', justifyContent:'space-between', gap:10 }}>
+            <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.customer_name}</span>
+            <span style={{ color:'#ddd' }}>{formatRupiahShort(c.revenue)}</span></div>))}
+        </div>}
+      </div>
+    )
+  }
+
+  const kpi = [
+    ['Revenue', formatRupiahShort(s.revenue)], ['Target', s.target?formatRupiahShort(s.target):'-'],
+    ['% Ach', s.pct!=null?`${s.pct}%`:'-'], ['Gap', s.gap!=null?formatRupiahShort(s.gap):'-'],
+    ['Bills', formatNumber(s.bills)], ['AOV', formatRupiahShort(s.aov)],
+    ['Customer', `${s.n_aktif??'?'}/${s.customers} aktif`], ['% Active', s.pct_active!=null?`${s.pct_active}%`:'-'],
+    ['Retensi', s.retention_rate!=null?`${Math.round(s.retention_rate*100)}%`:'-'], ['Churn', s.churn_rate!=null?`${Math.round(s.churn_rate*100)}%`:'-'],
+  ]
+
+  return (
+    <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.25)', zIndex:300 }}>
+      <div onClick={e=>e.stopPropagation()} style={{ position:'absolute', top:0, right:0, bottom:0, width:460, maxWidth:'94vw', background:'#fff', boxShadow:'-4px 0 20px rgba(0,0,0,0.15)', padding:20, overflowY:'auto' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12 }}>
+          <div>
+            <div style={{ fontSize:17, fontWeight:700 }}>{s.name}</div>
+            <div style={{ fontSize:11.5, color:'#888' }}>{s.spv?.replace('SPV ','SPV ')||'Tanpa SPV'} · {s.customers} customer</div>
+          </div>
+          <button onClick={onClose} style={{ border:'none', background:'none', fontSize:18, cursor:'pointer', color:'#999' }}>✕</button>
+        </div>
+
+        {/* Kartu Skor */}
+        {s.score!=null ? (
+          <div style={{ background:'#faf7f8', border:'1px solid #f0e6e9', borderRadius:12, padding:14, marginBottom:14 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:10 }}>
+              <div style={{ width:54, height:54, borderRadius:12, background:gradeColor(s.grade), color:'#fff', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}>
+                <div style={{ fontSize:20, fontWeight:800, lineHeight:1 }}>{s.grade}</div>
+                <div style={{ fontSize:11 }}>{s.score}</div>
+              </div>
+              <div style={{ fontSize:11, color:'#777' }}>Skor komposit 0–100<br/>Ketercapaian 50% · %Active 30% · AOV 20%</div>
+            </div>
+            <Bar3 label="Ketercapaian (vs target)" val={s.score_ach} raw={s.pct!=null?`${s.pct}%`:null} />
+            <Bar3 label="% Active customers" val={s.score_active} raw={s.pct_active!=null?`${s.pct_active}%`:null} />
+            <Bar3 label="AOV (persentil antar-SP)" val={s.score_aov} raw={formatRupiahShort(s.aov)} />
+          </div>
+        ) : (
+          <div style={{ background:'#f8f8f8', borderRadius:10, padding:'10px 12px', marginBottom:14, fontSize:11.5, color:'#888' }}>
+            Belum dinilai (tanpa target / bukan salesperson aktif).
+          </div>
+        )}
+
+        {/* KPI */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:7, fontSize:12, marginBottom:16 }}>
+          {kpi.map((x,i)=>(<div key={i} style={{ background:'#f8f8f8', borderRadius:6, padding:'6px 8px' }}>
+            <div style={{ fontSize:10, color:'#888' }}>{x[0]}</div><div style={{ fontWeight:600 }}>{x[1]}</div></div>))}
+        </div>
+
+        {/* Grafik capaian MtM */}
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+          <div style={{ fontSize:13, fontWeight:600 }}>Capaian bulanan</div>
+          <select value={year||''} onChange={e=>setYear(Number(e.target.value))} style={{ fontSize:12, padding:'3px 6px', borderRadius:6, border:'1px solid #ddd' }}>
+            {(d?.years_available||[year]).filter(Boolean).map(y=><option key={y} value={y}>{y}</option>)}
+          </select>
+        </div>
+        <div style={{ fontSize:10.5, color:'#aaa', marginBottom:6 }}>Batang = revenue · garis = target. Arahkan kursor ke bulan untuk nilai, perubahan MoM & customer penyumbang.</div>
+        {loading ? <Skeleton height={180}/> : !d || !d.monthly?.some(m=>m.revenue||m.target) ? (
+          <div style={{ color:'#999', fontSize:12, padding:'20px 0', textAlign:'center' }}>Tidak ada data untuk filter ini.</div>
+        ) : (
+          <ResponsiveContainer width="100%" height={190}>
+            <ComposedChart data={d.monthly}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+              <XAxis dataKey="label" tick={{fontSize:10,fill:'#aaa'}} />
+              <YAxis hide />
+              <Tooltip content={<DrawerTooltip/>} cursor={{fill:'rgba(0,0,0,0.04)'}} />
+              <Bar dataKey="revenue" fill="#d31137" radius={[3,3,0,0]} />
+              <Line dataKey="target" stroke="#5b6b82" strokeWidth={2} dot={false} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        )}
+
+        {/* Customer yang dipegang */}
+        {d?.customers_held?.length>0 && (
+          <div style={{ marginTop:16 }}>
+            <div style={{ fontSize:13, fontWeight:600, marginBottom:6 }}>Customer dipegang ({d.customers_held.length})</div>
+            <div style={{ maxHeight:260, overflowY:'auto', border:'1px solid #f0f0f0', borderRadius:8 }}>
+              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11.5 }}>
+                <tbody>
+                  {d.customers_held.slice(0,50).map((c,i)=>(
+                    <tr key={i} style={{ borderBottom:'1px solid #f5f5f5' }}>
+                      <td style={{ padding:'5px 8px' }}>{c.customer_name}
+                        {c.status==='Overdue'&&<span style={{ marginLeft:5, fontSize:9, color:'#d31137' }}>overdue</span>}
+                        {c.status==='Lost'&&<span style={{ marginLeft:5, fontSize:9, color:'#999' }}>lost</span>}</td>
+                      <td style={{ padding:'5px 8px', textAlign:'right', color:'#666', whiteSpace:'nowrap' }}>{formatRupiahShort(c.revenue)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

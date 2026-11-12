@@ -274,6 +274,30 @@ def sales_performance(years: Optional[str] = Query(None), channels: Optional[str
         })
     salespeople.sort(key=lambda x: -x["revenue"])
 
+    # ---------- SCORING SALES (0-100): Ketercapaian 50 / %Active 30 / AOV 20 ----------
+    # Dihitung SEKALI atas cohort (AOV = peringkat persentil antar-SP). "Tanpa Pemegang",
+    # non-person, dan SP tanpa target dikeluarkan dari penilaian (score=None).
+    for s in salespeople:
+        nc = s.get("n_customer_portfolio") or 0
+        s["pct_active"] = round((s.get("n_aktif") or 0) / nc * 100, 1) if nc else None
+    scored = [s for s in salespeople
+              if not s["is_non_person"] and s["slp_name"] != "Tanpa Pemegang"
+              and s.get("target") and s.get("pct") is not None]
+    aovs = sorted(s["aov"] for s in scored)
+    Ns = len(scored)
+    for s in salespeople:
+        s["score"] = s["score_ach"] = s["score_active"] = s["score_aov"] = s["grade"] = None
+    for s in scored:
+        sa   = max(0.0, min(s["pct"], 100.0))                       # ketercapaian (cap 100)
+        sact = max(0.0, min(s.get("pct_active") or 0.0, 100.0))     # % active customers
+        below = sum(1 for a in aovs if a < s["aov"]); equal = sum(1 for a in aovs if a == s["aov"])
+        saov = ((below + equal / 2) / Ns * 100) if Ns else 0.0      # AOV persentil
+        comp = 0.5 * sa + 0.3 * sact + 0.2 * saov
+        s["score_ach"], s["score_active"], s["score_aov"] = round(sa, 1), round(sact, 1), round(saov, 1)
+        s["score"] = round(comp, 1)
+        s["grade"] = "A" if comp >= 80 else "B" if comp >= 65 else "C" if comp >= 50 else "D"
+        s["score_weights"] = {"ach": 50, "active": 30, "aov": 20}
+
     # Daftar tim dari grup yang benar-benar ada (Lainnya paling akhir).
     team_names = sorted({s["spv"] for s in salespeople if s["spv"]},
                         key=lambda g: (g in (settings_store.GROUP_LAINNYA, "Tanpa SPV"), g))
@@ -1129,3 +1153,86 @@ def pos_achievement(year: Optional[int] = Query(None), channels: Optional[str] =
              "pos": sorted(v["pos"])} for k, v in spv.items()]
     spvs.sort(key=lambda x: -x["revenue"])
     return {"year": year, "pos": pos, "persons": persons, "spvs": spvs}
+
+
+@router.get("/salesperson-months")
+def salesperson_months(slp: str = Query(...), year: int = Query(...),
+                       channels: Optional[str] = Query(None), top: int = Query(5)):
+    """Detail bulan-per-bulan untuk drawer Sales Performance:
+    - revenue & target per bulan (tahun terpilih) + %ach + MoM
+    - top customer penyumbang tiap bulan (utk tooltip)
+    - daftar customer yang dipegang (top by revenue tahun itu)
+    Target per bulan = Σ target_c pos yang DIPEGANG slp pada bulan tsb (holder effective-dated).
+    """
+    db = get_client()
+    chs = set(_csv(channels))
+
+    # ---- revenue per (customer, bulan) dari agg_salesperson_customer_month ----
+    out, step, i = [], 1000, 0
+    while True:
+        q = (db.table("agg_salesperson_customer_month")
+             .select("customer_code,bulan,channel,revenue")
+             .eq("slp_name", slp).eq("tahun", int(year)))
+        d = q.range(i, i + step - 1).execute().data or []
+        out.extend(d)
+        if len(d) < step:
+            break
+        i += step
+    rev_m = defaultdict(float)                       # bulan -> revenue
+    cust_m = defaultdict(lambda: defaultdict(float)) # bulan -> code -> revenue
+    cust_y = defaultdict(float)                       # code -> revenue (tahun)
+    for r in out:
+        if chs and r.get("channel") not in chs:
+            continue
+        mo = int(r["bulan"]); rv = float(r.get("revenue") or 0); code = r["customer_code"]
+        rev_m[mo] += rv; cust_m[mo][code] += rv; cust_y[code] += rv
+
+    # ---- target per bulan: holder pos effective-dated ----
+    asg = defaultdict(list)
+    for r in _fetch_all_rows("map_c_salesperson", "kode_c,slp_name,valid_from,valid_to"):
+        asg[r["kode_c"]].append((r["valid_from"], r.get("valid_to"), r["slp_name"]))
+    def _hold(kc, mo):
+        ref = f"{int(year):04d}-{mo:02d}-01"
+        for vf, vt, nm in asg.get(kc, []):
+            if ref >= vf and (vt is None or ref <= vt):
+                return nm
+        return None
+    tgt_m = defaultdict(float)
+    for r in _fetch_all_rows("target_c", "kode_c,tahun,bulan,target"):
+        if int(r["tahun"]) != int(year):
+            continue
+        mo = int(r["bulan"])
+        if _hold(r["kode_c"], mo) == slp:
+            tgt_m[mo] += float(r.get("target") or 0)
+
+    # ---- nama & status customer ----
+    codes = list(cust_y.keys())
+    names, status = {}, {}
+    for j in range(0, len(codes), 200):
+        sub = codes[j:j+200]
+        dd = db.table("dim_customer").select("customer_code,customer_name,status").in_("customer_code", sub).execute().data or []
+        for c in dd:
+            names[c["customer_code"]] = c.get("customer_name") or c["customer_code"]
+            status[c["customer_code"]] = c.get("status")
+
+    monthly, contributors = [], {}
+    prev = None
+    for mo in range(1, 13):
+        rv = round(rev_m.get(mo, 0.0)); tg = round(tgt_m.get(mo, 0.0))
+        mom = round((rv - prev) / prev * 100, 1) if prev else None
+        monthly.append({"bulan": mo, "label": MONTHS[mo-1], "revenue": rv, "target": tg,
+                        "pct": round(rv / tg * 100, 1) if tg else None, "mom": mom})
+        prev = rv if rv else prev
+        tops = sorted(cust_m.get(mo, {}).items(), key=lambda x: -x[1])[:top]
+        contributors[mo] = [{"customer_code": c, "customer_name": names.get(c, c),
+                             "revenue": round(v)} for c, v in tops]
+
+    held = sorted(cust_y.items(), key=lambda x: -x[1])
+    customers_held = [{"customer_code": c, "customer_name": names.get(c, c),
+                       "revenue": round(v), "status": status.get(c)} for c, v in held]
+
+    yl = sorted({int(r["tahun"]) for r in _fetch_all_rows("target_c", "tahun")} |
+                {int(year)})
+    return {"slp_name": slp, "year": int(year), "monthly": monthly,
+            "contributors": contributors, "customers_held": customers_held,
+            "n_customers": len(codes), "years_available": yl}
