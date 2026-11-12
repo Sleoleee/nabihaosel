@@ -439,8 +439,19 @@ export default function CustomerIntelligence() {
               <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
                 <div>
                   <div style={{ fontSize:16, fontWeight:700 }}>{c.customer_name}</div>
-                  <div style={{ fontSize:11.5, color:'#888' }}>{c.customer_code} · {c.channel_utama} · SP: {c.salesperson_utama||'-'}</div>
+                  <div style={{ fontSize:11.5, color:'#888' }}>{c.customer_code} · {c.channel_utama}{c.kode_c?` · ${c.kode_c}`:''} · SP: <b style={{color:'#2d2d2d'}}>{c.salesperson_utama||'-'}</b></div>
                 </div>
+                {Array.isArray(c.salesperson_history) && c.salesperson_history.length>0 && (
+                  <div style={{ background:'#f8f8f8', borderRadius:8, padding:'8px 10px' }}>
+                    <div style={{ fontSize:10, color:'#888', marginBottom:4 }}>Riwayat pemegang {c.kode_c||''}</div>
+                    {c.salesperson_history.map((h,i)=>(
+                      <div key={i} style={{ fontSize:12, display:'flex', justifyContent:'space-between', padding:'2px 0' }}>
+                        <span style={{ fontWeight: (h.slp_name===c.salesperson_utama && !h.sampai)?700:500 }}>{h.slp_name}</span>
+                        <span style={{ color:'#999', fontSize:11 }}>{(h.dari||'').slice(0,10)} → {h.sampai?String(h.sampai).slice(0,10):'kini'}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {(c.kategori_favorit||c.item_favorit_desc||c.item_favorit||c.sub_item_favorit) && (
                   <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
                     {c.kategori_favorit && <div style={{ background:'#fdecef', color:'#d31137', borderRadius:6, padding:'6px 10px' }}><div style={{ fontSize:10, color:'#b45309' }}>Kategori favorit</div><div style={{ fontSize:12, fontWeight:600 }}>{c.kategori_favorit}</div></div>}

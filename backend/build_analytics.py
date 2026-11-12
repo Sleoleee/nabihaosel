@@ -102,7 +102,7 @@ def rfm_segment(r, f, m):
 
 
 # ============================ BUILD ============================
-def build_all(rows, sp_master=None, resolver=None):
+def build_all(rows, sp_master=None, resolver=None, holder_fn=None):
     sp_master = sp_master or {}
     # akumulator
     cust = defaultdict(lambda: {"rev":0.0,"names":defaultdict(float),"months":set(),"docs":set(),
@@ -245,6 +245,12 @@ def build_all(rows, sp_master=None, resolver=None):
             ratio, status = None, "Active"
         monetary = avg_monthly
         frequency = round(bills/months_active, 3)
+        if holder_fn:
+            _cur, _kc, _hist = holder_fn(code, c["last"])
+            _hu = _cur or "Tanpa Pemegang"
+        else:
+            _hu = max(c["slp_rev"].items(), key=lambda x:x[1])[0] if c["slp_rev"] else None
+            _kc, _hist = None, None
         dim_customer[code] = {
             "customer_code":code,
             "customer_name": "/".join(n for n,_ in sorted(c["names"].items(), key=lambda x:-x[1]) if n) or code,
@@ -256,7 +262,7 @@ def build_all(rows, sp_master=None, resolver=None):
             "days_since_last_order":days_since, "recency_ratio":ratio,
             "frequency":frequency, "monetary":round(monetary),
             "segmen_rfm":"", "status":status,
-            "salesperson_utama": max(c["slp_rev"].items(), key=lambda x:x[1])[0] if c["slp_rev"] else None,
+            "salesperson_utama": _hu, "kode_c": _kc, "salesperson_history": _hist,
             "channel_utama": max(c["ch_rev"].items(), key=lambda x:x[1])[0] if c["ch_rev"] else None,
             "revenue_at_risk": round(monetary) if status=="Overdue" else 0,
             "jumlah_bills":bills, "jumlah_kategori_pernah_dibeli":len(c["kats"]),
@@ -661,8 +667,25 @@ def main():
     else:
         print("  (mapping kosong -> pakai SlpName transaksi seperti biasa)")
 
+    # Opsi C: label pemegang customer = pemegang Kode C SAAT INI (pada tanggal nota terakhir,
+    # fallback window terbaru) + riwayat pemegang Kode C tsb (nama + rentang tanggal).
+    holder_fn = None
+    if mcust and mslp:
+        def holder_fn(code, last_date):
+            windows = mcust.get(code, [])
+            if not windows:
+                return (None, None, [])
+            kc = (_pick(windows, last_date) if last_date else None) \
+                 or sorted(windows, key=lambda x: x[0])[-1][2]       # kode_c saat ini
+            sp_windows = sorted(mslp.get(kc, []), key=lambda x: x[0])
+            cur = (_pick(sp_windows, last_date) if last_date else None)
+            if not cur and sp_windows:
+                cur = sp_windows[-1][2]                              # pemegang terbaru
+            hist = [{"slp_name": nm, "dari": vf, "sampai": vt} for (vf, vt, nm) in sp_windows]
+            return (cur, kc, hist)
+
     print("Membangun agregasi...")
-    tables, report = build_all(rows, sp_master, resolver)
+    tables, report = build_all(rows, sp_master, resolver, holder_fn)
     print("\n--- VALIDASI REKONSILIASI ---")
     ok, msgs = validate(rows, tables, report)
     print("\n".join(msgs))
