@@ -56,9 +56,7 @@ export default function Topbar() {
             boxShadow: '0 12px 34px rgba(0,0,0,0.22)', minWidth: 210, overflow: 'hidden', zIndex: 200,
           }}>
             {[
-              { to: '/settings/sales', label: 'Pengaturan Salesperson', desc: 'Channel, SPV, target & aktif per tahun' },
-              { to: '/settings/sp-target', label: 'Target SP per Branch', desc: 'Edit target per SP per branch + scan nama' },
-              { to: '/settings/mapping', label: 'Salesperson Pemegang Customer', desc: 'Atur Kode C, salesperson pemegang & cek kelengkapan' },
+              { to: '/settings/mapping', label: 'Salesperson Pemegang Customer', desc: 'Atur Kode C, salesperson pemegang, SPV, target & pencapaian' },
             ].map(it => (
               <NavLink key={it.to} to={it.to} onClick={() => setOpen(false)}
                 style={{ display: 'block', padding: '10px 14px', textDecoration: 'none', color: '#2d2d2d', borderBottom: '1px solid #f4f4f5' }}>
