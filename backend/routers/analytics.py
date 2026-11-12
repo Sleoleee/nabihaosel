@@ -242,7 +242,7 @@ def sales_performance(years: Optional[str] = Query(None), channels: Optional[str
         m = match_salesperson(s)
         name = m["name"] if m else s
         _raw_spv = (dsp.get(s, {}) or {}).get("spv")
-        spv = _raw_spv or ("Tanpa SPV" if use_map_target else settings_store.effective_group(s, gmap, reg))
+        spv = _raw_spv or "Tanpa SPV"   # murni mapping: tak ada lagi fallback grup lama (Tim 1/2/3)
         org_channel = settings_store.effective_channel(s, reg)
         target = slp_target.get(s, 0) if use_map_target else btmap.get(s, settings_store.effective_target(s, tmap) if s in tmap else 0)
         rev = round(a["rev"])
@@ -251,7 +251,7 @@ def sales_performance(years: Optional[str] = Query(None), channels: Optional[str
         salespeople.append({
             "slp_name": s, "name": name, "spv": spv, "org_channel": org_channel,
             "aktif": settings_store.is_aktif(s, reg),
-            "is_core": bool(_raw_spv) if use_map_target else (spv != settings_store.GROUP_LAINNYA),
+            "is_core": bool(_raw_spv),
             "is_non_person": config.is_non_person_slp(s),
             "revenue": rev, "revenue_prev": round(a["rev_prev"]),
             "growth_yoy": _pct(rev, a["rev_prev"]),
