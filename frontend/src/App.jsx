@@ -15,10 +15,19 @@ import QaPage from './pages/QaPage'
 import Upload from './pages/Upload'
 import ReportCenterPage from './pages/ReportCenterPage'
 import LockPage from './pages/LockPage'
+import SplashScreen from './pages/SplashScreen'
 import { useAuth } from './context/Auth'
+import { useState } from 'react'
 
 export default function App() {
   const { user, ready } = useAuth()
+  const [showSplash, setShowSplash] = useState(() => {
+    try { return !sessionStorage.getItem('syncSplashSeen') } catch { return true }
+  })
+  if (showSplash) return <SplashScreen onDone={() => {
+    try { sessionStorage.setItem('syncSplashSeen', '1') } catch { /* ignore */ }
+    setShowSplash(false)
+  }} />
   if (!ready) return null
   if (!user) return <LockPage />
   return (
