@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/Auth'
 
 const NAV = [
@@ -15,6 +15,8 @@ export default function Topbar() {
   const { user, logout } = useAuth()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
+  const loc = useLocation()
+  const search = loc.search   // bawa filter global aktif saat pindah page
   useEffect(() => {
     const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
     document.addEventListener('mousedown', h)
@@ -31,7 +33,7 @@ export default function Topbar() {
       </span>
       <nav style={{ display: 'flex', gap: 2, minWidth: 0, overflowX: 'auto', flexShrink: 1 }}>
         {NAV.map(({ to, label }) => (
-          <NavLink key={to} to={to} end={to === '/'}
+          <NavLink key={to} to={{ pathname: to, search }} end={to === '/'}
             style={({ isActive }) => ({
               padding: '6px 13px', borderRadius: 7,
               color: isActive ? '#fff' : 'rgba(255,255,255,0.52)',

@@ -17,20 +17,38 @@ export function GlobalFilterProvider({ children }) {
   const months   = parseList(sp.get('months'))
   const compare  = sp.get('compare') === '1'
 
-  // Muat daftar tahun/channel; default tahun 2026 (bila tersedia), selain itu tahun terbaru.
+  // Muat daftar tahun/channel. Jika URL belum punya filter, pulihkan dari localStorage
+  // (filter terakhir yang dipakai); kalau tak ada juga, default tahun 2026 / terbaru.
   useEffect(() => {
     getAnalyticsFilters().then(f => {
       const yrs = (f.years || []).map(String)
       setAvail({ years: yrs, channels: f.channels || [] })
-      if (!sp.get('years') && f.years?.length) {
-        const def = yrs.includes('2026') ? '2026' : String(f.years[0])
-        const next = new URLSearchParams(sp)
-        next.set('years', def)
-        setSp(next, { replace: true })
+      const hasUrlFilter = ['years', 'channels', 'months', 'compare'].some(k => sp.get(k))
+      if (!hasUrlFilter) {
+        let restored = null
+        try { restored = localStorage.getItem('globalFilters') } catch { /* ignore */ }
+        if (restored) {
+          setSp(new URLSearchParams(restored), { replace: true })
+        } else if (f.years?.length) {
+          const def = yrs.includes('2026') ? '2026' : String(f.years[0])
+          const next = new URLSearchParams(sp); next.set('years', def)
+          setSp(next, { replace: true })
+        }
       }
       setReady(true)
     }).catch(() => setReady(true))
   }, [])  // eslint-disable-line
+
+  // Simpan filter aktif ke localStorage setiap berubah.
+  useEffect(() => {
+    try {
+      const keep = new URLSearchParams()
+      ;['years', 'channels', 'months', 'compare'].forEach(k => { const v = sp.get(k); if (v) keep.set(k, v) })
+      const str = keep.toString()
+      if (str) localStorage.setItem('globalFilters', str)
+      else localStorage.removeItem('globalFilters')
+    } catch { /* ignore */ }
+  }, [sp])
 
   const update = (patch) => {
     const next = new URLSearchParams(sp)
