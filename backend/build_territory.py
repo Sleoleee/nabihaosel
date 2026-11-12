@@ -446,9 +446,20 @@ def _fetch_agg(db, table, cols):
     return _retry(lambda: db.table(table).select(cols).limit(1000000).execute().data) or []
 
 
+# Tabel ber-key slp_name: key berubah saat atribusi mapping (nama transaksi -> nama
+# pemegang via dim_customer.salesperson_utama), jadi baris lama tidak tertimpa upsert.
+# Harus dihapus total sebelum tulis ulang agar data lama + mapping tidak bercampur.
+_WIPE_FULL = {"agg_province_salesperson"}
+
 def _write(db, name, recs, pk, fresh=False):
     print(f"  {name}: {len(recs)} baris...", end=" ")
-    if fresh and "tahun" in pk.split(","):
+    if name in _WIPE_FULL:
+        try:
+            _retry(lambda n=name: db.table(n).delete().gte("tahun", 0).execute())
+            print("(wipe penuh)", end=" ")
+        except Exception as e:
+            print(f"(GAGAL wipe: {str(e)[:40]})", end=" ")
+    elif fresh and "tahun" in pk.split(","):
         # buang baris tahun lama (< MIN_YEAR) via filter valid; best-effort.
         try:
             _retry(lambda n=name: db.table(n).delete().lt("tahun", config.MIN_YEAR).execute())
