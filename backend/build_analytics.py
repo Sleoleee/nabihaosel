@@ -279,7 +279,7 @@ def build_all(rows, sp_master=None, resolver=None, holder_fn=None):
     # ---------- SP HEALTH (portofolio by status 90/180 + YoY tumbuh) ----------
     _years = sorted({yy for c in cust_yr.values() for yy in c}) or [config.MIN_YEAR]
     CY = max(_years); PY = CY - 1
-    sp_port = defaultdict(lambda: {"n": 0, "aktif": 0, "tidak": 0, "hilang": 0, "n_yoy": 0, "grown": 0, "retained": 0})
+    sp_port = defaultdict(lambda: {"n": 0, "aktif": 0, "tidak": 0, "hilang": 0, "n_yoy": 0, "grown": 0, "retained": 0, "ret_aktif": 0})
     for code, d in dim_customer.items():
         sp = d.get("salesperson_utama")
         if not sp:
@@ -289,6 +289,12 @@ def build_all(rows, sp_master=None, resolver=None, holder_fn=None):
         if days is None or days <= 90: p["aktif"] += 1
         elif days <= 180: p["tidak"] += 1
         else: p["hilang"] += 1
+        # Retensi aktif (Opsi 2): masih dalam ritme beli = telat <= 2x interval normal.
+        # Interval None (customer 1x beli) -> fallback ambang 90 hari.
+        _iv = d.get("interval_normal_hari")
+        _amb = (2 * _iv) if _iv else 90
+        if days is not None and days <= _amb:
+            p["ret_aktif"] += 1
         r_py = cust_yr[code].get(PY, 0); r_cy = cust_yr[code].get(CY, 0)
         if r_py > 0:
             p["n_yoy"] += 1
@@ -447,7 +453,7 @@ def build_all(rows, sp_master=None, resolver=None, holder_fn=None):
             display = f"Toko {config.branch_core(bu)}"
         else:
             display = "Tidak teratribusi"
-        ph = sp_port.get(slp, {"n": 0, "aktif": 0, "tidak": 0, "hilang": 0, "n_yoy": 0, "grown": 0, "retained": 0})
+        ph = sp_port.get(slp, {"n": 0, "aktif": 0, "tidak": 0, "hilang": 0, "n_yoy": 0, "grown": 0, "retained": 0, "ret_aktif": 0})
         first = slp_first.get(slp)
         tenure = _month_diff(first[:7], cutoff[:7]) + 1 if first else 0
         nd_cy = len(slp_year_docs[slp].get(CY, set())); nd_py = len(slp_year_docs[slp].get(PY, set()))
@@ -468,6 +474,7 @@ def build_all(rows, sp_master=None, resolver=None, holder_fn=None):
             "net_avg_cust":round(rev/ph["n"]) if ph["n"] else 0,
             "pct_cust_tumbuh":round(ph["grown"]/ph["n_yoy"], 4) if ph["n_yoy"] else None,
             "retention_rate":round(ph["retained"]/ph["n_yoy"], 4) if ph["n_yoy"] else None,
+            "retensi_aktif":round(ph["ret_aktif"]/ph["n"], 4) if ph["n"] else None,
             "aov_tahun_ini":round(aov_cy),"aov_tahun_lalu":round(aov_py),
             "aov_trend":round((aov_cy-aov_py)/aov_py, 4) if aov_py else None})
 

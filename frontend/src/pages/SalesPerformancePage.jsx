@@ -473,8 +473,8 @@ function SalesDrawer({ s, channels, onClose }) {
     ['Revenue', formatRupiahShort(s.revenue)], ['Target', s.target?formatRupiahShort(s.target):'-'],
     ['% Ach', s.pct!=null?`${s.pct}%`:'-'], ['Gap', s.gap!=null?formatRupiahShort(s.gap):'-'],
     ['Bills', formatNumber(s.bills)], ['AOV', formatRupiahShort(s.aov)],
-    ['Customer', `${s.n_aktif??'?'}/${s.customers} aktif`], ['% Active', s.pct_active!=null?`${s.pct_active}%`:'-'],
-    ['Retensi', s.retention_rate!=null?`${Math.round(s.retention_rate*100)}%`:'-'], ['Churn', s.churn_rate!=null?`${Math.round(s.churn_rate*100)}%`:'-'],
+    ['Customer', `${s.n_aktif??'?'}/${s.customers} aktif`], ['Retensi aktif', s.pct_active!=null?`${s.pct_active}%`:'-'],
+    ['Retensi YoY', s.retention_rate!=null?`${Math.round(s.retention_rate*100)}%`:'-'], ['Churn', s.churn_rate!=null?`${Math.round(s.churn_rate*100)}%`:'-'],
   ]
 
   return (
@@ -499,7 +499,7 @@ function SalesDrawer({ s, channels, onClose }) {
               <div style={{ fontSize:11, color:'#777' }}>Skor komposit 0–100<br/>Ketercapaian 50% · %Active 30% · AOV 20%</div>
             </div>
             <Bar3 label="Ketercapaian (vs target)" val={s.score_ach} raw={s.pct!=null?`${s.pct}%`:null} />
-            <Bar3 label="% Active customers" val={s.score_active} raw={s.pct_active!=null?`${s.pct_active}%`:null} />
+            <Bar3 label="Retensi aktif (≤2× interval)" val={s.score_active} raw={s.pct_active!=null?`${s.pct_active}%`:null} />
             <Bar3 label="AOV (persentil antar-SP)" val={s.score_aov} raw={formatRupiahShort(s.aov)} />
           </div>
         ) : (

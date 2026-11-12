@@ -207,7 +207,7 @@ def sales_performance(years: Optional[str] = Query(None), channels: Optional[str
     # Health per SP (tenure, churn, net avg/cust, breakdown status) dari dim_salesperson.
     dsp = {r["slp_name"]: r for r in _fetch_all_rows("dim_salesperson",
         "slp_name,tipe,kode_sp,tenure_bulan,n_customer,n_aktif,n_tidak_aktif,n_hilang,churn_rate,"
-        "net_avg_cust,first_txn,pct_cust_tumbuh,aov_tahun_ini,aov_tahun_lalu,aov_trend,retention_rate,spv")}
+        "net_avg_cust,first_txn,pct_cust_tumbuh,aov_tahun_ini,aov_tahun_lalu,aov_trend,retention_rate,retensi_aktif,spv")}
 
     gyear = max(yrs)
     gmap = settings_store.get_group_map(gyear)
@@ -271,15 +271,19 @@ def sales_performance(years: Optional[str] = Query(None), channels: Optional[str
             "pct_cust_tumbuh": dd.get("pct_cust_tumbuh"), "aov_trend": dd.get("aov_trend"),
             "aov_tahun_ini": dd.get("aov_tahun_ini"), "aov_tahun_lalu": dd.get("aov_tahun_lalu"),
             "retention_rate": dd.get("retention_rate"),
+            "retensi_aktif": dd.get("retensi_aktif"),
         })
     salespeople.sort(key=lambda x: -x["revenue"])
 
     # ---------- SCORING SALES (0-100): Ketercapaian 50 / %Active 30 / AOV 20 ----------
     # Dihitung SEKALI atas cohort (AOV = peringkat persentil antar-SP). "Tanpa Pemegang",
     # non-person, dan SP tanpa target dikeluarkan dari penilaian (score=None).
+    # Komponen 'retensi aktif' (Opsi 2): % customer masih dalam ritme beli (<=2x interval).
+    # Fallback ke n_aktif/total (90 hari) kalau retensi_aktif belum ada di cache.
     for s in salespeople:
         nc = s.get("n_customer_portfolio") or 0
-        s["pct_active"] = round((s.get("n_aktif") or 0) / nc * 100, 1) if nc else None
+        ra = s.get("retensi_aktif")
+        s["pct_active"] = round(ra * 100, 1) if ra is not None else (round((s.get("n_aktif") or 0) / nc * 100, 1) if nc else None)
     scored = [s for s in salespeople
               if not s["is_non_person"] and s["slp_name"] != "Tanpa Pemegang"
               and s.get("target") and s.get("pct") is not None]
