@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import {
   BarChart, Bar, ComposedChart, Line, LineChart, ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid,
   Tooltip, ReferenceLine, ResponsiveContainer, Cell, Legend,
@@ -153,17 +153,19 @@ export default function SalesPerformancePage() {
   const td = { padding:'5px 8px', textAlign:'right', fontSize:12, whiteSpace:'nowrap' }
 
   function Hdr({ label, info, extra, left }) {
-    const [h, setH] = useState(false)
+    const [pos, setPos] = useState(null)
+    const ref = useRef(null)
+    const show = () => { const r = ref.current?.getBoundingClientRect(); if (r) setPos({ x: r.left + r.width/2, y: r.bottom }) }
     return (
       <th style={{ ...th, textAlign: left ? 'left' : 'right' }}>
-        <span onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)}
-          style={{ position:'relative', cursor:'help', borderBottom:'1px dotted #c4c4c4', paddingBottom:1 }}>
+        <span ref={ref} onMouseEnter={show} onMouseLeave={()=>setPos(null)}
+          style={{ cursor:'help', borderBottom:'1px dotted #c4c4c4', paddingBottom:1 }}>
           {label}{extra}
-          {h && <div style={{ position:'absolute', bottom:'150%', ...(left?{left:0}:{right:0}),
-            background:'#1a1a1a', color:'#fff', padding:'8px 10px', borderRadius:7, fontSize:11,
-            fontWeight:400, width:215, zIndex:60, textAlign:'left', lineHeight:1.45,
-            boxShadow:'0 6px 20px rgba(0,0,0,0.25)', whiteSpace:'normal' }}>{info}</div>}
         </span>
+        {pos && <div style={{ position:'fixed', left:Math.min(Math.max(pos.x,120),window.innerWidth-120), top:pos.y+8,
+          transform:'translateX(-50%)', background:'#1a1a1a', color:'#fff', padding:'8px 10px', borderRadius:7,
+          fontSize:11, fontWeight:400, width:215, zIndex:1000, textAlign:'left', lineHeight:1.45,
+          boxShadow:'0 6px 20px rgba(0,0,0,0.25)', whiteSpace:'normal', pointerEvents:'none' }}>{info}</div>}
       </th>
     )
   }
