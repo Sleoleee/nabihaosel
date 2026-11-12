@@ -21,15 +21,13 @@ import { useState } from 'react'
 
 export default function App() {
   const { user, ready } = useAuth()
-  const [showSplash, setShowSplash] = useState(() => {
-    try { return !sessionStorage.getItem('syncSplashSeen') } catch { return true }
-  })
-  if (showSplash) return <SplashScreen onDone={() => {
-    try { sessionStorage.setItem('syncSplashSeen', '1') } catch { /* ignore */ }
-    setShowSplash(false)
-  }} />
+  const [splashDone, setSplashDone] = useState(false)
   if (!ready) return null
-  if (!user) return <LockPage />
+  // Splash intro tampil tepat sebelum halaman login (hanya saat belum login).
+  if (!user) {
+    if (!splashDone) return <SplashScreen onDone={() => setSplashDone(true)} />
+    return <LockPage />
+  }
   return (
     <BrowserRouter>
       <GlobalFilterProvider>
