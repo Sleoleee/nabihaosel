@@ -152,6 +152,22 @@ export default function SalesPerformancePage() {
   const th = { padding:'6px 8px', textAlign:'right', fontSize:10.5, color:'#888', fontWeight:600, whiteSpace:'nowrap' }
   const td = { padding:'5px 8px', textAlign:'right', fontSize:12, whiteSpace:'nowrap' }
 
+  function Hdr({ label, info, extra, left }) {
+    const [h, setH] = useState(false)
+    return (
+      <th style={{ ...th, textAlign: left ? 'left' : 'right' }}>
+        <span onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)}
+          style={{ position:'relative', cursor:'help', borderBottom:'1px dotted #c4c4c4', paddingBottom:1 }}>
+          {label}{extra}
+          {h && <div style={{ position:'absolute', bottom:'150%', ...(left?{left:0}:{right:0}),
+            background:'#1a1a1a', color:'#fff', padding:'8px 10px', borderRadius:7, fontSize:11,
+            fontWeight:400, width:215, zIndex:60, textAlign:'left', lineHeight:1.45,
+            boxShadow:'0 6px 20px rgba(0,0,0,0.25)', whiteSpace:'normal' }}>{info}</div>}
+        </span>
+      </th>
+    )
+  }
+
   if (!g) return null
   const selStyle = { border:'1px solid #ddd', borderRadius:6, padding:'5px 8px', fontSize:12.5, background:'#fff', cursor:'pointer' }
 
@@ -268,19 +284,31 @@ export default function SalesPerformancePage() {
       <Card style={{ padding:16 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
           <div style={{ fontSize:13, fontWeight:600 }}>Leaderboard Salesperson</div>
-          <button onClick={()=>downloadCSV(sorted.map(s=>({Nama:s.name,SPV:s.spv||'-',Revenue:s.revenue,Pct_Ach:s.pct??'',Gap:s.gap??'',Growth_YoY:s.growth_yoy??'',Bills:s.bills,AOV:s.aov,Customer:s.customers,New:s.customer_new,RevenueAtRisk:s.revenue_at_risk,Tenure_bln:s.tenure_bulan??'',Net_per_Cust:s.net_avg_cust??'',Churn:s.churn_rate??'',Retensi:s.retention_rate??'',Pct_Cust_Tumbuh:s.pct_cust_tumbuh??'',AOV_ini:s.aov_tahun_ini??'',AOV_lalu:s.aov_tahun_lalu??'',AOV_trend:s.aov_trend??''})),'leaderboard_sales.csv')}
+          <button onClick={()=>downloadCSV(sorted.map(s=>({Nama:s.name,SPV:s.spv||'-',Revenue:s.revenue,Pct_Ach:s.pct??'',Gap:s.gap??'',Growth_YoY:s.growth_yoy??'',Bills:s.bills,AOV:s.aov,Customer:s.customers,New:s.customer_new,RevenueAtRisk:s.revenue_at_risk,Tenure_bln:s.tenure_bulan??'',Net_per_Cust:s.net_avg_cust??'',Churn:s.churn_rate??'',Retensi_Aktif:s.retensi_aktif??'',Pct_Cust_Tumbuh:s.pct_cust_tumbuh??'',AOV_ini:s.aov_tahun_ini??'',AOV_lalu:s.aov_tahun_lalu??'',AOV_trend:s.aov_trend??''})),'leaderboard_sales.csv')}
             style={{ ...selStyle, fontSize:12 }}>⬇ Export CSV</button>
         </div>
         {loading ? <Skeleton height={240}/> : (
           <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead><tr style={{ borderBottom:'2px solid #f0f0f0' }}>
-                <th style={{ ...th, textAlign:'left' }}>Nama</th><th style={{...th,textAlign:'left'}}>SPV</th>
-                <th style={th}>Revenue {sel('revenue')}</th><th style={th}>% Ach {sel('pct')}</th><th style={th}>Gap</th>
-                <th style={th}>Growth YoY {sel('growth_yoy')}</th><th style={th}>MoM</th><th style={th}>Bills {sel('bills')}</th><th style={th}>AOV</th>
-                <th style={th}>Cust</th><th style={th}>New</th><th style={th}>At Risk</th>
-                <th style={th}>Lama Aktif (bln)</th><th style={th}>Net/Cust</th><th style={th}>Churn</th>
-                <th style={th}>Retensi</th><th style={th}>%Tumbuh</th><th style={th}>AOV Δ</th>
+                <Hdr label="Nama" left info="Salesperson pemegang customer (dari mapping Kode C). Badge = grade & skor komposit (0–100)." />
+                <Hdr label="SPV" left info="Supervisor yang membawahi Kode C yang dipegang, pada periode aktif (dari mapping SPV→Kode C)." />
+                <Hdr label="Revenue" extra={sel('revenue')} info="Σ New_Row_Total dari customer yang dia pegang (sesuai filter). Total penjualan." />
+                <Hdr label="% Ach" extra={sel('pct')} info="Revenue ÷ Target × 100. Target = Σ target bulanan pos (Kode C) yang dia pegang. Seberapa jauh mencapai target." />
+                <Hdr label="Gap" info="Target − Revenue. Sisa menuju target (negatif = sudah melampaui)." />
+                <Hdr label="Growth YoY" extra={sel('growth_yoy')} info="(Revenue tahun ini − tahun lalu) ÷ tahun lalu. '–' bila tak ada baseline (mapping mulai 2026, 2025 tanpa pemegang)." />
+                <Hdr label="MoM" info="(Revenue bulan terakhir − bulan sebelumnya) ÷ bulan sebelumnya. Perubahan bulan ke bulan." />
+                <Hdr label="Bills" extra={sel('bills')} info="COUNT(DISTINCT nota). Jumlah transaksi/nota, bukan jumlah barang." />
+                <Hdr label="AOV" info="Revenue ÷ Bills. Rata-rata nilai per nota (Average Order Value)." />
+                <Hdr label="Cust" info="Jumlah customer dalam portofolio (customer yang pemegang utamanya = dia)." />
+                <Hdr label="New" info="Customer yang transaksi PERTAMA sepanjang sejarahnya jatuh di periode ini." />
+                <Hdr label="At Risk" info="Σ avg belanja/bulan dari customer berstatus Overdue yang dia pegang. Potensi revenue hilang bila tak ditindak." />
+                <Hdr label="Lama Aktif (bln)" info="Tenure: jumlah bulan sejak transaksi pertama salesperson sampai bulan data terakhir." />
+                <Hdr label="Net/Cust" info="Revenue ÷ jumlah customer. Rata-rata kontribusi per customer." />
+                <Hdr label="Churn" info="n_hilang ÷ total customer. Hilang = >180 hari tak beli. % portofolio yang sudah lama tak bertransaksi." />
+                <Hdr label="Retensi" info="Retensi aktif: % customer yang masih dalam ritme belinya (telat ≤ 2× interval beli normal). Makin tinggi makin sehat." />
+                <Hdr label="%Tumbuh" info="Customer yang revenue tahun ini > tahun lalu ÷ customer yang sudah ada tahun lalu. % customer yang belanjanya naik." />
+                <Hdr label="AOV Δ" info="(AOV tahun ini − AOV tahun lalu) ÷ tahun lalu. Tren nilai per nota." />
               </tr></thead>
               <tbody>
                 {sorted.map((s,i)=>(
@@ -301,7 +329,7 @@ export default function SalesPerformancePage() {
                     <td style={{ ...td, color:'#888' }}>{s.tenure_bulan!=null?`${s.tenure_bulan} bln`:'-'}</td>
                     <td style={td}>{s.net_avg_cust?formatRupiahShort(s.net_avg_cust):'-'}</td>
                     <td style={{ ...td, color:(s.churn_rate>0.3?'#d31137':s.churn_rate>0.15?'#d08700':'#15803d'), fontWeight:600 }}>{s.churn_rate!=null?`${Math.round(s.churn_rate*100)}%`:'-'}</td>
-                    <td style={{ ...td, color:(s.retention_rate==null?'#888':s.retention_rate>=0.6?'#15803d':s.retention_rate>=0.4?'#d08700':'#d31137'), fontWeight:600 }}>{s.retention_rate!=null?`${Math.round(s.retention_rate*100)}%`:'-'}</td>
+                    {(()=>{ const ra=s.retensi_aktif; return <td style={{ ...td, color:(ra==null?'#888':ra>=0.7?'#15803d':ra>=0.5?'#d08700':'#d31137'), fontWeight:600 }}>{ra!=null?`${Math.round(ra*100)}%`:'-'}</td> })()}
                     <td style={td}>{s.pct_cust_tumbuh!=null?`${Math.round(s.pct_cust_tumbuh*100)}%`:'-'}</td>
                     <td style={{ ...td, color:growthColor(s.aov_trend!=null?Math.round(s.aov_trend*100):null), fontWeight:600 }}>{s.aov_trend!=null?`${s.aov_trend>0?'▲':'▼'}${Math.abs(Math.round(s.aov_trend*100))}%`:'-'}</td>
                   </tr>
