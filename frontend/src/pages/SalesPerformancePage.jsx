@@ -507,17 +507,82 @@ function SalesDrawer({ s, channels, onClose }) {
     ['Retensi YoY', s.retention_rate!=null?`${Math.round(s.retention_rate*100)}%`:'-'], ['Churn', s.churn_rate!=null?`${Math.round(s.churn_rate*100)}%`:'-'],
   ]
 
+  // --- Matriks revenue: customer (baris) × bulan (kolom) ---
+  const Matrix = () => {
+    if (!d?.matrix?.length) return <div style={{ color:'#999', fontSize:12, padding:'24px 0', textAlign:'center' }}>Tidak ada data untuk filter ini.</div>
+    const maxCell = Math.max(1, ...d.matrix.flatMap(r => r.months))
+    const th = { position:'sticky', top:0, zIndex:2, background:'#f4f4f5', padding:'7px 8px', fontSize:10.5, fontWeight:700, color:'#666', textAlign:'right', whiteSpace:'nowrap' }
+    const nameCol = { position:'sticky', left:0, zIndex:1, background:'#fff', padding:'6px 10px', fontSize:11.5, whiteSpace:'nowrap', maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', borderRight:'1px solid #eee' }
+    const cell = { padding:'6px 8px', fontSize:11.5, textAlign:'right', fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap' }
+    return (
+      <div style={{ overflow:'auto', maxHeight:'68vh', border:'1px solid #eee', borderRadius:10 }}>
+        <table style={{ borderCollapse:'separate', borderSpacing:0, width:'100%' }}>
+          <thead>
+            <tr>
+              <th style={{ ...th, left:0, zIndex:3, textAlign:'left', background:'#f4f4f5' }}>Customer</th>
+              {MONTHS.map((m,i)=><th key={i} style={th}>{m}</th>)}
+              <th style={{ ...th, color:'#d31137' }}>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {d.matrix.map((r,ri)=>(
+              <tr key={ri} style={{ borderTop:'1px solid #f5f5f5' }}>
+                <td style={nameCol} title={r.customer_name}>{r.customer_name}
+                  {r.status==='Overdue'&&<span style={{ marginLeft:5, fontSize:9, color:'#d31137' }}>overdue</span>}
+                  {r.status==='Lost'&&<span style={{ marginLeft:5, fontSize:9, color:'#bbb' }}>lost</span>}
+                </td>
+                {r.months.map((v,mi)=>{
+                  const a = v>0 ? 0.06 + 0.5*(v/maxCell) : 0
+                  return <td key={mi} style={{ ...cell, background: v>0?`rgba(211,17,55,${a})`:'transparent', color: v>0?'#222':'#ddd' }}
+                    title={v>0?formatRupiah(v):'0'}>{v>0?formatRupiahShort(v):'–'}</td>
+                })}
+                <td style={{ ...cell, fontWeight:700, background:'#fafafa' }} title={formatRupiah(r.total)}>{formatRupiahShort(r.total)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td style={{ position:'sticky', left:0, bottom:0, zIndex:3, background:'#1a1a1a', color:'#fff', padding:'7px 10px', fontSize:11, fontWeight:700 }}>Total / bulan</td>
+              {(d.month_totals||[]).map((v,i)=>(
+                <td key={i} style={{ position:'sticky', bottom:0, background:'#1a1a1a', color:'#fff', padding:'7px 8px', fontSize:11, fontWeight:600, textAlign:'right', fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap' }} title={formatRupiah(v)}>{v>0?formatRupiahShort(v):'–'}</td>
+              ))}
+              <td style={{ position:'sticky', bottom:0, background:'#d31137', color:'#fff', padding:'7px 8px', fontSize:11, fontWeight:700, textAlign:'right', whiteSpace:'nowrap' }} title={formatRupiah((d.month_totals||[]).reduce((a,b)=>a+b,0))}>{formatRupiahShort((d.month_totals||[]).reduce((a,b)=>a+b,0))}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    )
+  }
+
   return (
-    <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.25)', zIndex:300 }}>
-      <div onClick={e=>e.stopPropagation()} style={{ position:'absolute', top:0, right:0, bottom:0, width:460, maxWidth:'94vw', background:'#fff', boxShadow:'-4px 0 20px rgba(0,0,0,0.15)', padding:20, overflowY:'auto' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12 }}>
+    <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.3)', zIndex:300 }}>
+      <div onClick={e=>e.stopPropagation()} style={{ position:'absolute', top:0, right:0, bottom:0, width:'min(1140px, 96vw)', background:'#fff', boxShadow:'-4px 0 24px rgba(0,0,0,0.18)', padding:20, overflowY:'auto' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
           <div>
-            <div style={{ fontSize:17, fontWeight:700 }}>{s.name}</div>
+            <div style={{ fontSize:18, fontWeight:700 }}>{s.name}</div>
             <div style={{ fontSize:11.5, color:'#888' }}>{s.spv?.replace('SPV ','SPV ')||'Tanpa SPV'} · {s.customers} customer</div>
           </div>
           <button onClick={onClose} style={{ border:'none', background:'none', fontSize:18, cursor:'pointer', color:'#999' }}>✕</button>
         </div>
 
+        <div style={{ display:'flex', gap:20, flexWrap:'wrap', alignItems:'flex-start' }}>
+          {/* KIRI — Matriks customer × bulan (fokus CEO) */}
+          <div style={{ flex:'1 1 560px', minWidth:0 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4, gap:10 }}>
+              <div style={{ fontSize:14, fontWeight:700 }}>Revenue per customer × bulan</div>
+              <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                <select value={year||''} onChange={e=>setYear(Number(e.target.value))} style={{ fontSize:12, padding:'3px 6px', borderRadius:6, border:'1px solid #ddd' }}>
+                  {(d?.years_available||[year]).filter(Boolean).map(y=><option key={y} value={y}>{y}</option>)}
+                </select>
+                {d?.matrix?.length>0 && <button onClick={()=>downloadCSV(d.matrix.map(r=>({Customer:r.customer_name, ...Object.fromEntries(MONTHS.map((m,i)=>[m, r.months[i]])), Total:r.total})), `matriks_${s.name}_${year}.csv`)} style={{ fontSize:11.5, padding:'4px 10px', borderRadius:6, border:'1px solid #ddd', background:'#fff', cursor:'pointer' }}>↓ CSV</button>}
+              </div>
+            </div>
+            <div style={{ fontSize:10.5, color:'#aaa', marginBottom:8 }}>Baris = customer (urut total). Kolom = bulan. Warna makin pekat = nominal makin besar. Baris terakhir = total per bulan. Geser untuk lihat semua.</div>
+            {loading ? <Skeleton height={320}/> : <Matrix/>}
+          </div>
+
+          {/* KANAN — ringkasan & skor (yang sudah ada) */}
+          <div style={{ flex:'1 1 320px', minWidth:0, maxWidth:400, display:'flex', flexDirection:'column', gap:0 }}>
         {/* Kartu Skor */}
         {s.score!=null ? (
           <div style={{ background:'#faf7f8', border:'1px solid #f0e6e9', borderRadius:12, padding:14, marginBottom:14 }}>
@@ -545,12 +610,7 @@ function SalesDrawer({ s, channels, onClose }) {
         </div>
 
         {/* Grafik capaian MtM */}
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
-          <div style={{ fontSize:13, fontWeight:600 }}>Capaian bulanan</div>
-          <select value={year||''} onChange={e=>setYear(Number(e.target.value))} style={{ fontSize:12, padding:'3px 6px', borderRadius:6, border:'1px solid #ddd' }}>
-            {(d?.years_available||[year]).filter(Boolean).map(y=><option key={y} value={y}>{y}</option>)}
-          </select>
-        </div>
+        <div style={{ fontSize:13, fontWeight:600, marginBottom:6 }}>Capaian bulanan</div>
         <div style={{ fontSize:10.5, color:'#aaa', marginBottom:6 }}>Batang = revenue · garis = target. Arahkan kursor ke bulan untuk nilai, perubahan MoM & customer penyumbang.</div>
         {loading ? <Skeleton height={180}/> : !d || !d.monthly?.some(m=>m.revenue||m.target) ? (
           <div style={{ color:'#999', fontSize:12, padding:'20px 0', textAlign:'center' }}>Tidak ada data untuk filter ini.</div>
@@ -587,6 +647,8 @@ function SalesDrawer({ s, channels, onClose }) {
             </div>
           </div>
         )}
+          </div>{/* /kolom kanan */}
+        </div>{/* /flex row */}
       </div>
     </div>
   )

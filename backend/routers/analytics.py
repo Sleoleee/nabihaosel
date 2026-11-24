@@ -1235,8 +1235,16 @@ def salesperson_months(slp: str = Query(...), year: int = Query(...),
     customers_held = [{"customer_code": c, "customer_name": names.get(c, c),
                        "revenue": round(v), "status": status.get(c)} for c, v in held]
 
+    # matriks lengkap: baris = customer (urut total desc), kolom = 12 bulan, sel = revenue
+    matrix = [{"customer_code": c, "customer_name": names.get(c, c), "status": status.get(c),
+               "total": round(v),
+               "months": [round(cust_m.get(mo, {}).get(c, 0.0)) for mo in range(1, 13)]}
+              for c, v in held]
+    month_totals = [round(rev_m.get(mo, 0.0)) for mo in range(1, 13)]
+
     yl = sorted({int(r["tahun"]) for r in _fetch_all_rows("target_c", "tahun")} |
                 {int(year)})
     return {"slp_name": slp, "year": int(year), "monthly": monthly,
             "contributors": contributors, "customers_held": customers_held,
+            "matrix": matrix, "month_totals": month_totals,
             "n_customers": len(codes), "years_available": yl}
