@@ -1248,3 +1248,69 @@ def salesperson_months(slp: str = Query(...), year: int = Query(...),
             "contributors": contributors, "customers_held": customers_held,
             "matrix": matrix, "month_totals": month_totals,
             "n_customers": len(codes), "years_available": yl}
+
+
+@router.get("/customer-months")
+def customer_months(code: str = Query(...), year: int = Query(...)):
+    """Detail bulanan untuk drawer Customer Dashboard:
+    - timeline semua tahun: revenue per bulan + SP PEMEGANG bulan itu (utk warna bar + tooltip).
+      SP pemegang = resolusi map_customer_c -> map_c_salesperson pada tanggal tengah bulan;
+      bulan tanpa mapping (2025 / non-K25) -> 'Tanpa Pemegang'.
+    - matrix kategori x 12 bulan (tahun terpilih) + total per bulan.
+    """
+    db = get_client()
+    step = 1000
+    mcust, mslp = {}, {}
+    for r in _fetch_all_rows("map_customer_c", "customer_code,kode_c,valid_from,valid_to"):
+        mcust.setdefault(r["customer_code"], []).append((r["valid_from"], r.get("valid_to"), r["kode_c"]))
+    for r in _fetch_all_rows("map_c_salesperson", "kode_c,slp_name,valid_from,valid_to"):
+        mslp.setdefault(r["kode_c"], []).append((r["valid_from"], r.get("valid_to"), r["slp_name"]))
+    def _pick(lst, ds):
+        for vf, vt, val in lst:
+            if ds >= vf and (vt is None or ds <= vt):
+                return val
+        return None
+    def holder(y, mo):
+        ds = f"{y:04d}-{mo:02d}-15"
+        kc = _pick(mcust.get(code, []), ds)
+        if not kc:
+            return "Tanpa Pemegang"
+        return _pick(mslp.get(kc, []), ds) or "Tanpa Pemegang"
+
+    # timeline semua tahun
+    out, i = [], 0
+    while True:
+        d = (db.table("agg_customer_month").select("tahun,bulan,revenue")
+             .eq("customer_code", code).range(i, i + step - 1).execute().data) or []
+        out.extend(d)
+        if len(d) < step:
+            break
+        i += step
+    mmap = defaultdict(float)
+    for r in out:
+        mmap[(int(r["tahun"]), int(r["bulan"]))] += float(r.get("revenue") or 0)
+    timeline = [{"label": f"{y}-{mo:02d}", "tahun": y, "bulan": mo,
+                 "revenue": round(mmap[(y, mo)]), "salesperson": holder(y, mo)}
+                for (y, mo) in sorted(mmap)]
+
+    # matrix kategori x bulan (tahun terpilih)
+    out2, i = [], 0
+    while True:
+        d = (db.table("agg_customer_category_month").select("kategori,bulan,revenue")
+             .eq("customer_code", code).eq("tahun", int(year)).range(i, i + step - 1).execute().data) or []
+        out2.extend(d)
+        if len(d) < step:
+            break
+        i += step
+    kat_m = defaultdict(lambda: defaultdict(float)); kat_tot = defaultdict(float)
+    for r in out2:
+        k = r.get("kategori") or "Lainnya"; mo = int(r["bulan"]); rv = float(r.get("revenue") or 0)
+        kat_m[k][mo] += rv; kat_tot[k] += rv
+    cats = sorted(kat_tot, key=lambda k: -kat_tot[k])
+    matrix = [{"kategori": k, "total": round(kat_tot[k]),
+               "months": [round(kat_m[k].get(mo, 0.0)) for mo in range(1, 13)]} for k in cats]
+    month_totals = [round(sum(kat_m[k].get(mo, 0.0) for k in cats)) for mo in range(1, 13)]
+
+    yl = sorted({y for (y, _) in mmap} | {int(year)})
+    return {"code": code, "year": int(year), "timeline": timeline,
+            "matrix": matrix, "month_totals": month_totals, "years_available": yl}

@@ -26,6 +26,7 @@ export const saveSpTargets = (rows) => api.post('/api/settings/sp-targets', { ro
 export const spScan = (name) => api.get('/api/settings/sp-scan', { params: { name } }).then(r => r.data)
 
 export const getSalespersonMonths = (slp, year, channels) => api.get('/api/analytics/salesperson-months', { params: { slp, year, channels } }).then(r => r.data)
+export const getCustomerMonths = (code, year) => api.get('/api/analytics/customer-months', { params: { code, year } }).then(r => r.data)
 
 export const getFilters = () => api.get('/api/overview/filters').then(r => r.data)
 export const getKPI = (f) => api.get('/api/overview/kpi', { params: buildParams(f) }).then(r => r.data)

@@ -9,8 +9,17 @@ import { formatRupiah, formatRupiahShort, formatNumber } from '../utils/format'
 import { useGlobalFilters } from '../context/GlobalFilters'
 import {
   getCustomerAnalytics, getCustomerLifecycle, getCustomerCohort, getCustomerListNew,
-  getCustomerBridge, getCustomerDetail, getCustomerGroups, getGroupMembers,
+  getCustomerBridge, getCustomerDetail, getCustomerGroups, getGroupMembers, getCustomerMonths,
 } from '../utils/api'
+
+// Palet warna SP dalam tone merah brand (+ abu utk Tanpa Pemegang).
+const SP_TONES = ['#d31137','#8c1a2f','#ef7a92','#a8324a','#e0566f','#6e1222','#c74d63','#f2a8b6']
+const SP_GREY = '#b4aca8'
+function spColorMap(names) {
+  const m = {}; let i = 0
+  for (const n of names) { m[n] = (n === 'Tanpa Pemegang') ? SP_GREY : SP_TONES[i++ % SP_TONES.length] }
+  return m
+}
 
 const RFM_COLORS = {
   Champions:{bar:'#22c55e',bg:'#dcfce7',text:'#166534'}, Loyal:{bar:'#4ade80',bg:'#d1fae5',text:'#065f46'},
@@ -428,58 +437,169 @@ export default function CustomerIntelligence() {
       </Card>
 
       {/* Customer Detail Drawer */}
-      {detail && (
-        <div onClick={()=>setDetail(null)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.25)', zIndex:300 }}>
-          <div onClick={e=>e.stopPropagation()} style={{ position:'absolute', top:0, right:0, bottom:0, width:400, maxWidth:'90vw', background:'#fff', boxShadow:'-4px 0 20px rgba(0,0,0,0.15)', padding:20, overflowY:'auto' }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-              <div style={{ fontSize:15, fontWeight:700 }}>Detail Customer</div>
-              <button onClick={()=>setDetail(null)} style={{ border:'none', background:'none', fontSize:18, cursor:'pointer', color:'#999' }}>✕</button>
-            </div>
-            {detail.loading ? <Skeleton height={200}/> : !detail.customer ? <div style={{color:'#888'}}>Data tidak ditemukan.</div> : (()=>{ const c=detail.customer; return (
-              <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-                <div>
-                  <div style={{ fontSize:16, fontWeight:700 }}>{c.customer_name}</div>
-                  <div style={{ fontSize:11.5, color:'#888' }}>{c.customer_code} · {c.channel_utama}{c.kode_c?` · ${c.kode_c}`:''} · SP: <b style={{color:'#2d2d2d'}}>{c.salesperson_utama||'-'}</b></div>
+      {detail && <CustomerDrawer detail={detail} onClose={()=>setDetail(null)} />}
+    </div>
+  )
+}
+
+const C_MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des']
+
+function CustomerDrawer({ detail, onClose }) {
+  const c = detail?.customer
+  const [year, setYear] = useState(null)
+  const [m, setM] = useState(null)
+  const [mloading, setMloading] = useState(true)
+  useEffect(() => {
+    if (!c?.customer_code) return
+    setMloading(true)
+    const y = year || new Date().getFullYear()
+    getCustomerMonths(c.customer_code, y).then(r => { setM(r); if (!year) setYear(r.year) })
+      .catch(() => setM(null)).finally(() => setMloading(false))
+  }, [c?.customer_code, year])
+
+  const colorMap = m?.timeline ? spColorMap([...new Set(m.timeline.map(t => t.salesperson))]) : {}
+  const spLegend = m?.timeline ? [...new Set(m.timeline.map(t => t.salesperson))] : []
+
+  const BarTip = ({ active, payload }) => {
+    if (!active || !payload?.length) return null
+    const p = payload[0].payload
+    return (
+      <div style={{ background:'#1a1a1a', color:'#fff', borderRadius:8, padding:'8px 11px', fontSize:11.5 }}>
+        <div style={{ fontWeight:700, marginBottom:2 }}>{p.label}</div>
+        <div>Revenue: <b>{formatRupiah(p.revenue)}</b></div>
+        <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:2 }}>
+          <span style={{ width:9, height:9, borderRadius:2, background:colorMap[p.salesperson]||SP_GREY }} />
+          <span>{p.salesperson}</span>
+        </div>
+      </div>
+    )
+  }
+
+  const Matrix = () => {
+    if (!m?.matrix?.length) return <div style={{ color:'#999', fontSize:12, padding:'24px 0', textAlign:'center' }}>Tidak ada data kategori untuk tahun ini.</div>
+    const maxCell = Math.max(1, ...m.matrix.flatMap(r => r.months))
+    const th = { position:'sticky', top:0, zIndex:2, background:'#f4f4f5', padding:'7px 8px', fontSize:10.5, fontWeight:700, color:'#666', textAlign:'right', whiteSpace:'nowrap' }
+    const nameCol = { position:'sticky', left:0, zIndex:1, background:'#fff', padding:'6px 10px', fontSize:11.5, whiteSpace:'nowrap', maxWidth:190, overflow:'hidden', textOverflow:'ellipsis', borderRight:'1px solid #eee' }
+    const cell = { padding:'6px 8px', fontSize:11.5, textAlign:'right', fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap' }
+    return (
+      <div style={{ overflow:'auto', maxHeight:'68vh', border:'1px solid #eee', borderRadius:10 }}>
+        <table style={{ borderCollapse:'separate', borderSpacing:0, width:'100%' }}>
+          <thead><tr>
+            <th style={{ ...th, left:0, zIndex:3, textAlign:'left' }}>Kategori</th>
+            {C_MONTHS.map((mo,i)=><th key={i} style={th}>{mo}</th>)}
+            <th style={{ ...th, color:'#d31137' }}>Total</th>
+          </tr></thead>
+          <tbody>
+            {m.matrix.map((r,ri)=>(
+              <tr key={ri} style={{ borderTop:'1px solid #f5f5f5' }}>
+                <td style={nameCol} title={r.kategori}>{r.kategori}</td>
+                {r.months.map((v,mi)=>{
+                  const a = v>0 ? 0.06 + 0.5*(v/maxCell) : 0
+                  return <td key={mi} style={{ ...cell, background: v>0?`rgba(211,17,55,${a})`:'transparent', color: v>0?'#222':'#ddd' }} title={v>0?formatRupiah(v):'0'}>{v>0?formatRupiahShort(v):'–'}</td>
+                })}
+                <td style={{ ...cell, fontWeight:700, background:'#fafafa' }} title={formatRupiah(r.total)}>{formatRupiahShort(r.total)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot><tr>
+            <td style={{ position:'sticky', left:0, bottom:0, zIndex:3, background:'#1a1a1a', color:'#fff', padding:'7px 10px', fontSize:11, fontWeight:700 }}>Total / bulan</td>
+            {(m.month_totals||[]).map((v,i)=>(
+              <td key={i} style={{ position:'sticky', bottom:0, background:'#1a1a1a', color:'#fff', padding:'7px 8px', fontSize:11, fontWeight:600, textAlign:'right', fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap' }} title={formatRupiah(v)}>{v>0?formatRupiahShort(v):'–'}</td>
+            ))}
+            <td style={{ position:'sticky', bottom:0, background:'#d31137', color:'#fff', padding:'7px 8px', fontSize:11, fontWeight:700, textAlign:'right', whiteSpace:'nowrap' }} title={formatRupiah((m.month_totals||[]).reduce((a,b)=>a+b,0))}>{formatRupiahShort((m.month_totals||[]).reduce((a,b)=>a+b,0))}</td>
+          </tr></tfoot>
+        </table>
+      </div>
+    )
+  }
+
+  const exportMatrix = () => {
+    if (!m?.matrix?.length) return
+    const rows = m.matrix.map(r => ({ Kategori:r.kategori, ...Object.fromEntries(C_MONTHS.map((mo,i)=>[mo, r.months[i]])), Total:r.total }))
+    const cols = Object.keys(rows[0])
+    const csv = [cols.join(','), ...rows.map(r=>cols.map(k=>`"${r[k]??''}"`).join(','))].join('\n')
+    const url = URL.createObjectURL(new Blob([csv], {type:'text/csv'}))
+    const a = document.createElement('a'); a.href=url; a.download=`kategori_${c.customer_code}_${year}.csv`; a.click(); URL.revokeObjectURL(url)
+  }
+
+  return (
+    <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.3)', zIndex:300 }}>
+      <div onClick={e=>e.stopPropagation()} style={{ position:'absolute', top:0, right:0, bottom:0, width:'min(1120px, 96vw)', background:'#fff', boxShadow:'-4px 0 24px rgba(0,0,0,0.18)', padding:20, overflowY:'auto' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+          <div style={{ fontSize:15, fontWeight:700 }}>Detail Customer</div>
+          <button onClick={onClose} style={{ border:'none', background:'none', fontSize:18, cursor:'pointer', color:'#999' }}>✕</button>
+        </div>
+        {detail.loading ? <Skeleton height={200}/> : !c ? <div style={{color:'#888'}}>Data tidak ditemukan.</div> : (
+          <div style={{ display:'flex', gap:20, flexWrap:'wrap', alignItems:'flex-start' }}>
+            {/* KIRI — matriks kategori × bulan */}
+            <div style={{ flex:'1 1 540px', minWidth:0 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4, gap:10 }}>
+                <div style={{ fontSize:14, fontWeight:700 }}>Revenue per kategori × bulan</div>
+                <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                  <select value={year||''} onChange={e=>setYear(Number(e.target.value))} style={{ fontSize:12, padding:'3px 6px', borderRadius:6, border:'1px solid #ddd' }}>
+                    {(m?.years_available||[year]).filter(Boolean).map(y=><option key={y} value={y}>{y}</option>)}
+                  </select>
+                  {m?.matrix?.length>0 && <button onClick={exportMatrix} style={{ fontSize:11.5, padding:'4px 10px', borderRadius:6, border:'1px solid #ddd', background:'#fff', cursor:'pointer' }}>↓ CSV</button>}
                 </div>
-                {Array.isArray(c.salesperson_history) && c.salesperson_history.length>0 && (
-                  <div style={{ background:'#f8f8f8', borderRadius:8, padding:'8px 10px' }}>
-                    <div style={{ fontSize:10, color:'#888', marginBottom:4 }}>Riwayat pemegang {c.kode_c||''}</div>
-                    {c.salesperson_history.map((h,i)=>(
-                      <div key={i} style={{ fontSize:12, display:'flex', justifyContent:'space-between', padding:'2px 0' }}>
-                        <span style={{ fontWeight: (h.slp_name===c.salesperson_utama && !h.sampai)?700:500 }}>{h.slp_name}</span>
-                        <span style={{ color:'#999', fontSize:11 }}>{(h.dari||'').slice(0,10)} → {h.sampai?String(h.sampai).slice(0,10):'kini'}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {(c.kategori_favorit||c.item_favorit_desc||c.item_favorit||c.sub_item_favorit) && (
-                  <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
-                    {c.kategori_favorit && <div style={{ background:'#fdecef', color:'#d31137', borderRadius:6, padding:'6px 10px' }}><div style={{ fontSize:10, color:'#b45309' }}>Kategori favorit</div><div style={{ fontSize:12, fontWeight:600 }}>{c.kategori_favorit}</div></div>}
-                    {(c.sub_item_favorit||c.item_favorit_desc||c.item_favorit) && <div title={c.item_favorit_desc||''} style={{ background:'#eef6ff', color:'#1d4ed8', borderRadius:6, padding:'6px 10px' }}><div style={{ fontSize:10, color:'#64748b' }}>Item favorit</div><div style={{ fontSize:12, fontWeight:600 }}>{c.sub_item_favorit||c.item_favorit_desc||c.item_favorit}</div></div>}
-                  </div>
-                )}
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, fontSize:12 }}>
-                  {[['Total Revenue',formatRupiahShort(c.total_revenue)],['Status',statusOf(c.days_since_last_order)],['Tier',String(c.tier||'').split(' — ')[0]],['Bills',c.jumlah_bills],['Interval normal',`${c.interval_normal_hari??'-'} hari`],['Sejak beli terakhir',c.days_since_last_order==null?'—':`${c.days_since_last_order} hari`],['Terakhir beli',c.last_order_date],['Avg/bulan',formatRupiahShort(c.avg_spending_per_month_active)]].map((x,i)=>(
-                    <div key={i} style={{ background:'#f8f8f8', borderRadius:6, padding:'6px 8px' }}><div style={{ fontSize:10, color:'#888' }}>{x[0]}</div><div style={{ fontWeight:600 }}>{x[1]}</div></div>
+              </div>
+              <div style={{ fontSize:10.5, color:'#aaa', marginBottom:8 }}>Baris = kategori (urut total). Kolom = bulan. Warna makin pekat = nominal makin besar. Geser untuk lihat semua.</div>
+              {mloading ? <Skeleton height={300}/> : <Matrix/>}
+            </div>
+
+            {/* KANAN — ringkasan customer */}
+            <div style={{ flex:'1 1 320px', minWidth:0, maxWidth:400, display:'flex', flexDirection:'column', gap:14 }}>
+              <div>
+                <div style={{ fontSize:16, fontWeight:700 }}>{c.customer_name}</div>
+                <div style={{ fontSize:11.5, color:'#888' }}>{c.customer_code} · {c.channel_utama}{c.kode_c?` · ${c.kode_c}`:''} · SP: <b style={{color:'#2d2d2d'}}>{c.salesperson_utama||'-'}</b></div>
+              </div>
+              {Array.isArray(c.salesperson_history) && c.salesperson_history.length>0 && (
+                <div style={{ background:'#f8f8f8', borderRadius:8, padding:'8px 10px' }}>
+                  <div style={{ fontSize:10, color:'#888', marginBottom:4 }}>Riwayat pemegang {c.kode_c||''}</div>
+                  {c.salesperson_history.map((h,i)=>(
+                    <div key={i} style={{ fontSize:12, display:'flex', justifyContent:'space-between', padding:'2px 0' }}>
+                      <span style={{ fontWeight:(h.slp_name===c.salesperson_utama && !h.sampai)?700:500 }}>{h.slp_name}</span>
+                      <span style={{ color:'#999', fontSize:11 }}>{(h.dari||'').slice(0,10)} → {h.sampai?String(h.sampai).slice(0,10):'kini'}</span>
+                    </div>
                   ))}
                 </div>
-                <div>
-                  <div style={{ fontSize:12, fontWeight:600, marginBottom:6 }}>Tren revenue bulanan</div>
-                  <ResponsiveContainer width="100%" height={90}>
-                    <BarChart data={detail.timeline}><XAxis dataKey="label" tick={{fontSize:8,fill:'#aaa'}} interval={Math.max(0,Math.floor((detail.timeline?.length||1)/6))}/><YAxis hide/><Tooltip {...tt} formatter={(v)=>formatRupiah(v)}/><Bar dataKey="revenue" fill="#d31137"/></BarChart>
+              )}
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, fontSize:12 }}>
+                {[['Total Revenue',formatRupiahShort(c.total_revenue)],['Status',statusOf(c.days_since_last_order)],['Tier',String(c.tier||'').split(' — ')[0]],['Bills',c.jumlah_bills],['Interval normal',`${c.interval_normal_hari??'-'} hari`],['Sejak beli terakhir',c.days_since_last_order==null?'—':`${c.days_since_last_order} hari`],['Terakhir beli',c.last_order_date],['Avg/bulan',formatRupiahShort(c.avg_spending_per_month_active)]].map((x,i)=>(
+                  <div key={i} style={{ background:'#f8f8f8', borderRadius:6, padding:'6px 8px' }}><div style={{ fontSize:10, color:'#888' }}>{x[0]}</div><div style={{ fontWeight:600 }}>{x[1]}</div></div>
+                ))}
+              </div>
+              <div>
+                <div style={{ fontSize:12, fontWeight:600, marginBottom:6 }}>Revenue bulanan per salesperson</div>
+                <div style={{ fontSize:10, color:'#aaa', marginBottom:4 }}>Warna batang = SP pemegang bulan itu. Arahkan kursor untuk nilai & nama SP.</div>
+                {mloading ? <Skeleton height={100}/> : !m?.timeline?.length ? <div style={{color:'#999',fontSize:12}}>Tidak ada data.</div> : (
+                  <ResponsiveContainer width="100%" height={110}>
+                    <BarChart data={m.timeline}>
+                      <XAxis dataKey="label" tick={{fontSize:8,fill:'#aaa'}} interval={Math.max(0,Math.floor((m.timeline.length||1)/6))}/>
+                      <YAxis hide/>
+                      <Tooltip content={<BarTip/>} cursor={{fill:'rgba(0,0,0,0.04)'}}/>
+                      <Bar dataKey="revenue">
+                        {m.timeline.map((e,i)=><Cell key={i} fill={colorMap[e.salesperson]||SP_GREY}/>)}
+                      </Bar>
+                    </BarChart>
                   </ResponsiveContainer>
-                </div>
+                )}
+                {spLegend.length>0 && <div style={{ display:'flex', flexWrap:'wrap', gap:'4px 12px', marginTop:8 }}>
+                  {spLegend.map((sp,i)=>(<span key={i} style={{ display:'flex', alignItems:'center', gap:5, fontSize:11 }}>
+                    <span style={{ width:10, height:10, borderRadius:2, background:colorMap[sp] }} />{sp}</span>))}
+                </div>}
+              </div>
+              {detail.categories?.length>0 && (
                 <div>
                   <div style={{ fontSize:12, fontWeight:600, marginBottom:6 }}>Kategori yang pernah dibeli</div>
                   <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-                    {(detail.categories||[]).map((k,i)=><span key={i} style={{ background:'#fdecef', color:'#d31137', fontSize:11, padding:'2px 8px', borderRadius:10 }}>{k.kategori} · {formatRupiahShort(k.revenue)}</span>)}
+                    {detail.categories.map((k,i)=><span key={i} style={{ background:'#fdecef', color:'#d31137', fontSize:11, padding:'2px 8px', borderRadius:10 }}>{k.kategori} · {formatRupiahShort(k.revenue)}</span>)}
                   </div>
                 </div>
-              </div>
-            )})()}
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
