@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { getAnalyticsFilters } from '../utils/api'
+import { useAuth } from './Auth'
 
 const Ctx = createContext(null)
 export const useGlobalFilters = () => useContext(Ctx)
@@ -12,8 +13,11 @@ export function GlobalFilterProvider({ children }) {
   const [avail, setAvail] = useState({ years: [], channels: [] })
   const [ready, setReady] = useState(false)
 
+  const { user } = useAuth() || {}
+  const channelLock = user?.channelLock || null   // mis. 'K25' -> channel dikunci
+
   const years    = parseList(sp.get('years'))
-  const channels = parseList(sp.get('channels'))
+  const channels = channelLock ? [channelLock] : parseList(sp.get('channels'))
   const months   = parseList(sp.get('months'))
   const compare  = sp.get('compare') === '1'
 
@@ -51,6 +55,7 @@ export function GlobalFilterProvider({ children }) {
   }, [sp])
 
   const update = (patch) => {
+    if (channelLock && 'channels' in patch) { const { channels: _drop, ...rest } = patch; patch = rest }
     const next = new URLSearchParams(sp)
     Object.entries(patch).forEach(([k, v]) => {
       if (v == null || (Array.isArray(v) && v.length === 0) || v === false) next.delete(k)
@@ -62,6 +67,7 @@ export function GlobalFilterProvider({ children }) {
   }
 
   const toggle = (key, val) => {
+    if (channelLock && key === 'channels') return
     const cur = parseList(sp.get(key))
     update({ [key]: cur.includes(val) ? cur.filter(x => x !== val) : [...cur, val] })
   }
@@ -78,6 +84,6 @@ export function GlobalFilterProvider({ children }) {
     return p
   }, [sp])  // eslint-disable-line
 
-  const value = { years, channels, months, compare, avail, ready, update, toggle, resetAll, apiParams }
+  const value = { years, channels, months, compare, avail, ready, update, toggle, resetAll, apiParams, channelLock }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

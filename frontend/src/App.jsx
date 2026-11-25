@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { pageAllowed } from './auth/access'
 import Topbar from './components/Topbar'
 import GlobalFilterBar from './components/GlobalFilterBar'
 import { GlobalFilterProvider } from './context/GlobalFilters'
@@ -38,19 +39,26 @@ export default function App() {
         }}>
           <GlobalFilterBar />
           <div style={{ paddingTop: 16 }}>
-            <Routes>
-              <Route path="/" element={<Overview />} />
-              <Route path="/sales" element={<SalesPerformancePage />} />
-              <Route path="/customers" element={<CustomerIntelligence />} />
-              <Route path="/products" element={<ProductOpportunityPage />} />
-              <Route path="/territory" element={<TerritoryPage />} />
-              <Route path="/settings/mapping" element={<SettingsMappingPage />} />
-              <Route path="/settings/groups" element={<SettingsGroupsPage />} />
-              <Route path="/settings/targets" element={<SettingsTargetsPage />} />
-              <Route path="/reports" element={<ReportCenterPage />} />
-              <Route path="/upload" element={<Upload />} />
-              <Route path="/qa" element={<QaPage />} />
-            </Routes>
+            {(() => {
+              const home = user.pages === 'all' ? '/' : '/sales'
+              const G = (path, el) => (pageAllowed(user, path) ? el : <Navigate to={home} replace />)
+              return (
+                <Routes>
+                  <Route path="/" element={G('/', <Overview />)} />
+                  <Route path="/sales" element={G('/sales', <SalesPerformancePage />)} />
+                  <Route path="/customers" element={G('/customers', <CustomerIntelligence />)} />
+                  <Route path="/products" element={G('/products', <ProductOpportunityPage />)} />
+                  <Route path="/territory" element={G('/territory', <TerritoryPage />)} />
+                  <Route path="/settings/mapping" element={G('/settings/mapping', <SettingsMappingPage />)} />
+                  <Route path="/settings/groups" element={G('/settings/groups', <SettingsGroupsPage />)} />
+                  <Route path="/settings/targets" element={G('/settings/targets', <SettingsTargetsPage />)} />
+                  <Route path="/reports" element={G('/reports', <ReportCenterPage />)} />
+                  <Route path="/upload" element={G('/upload', <Upload />)} />
+                  <Route path="/qa" element={<QaPage />} />
+                  <Route path="*" element={<Navigate to={home} replace />} />
+                </Routes>
+              )
+            })()}
           </div>
         </main>
       </GlobalFilterProvider>

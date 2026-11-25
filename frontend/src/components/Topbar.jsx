@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/Auth'
+import { pageAllowed } from '../auth/access'
 
 const NAV = [
   { to: '/', label: 'Overview' },
@@ -32,7 +33,7 @@ export default function Topbar() {
         <img src="/sync-logo.png" alt="SYNC" style={{ height: 30, width: 'auto', display: 'block' }} />
       </NavLink>
       <nav style={{ display: 'flex', gap: 2, minWidth: 0, overflowX: 'auto', flexShrink: 1 }}>
-        {NAV.map(({ to, label }) => (
+        {NAV.filter(({ to }) => pageAllowed(user, to)).map(({ to, label }) => (
           <NavLink key={to} to={{ pathname: to, search }} end={to === '/'}
             style={({ isActive }) => ({
               padding: '6px 13px', borderRadius: 7,
@@ -44,7 +45,9 @@ export default function Topbar() {
           </NavLink>
         ))}
       </nav>
-      <div ref={ref} style={{ marginLeft: 'auto', position: 'relative', flexShrink: 0 }}>
+      <div style={{ marginLeft: 'auto', flexShrink: 0 }} />
+      {user?.canEdit && (
+      <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
         <button onClick={() => setOpen(o => !o)} style={{
           padding: '6px 12px', borderRadius: 7, fontSize: 12.5, cursor: 'pointer',
           color: 'rgba(255,255,255,0.7)', background: 'transparent', whiteSpace: 'nowrap',
@@ -69,6 +72,8 @@ export default function Topbar() {
           </div>
         )}
       </div>
+      )}
+      {user?.canEdit && (
       <NavLink to="/upload" style={({ isActive }) => ({
         marginLeft: 10, padding: '6px 12px', borderRadius: 7, fontSize: 12.5, flexShrink: 0,
         whiteSpace: 'nowrap',
@@ -77,6 +82,13 @@ export default function Topbar() {
       })}>
         📤 Upload Data
       </NavLink>
+      )}
+      {user && (
+        <span style={{ marginLeft: 12, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: 1.15, flexShrink: 0 }}>
+          <span style={{ color: '#fff', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>{user.name}</span>
+          <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 10, whiteSpace: 'nowrap' }}>{user.roleLabel}</span>
+        </span>
+      )}
       {user && (
         <button onClick={logout} title={`Keluar (${user.username})`} style={{
           marginLeft: 10, padding: '6px 12px', borderRadius: 7, fontSize: 12.5, flexShrink: 0,

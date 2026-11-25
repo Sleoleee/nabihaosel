@@ -39,7 +39,7 @@ export default function GlobalFilterBar() {
   if (!g) return null
   const chips = [
     ...g.years.map(y => ({ k: 'years', v: y, label: y })),
-    ...g.channels.map(c => ({ k: 'channels', v: c, label: c })),
+    ...(g.channelLock ? [] : g.channels.map(c => ({ k: 'channels', v: c, label: c }))),
     ...g.months.map(m => ({ k: 'months', v: m, label: MONTHS[Number(m) - 1] })),
     ...(g.compare ? [{ k: 'compare', v: true, label: 'vs tahun lalu' }] : []),
   ]
@@ -52,7 +52,9 @@ export default function GlobalFilterBar() {
         <span style={{ fontSize: 11, fontWeight: 700, color: '#888', letterSpacing: '0.05em', marginRight: 4 }}>FILTER GLOBAL</span>
         <MultiDropdown label="Tahun" options={g.avail.years} selected={g.years} onToggle={(v) => g.toggle('years', v)} />
         <MultiDropdown label="Bulan" options={MONTHS.map((_, i) => String(i + 1))} selected={g.months} onToggle={(v) => g.toggle('months', v)} />
-        <MultiDropdown label="Channel" options={g.avail.channels} selected={g.channels} onToggle={(v) => g.toggle('channels', v)} />
+        {g.channelLock
+          ? <span title="Channel dikunci sesuai hak akses Anda" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 600, padding: '5px 11px', borderRadius: 7, background: '#f1f1f2', color: '#555', border: '1px solid #e2e2e4' }}>🔒 Channel: {g.channelLock}</span>
+          : <MultiDropdown label="Channel" options={g.avail.channels} selected={g.channels} onToggle={(v) => g.toggle('channels', v)} />}
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, cursor: 'pointer', marginLeft: 4 }}>
           <input type="checkbox" checked={g.compare} onChange={(e) => g.update({ compare: e.target.checked })} />
           Bandingkan tahun lalu

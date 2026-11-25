@@ -7,6 +7,8 @@ import Card from '../components/Card'
 import Skeleton, { SkeletonCard } from '../components/Skeleton'
 import { formatRupiah, formatRupiahShort, formatNumber } from '../utils/format'
 import { useGlobalFilters } from '../context/GlobalFilters'
+import { useAuth } from '../context/Auth'
+import { filterCustomers } from '../auth/access'
 import {
   getCustomerAnalytics, getCustomerLifecycle, getCustomerCohort, getCustomerListNew,
   getCustomerBridge, getCustomerDetail, getCustomerGroups, getGroupMembers, getCustomerMonths,
@@ -46,10 +48,12 @@ function MiniStat({ label, value }){ return (
 
 export default function CustomerIntelligence() {
   const g = useGlobalFilters()
+  const { user } = useAuth()
   const [an, setAn] = useState(null)
   const [life, setLife] = useState(null)
   const [cohort, setCohort] = useState(null)
   const [list, setList] = useState(null)
+  const scopedList = useMemo(() => filterCustomers(user, list?.data || []), [user, list])
   const [attention, setAttention] = useState(null)
   const [bridge, setBridge] = useState(null)
   const [detail, setDetail] = useState(null)
@@ -400,13 +404,13 @@ export default function CustomerIntelligence() {
       {/* Baris 8 — Tabel Daftar Customer */}
       <Card style={{ padding:16 }}>
         <div style={{ fontSize:13, fontWeight:600, marginBottom:8 }}>Daftar Customer</div>
-        {!list ? <Skeleton height={200}/> : !list.data?.length ? <div style={{ textAlign:'center', padding:'30px 0', color:'#888', fontSize:13 }}>Tidak ada customer sesuai filter.</div> : (
+        {!list ? <Skeleton height={200}/> : !scopedList.length ? <div style={{ textAlign:'center', padding:'30px 0', color:'#888', fontSize:13 }}>Tidak ada customer sesuai filter.</div> : (
           <>
             <div style={{ overflowX:'auto' }}>
               <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
                 <thead><tr style={{ borderBottom:'2px solid #f0f0f0' }}>{['Nama','Status','Tier','Total Revenue','Avg/Bulan','Bills','Kategori Fav','Item Fav','Terakhir Beli'].map(h=><th key={h} style={{ padding:'6px 8px', textAlign:'left', color:'#888', fontSize:11, fontWeight:600, whiteSpace:'nowrap' }}>{h}</th>)}</tr></thead>
                 <tbody>
-                  {list.data.map((c,i)=>{ const rowBg=c.status==='Hilang'?'#f1f5f9':c.status==='Tidak Aktif'?'#fff8e1':'transparent'
+                  {scopedList.map((c,i)=>{ const rowBg=c.status==='Hilang'?'#f1f5f9':c.status==='Tidak Aktif'?'#fff8e1':'transparent'
                     return (
                     <tr key={i} style={{ background:rowBg, borderBottom:'1px solid #f5f5f5' }}>
                       <td onClick={()=>{ setDetail({loading:true}); getCustomerDetail(c.customer_code).then(d=>setDetail(d&&d.customer?{...d,customer:{...d.customer,kategori_favorit:c.kategori_favorit,item_favorit:c.item_favorit,item_favorit_desc:c.item_favorit_desc,sub_item_favorit:c.sub_item_favorit}}:d)).catch(()=>setDetail(null)) }}

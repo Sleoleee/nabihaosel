@@ -7,6 +7,8 @@ import Card from '../components/Card'
 import Skeleton, { SkeletonCard } from '../components/Skeleton'
 import { formatRupiah, formatRupiahShort, formatNumber } from '../utils/format'
 import { useGlobalFilters } from '../context/GlobalFilters'
+import { useAuth } from '../context/Auth'
+import { filterSalespeople } from '../auth/access'
 import { getSalesPerformance, getSalesMix, getSalesTrend, getSalespersonMonths } from '../utils/api'
 
 const MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des']
@@ -93,7 +95,8 @@ export default function SalesPerformancePage() {
       .then(([d, m, t]) => { setData(d); setMix(m); setTrend(t) }).catch(()=>{}).finally(()=>setLoading(false))
   }, [g?.ready, years, channels])
 
-  const all = data?.salespeople || []
+  const { user } = useAuth()
+  const all = useMemo(() => filterSalespeople(user, data?.salespeople || []), [user, data])
   const chanList = useMemo(() => [...new Set(all.map(s => s.org_channel).filter(Boolean))].sort(), [all])
   const spvList = useMemo(() => {
     const pool = chan === 'all' ? all : all.filter(s => s.org_channel === chan)
