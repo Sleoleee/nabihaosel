@@ -115,11 +115,29 @@ export default function SalesPerformancePage() {
       return { ...s, target, pct, gap: Math.round(target - s.revenue), score_ach, score, grade }
     })
   }, [user, data, pa])
-  // Stacked SPV: kontribusi pemegang sekarang vs sebelumnya (dari pos-achievement, dgn cakupan RBAC)
-  const spvStack = useMemo(() => (pa?.spvs || [])
-    .filter(x => spvAllowed(user, x.spv))
-    .map(x => ({ team: x.spv, revenue: x.revenue, target: x.target, pct: x.pct, rev_cur: x.rev_cur, rev_prev: x.rev_prev }))
-    .sort((a, b) => b.revenue - a.revenue), [pa, user])
+  // Stacked bar, di-scope per peran:
+  // - SP: per POS miliknya (pemegang sebelumnya + kontribusi dia) vs target pos
+  // - SPV: timnya (level SPV); Manager/BoE: semua SPV
+  const isSelfScope = user?.scope === 'self'
+  const spvStack = useMemo(() => {
+    if (isSelfScope) {
+      const me = _norm(user?.self)
+      return (pa?.pos || [])
+        .filter(p => (p.months || []).some(m => _norm(m.holder) === me))
+        .map(p => {
+          let cur = 0, prev = 0
+          ;(p.months || []).forEach(m => { if (_norm(m.holder) === me) cur += m.revenue; else prev += m.revenue })
+          const revenue = cur + prev, target = p.total_target
+          return { team: p.kode_c + (p.salesperson_now && _norm(p.salesperson_now) !== me ? ` · now: ${p.salesperson_now}` : ''),
+                   revenue, target, pct: target ? Math.round(revenue / target * 1000) / 10 : null, rev_cur: cur, rev_prev: prev }
+        })
+        .sort((a, b) => b.revenue - a.revenue)
+    }
+    return (pa?.spvs || [])
+      .filter(x => spvAllowed(user, x.spv))
+      .map(x => ({ team: x.spv, revenue: x.revenue, target: x.target, pct: x.pct, rev_cur: x.rev_cur, rev_prev: x.rev_prev }))
+      .sort((a, b) => b.revenue - a.revenue)
+  }, [pa, user, isSelfScope])
   const chanList = useMemo(() => [...new Set(all.map(s => s.org_channel).filter(Boolean))].sort(), [all])
   const spvList = useMemo(() => {
     const pool = chan === 'all' ? all : all.filter(s => s.org_channel === chan)
@@ -232,8 +250,8 @@ export default function SalesPerformancePage() {
 
       {/* Baris 2 — Target vs Actual per SPV (stacked: pemegang sebelumnya vs sekarang) */}
       <Card style={{ padding:16 }}>
-        <div style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Target vs Actual per SPV</div>
-        <div style={{ fontSize:10.5, color:'#aaa', marginBottom:10 }}>Batang = revenue aktual (pemegang sebelumnya + sekarang) · garis = target pos · mengikuti filter.</div>
+        <div style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>{isSelfScope ? 'Target vs Actual — Pos Saya' : 'Target vs Actual per SPV'}</div>
+        <div style={{ fontSize:10.5, color:'#aaa', marginBottom:10 }}>{isSelfScope ? 'Per Kode C yang Anda pegang: kontribusi pemegang sebelumnya + Anda · garis = target pos.' : 'Batang = revenue aktual (pemegang sebelumnya + sekarang) · garis = target pos · mengikuti filter.'}</div>
         {loading ? <Skeleton height={180}/> : (()=>{
           const bars = spvStack.length ? spvStack : teamsScoped.map(t=>({ ...t, rev_cur:t.revenue, rev_prev:0 }))
           if (!bars.length) return <div style={{ color:'#999', fontSize:12, padding:'20px 0', textAlign:'center' }}>Tidak ada data untuk filter ini.</div>
@@ -241,7 +259,7 @@ export default function SalesPerformancePage() {
           <>
           <div style={{ display:'flex', flexWrap:'wrap', gap:'4px 16px', marginBottom:10, fontSize:11, color:'#666' }}>
             <span style={{ display:'flex', alignItems:'center', gap:5 }}><span style={{ width:11, height:11, borderRadius:2, background:'#e3a6b1' }}/>Pemegang sebelumnya</span>
-            <span style={{ display:'flex', alignItems:'center', gap:5 }}><span style={{ width:11, height:11, borderRadius:2, background:'#d31137' }}/>Pemegang sekarang</span>
+            <span style={{ display:'flex', alignItems:'center', gap:5 }}><span style={{ width:11, height:11, borderRadius:2, background:'#d31137' }}/>{isSelfScope ? 'Kontribusi Anda' : 'Pemegang sekarang'}</span>
             <span style={{ display:'flex', alignItems:'center', gap:5 }}><span style={{ width:2, height:12, background:'#1a1a1a' }}/>Target</span>
           </div>
           <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
