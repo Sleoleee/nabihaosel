@@ -8,8 +8,8 @@ import Skeleton, { SkeletonCard } from '../components/Skeleton'
 import { formatRupiah, formatRupiahShort, formatNumber } from '../utils/format'
 import { useGlobalFilters } from '../context/GlobalFilters'
 import { useAuth } from '../context/Auth'
-import { filterSalespeople } from '../auth/access'
-import { getSalesPerformance, getSalesMix, getSalesTrend, getSalespersonMonths } from '../utils/api'
+import { filterSalespeople, spvAllowed } from '../auth/access'
+import { getSalesPerformance, getSalesMix, getSalesTrend, getSalespersonMonths, getPosAchievement } from '../utils/api'
 
 const MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des']
 function momOf(series) {
@@ -84,19 +84,42 @@ export default function SalesPerformancePage() {
   const [sortKey, setSortKey] = useState('revenue')
   const [sortDir, setSortDir] = useState('desc')
   const [drawer, setDrawer] = useState(null)        // salesperson row dipilih
+  const [pa, setPa] = useState(null)                // pos-achievement (Opsi A + stacked SPV)
 
   const years = g?.years?.join(',') || undefined
   const channels = g?.channels?.join(',') || undefined
+  const paYear = g?.years?.length === 1 ? g.years[0] : undefined   // pos-achievement per 1 tahun
 
   useEffect(() => {
     if (!g?.ready) return
     setLoading(true)
     Promise.all([getSalesPerformance({ years, channels }), getSalesMix({ years, channels }), getSalesTrend({ years, channels })])
       .then(([d, m, t]) => { setData(d); setMix(m); setTrend(t) }).catch(()=>{}).finally(()=>setLoading(false))
-  }, [g?.ready, years, channels])
+    getPosAchievement({ year: paYear, channels }).then(setPa).catch(()=>setPa(null))
+  }, [g?.ready, years, channels, paYear])
 
   const { user } = useAuth()
-  const all = useMemo(() => filterSalespeople(user, data?.salespeople || []), [user, data])
+  const _norm = (v) => (v || '').trim().toLowerCase()
+  const all = useMemo(() => {
+    const base = filterSalespeople(user, data?.salespeople || [])
+    // Opsi A: override target/pencapaian/skor dengan 'sisa gap saat serah-terima'
+    const pm = {}; (pa?.persons || []).forEach(p => { pm[_norm(p.slp_name)] = p })
+    return base.map(s => {
+      const p = pm[_norm(s.slp_name)] || pm[_norm(s.name)]
+      if (!p || p.target_sisa == null) return s
+      const target = p.target_sisa, pct = p.pct_sisa
+      const score_ach = pct == null ? null : Math.max(0, Math.min(pct, 100))
+      const score = (score_ach != null && s.score_active != null && s.score_aov != null)
+        ? Math.round((0.5 * score_ach + 0.3 * s.score_active + 0.2 * s.score_aov) * 10) / 10 : s.score
+      const grade = score == null ? s.grade : (score >= 80 ? 'A' : score >= 65 ? 'B' : score >= 50 ? 'C' : 'D')
+      return { ...s, target, pct, gap: Math.round(target - s.revenue), score_ach, score, grade }
+    })
+  }, [user, data, pa])
+  // Stacked SPV: kontribusi pemegang sekarang vs sebelumnya (dari pos-achievement, dgn cakupan RBAC)
+  const spvStack = useMemo(() => (pa?.spvs || [])
+    .filter(x => spvAllowed(user, x.spv))
+    .map(x => ({ team: x.spv, revenue: x.revenue, target: x.target, pct: x.pct, rev_cur: x.rev_cur, rev_prev: x.rev_prev }))
+    .sort((a, b) => b.revenue - a.revenue), [pa, user])
   const chanList = useMemo(() => [...new Set(all.map(s => s.org_channel).filter(Boolean))].sort(), [all])
   const spvList = useMemo(() => {
     const pool = chan === 'all' ? all : all.filter(s => s.org_channel === chan)
@@ -207,29 +230,45 @@ export default function SalesPerformancePage() {
         </>}
       </div>
 
-      {/* Baris 2 — Target vs Actual per SPV */}
+      {/* Baris 2 — Target vs Actual per SPV (stacked: pemegang sebelumnya vs sekarang) */}
       <Card style={{ padding:16 }}>
         <div style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Target vs Actual per SPV</div>
-        <div style={{ fontSize:10.5, color:'#aaa', marginBottom:10 }}>Batang = revenue aktual · garis = target · mengikuti filter channel/SPV</div>
-        {loading ? <Skeleton height={180}/> : (
-          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-            {teamsScoped.map((t,i)=>{
-              const pct = t.pct||0, w=Math.min(100,pct)
+        <div style={{ fontSize:10.5, color:'#aaa', marginBottom:10 }}>Batang = revenue aktual (pemegang sebelumnya + sekarang) · garis = target pos · mengikuti filter.</div>
+        {loading ? <Skeleton height={180}/> : (()=>{
+          const bars = spvStack.length ? spvStack : teamsScoped.map(t=>({ ...t, rev_cur:t.revenue, rev_prev:0 }))
+          if (!bars.length) return <div style={{ color:'#999', fontSize:12, padding:'20px 0', textAlign:'center' }}>Tidak ada data untuk filter ini.</div>
+          return (
+          <>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:'4px 16px', marginBottom:10, fontSize:11, color:'#666' }}>
+            <span style={{ display:'flex', alignItems:'center', gap:5 }}><span style={{ width:11, height:11, borderRadius:2, background:'#e3a6b1' }}/>Pemegang sebelumnya</span>
+            <span style={{ display:'flex', alignItems:'center', gap:5 }}><span style={{ width:11, height:11, borderRadius:2, background:'#d31137' }}/>Pemegang sekarang</span>
+            <span style={{ display:'flex', alignItems:'center', gap:5 }}><span style={{ width:2, height:12, background:'#1a1a1a' }}/>Target</span>
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+            {bars.map((t,i)=>{
+              const denom = Math.max(t.target||0, t.revenue||0, 1)
+              const prevW = (t.rev_prev||0)/denom*100, curW = (t.rev_cur||0)/denom*100
+              const tgtPos = Math.min(100, (t.target||0)/denom*100)
               return (
                 <div key={i}>
-                  <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, marginBottom:3 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, marginBottom:3, gap:8 }}>
                     <b>{t.team}</b>
-                    <span style={{ color:pctColor(pct), fontWeight:600 }}>{t.pct!=null?`${t.pct}%`:'—'} · {formatRupiahShort(t.revenue)} / {formatRupiahShort(t.target)}</span>
+                    <span style={{ color:pctColor(t.pct), fontWeight:600, whiteSpace:'nowrap' }}>{t.pct!=null?`${t.pct}%`:'—'} · {formatRupiahShort(t.revenue)} / {formatRupiahShort(t.target)}</span>
                   </div>
-                  <div style={{ position:'relative', height:14, background:'#f0f0f0', borderRadius:4 }}>
-                    <div style={{ height:14, width:`${w}%`, background:pctColor(pct), borderRadius:4 }}/>
-                    <div style={{ position:'absolute', left:'100%', top:-2, width:2, height:18, background:'#1a1a1a' }}/>
+                  <div style={{ position:'relative', height:16, background:'#f0f0f0', borderRadius:4, overflow:'hidden' }}>
+                    <div title={`Pemegang sebelumnya: ${formatRupiah(t.rev_prev||0)}`} style={{ position:'absolute', left:0, height:16, width:`${prevW}%`, background:'#e3a6b1' }}/>
+                    <div title={`Pemegang sekarang: ${formatRupiah(t.rev_cur||0)}`} style={{ position:'absolute', left:`${prevW}%`, height:16, width:`${curW}%`, background:'#d31137' }}/>
+                  </div>
+                  <div style={{ position:'relative', height:0 }}>
+                    <div style={{ position:'absolute', left:`${tgtPos}%`, top:-18, width:2, height:20, background:'#1a1a1a' }}/>
                   </div>
                 </div>
               )
             })}
           </div>
-        )}
+          </>
+          )
+        })()}
       </Card>
 
       {/* Baris 3 — Quadrant Kualitas Pencapaian */}
@@ -299,7 +338,7 @@ export default function SalesPerformancePage() {
                 <Hdr label="Nama" left info="Salesperson pemegang customer (dari mapping Kode C). Badge = grade & skor komposit (0–100)." />
                 <Hdr label="SPV" left info="Supervisor yang membawahi Kode C yang dipegang, pada periode aktif (dari mapping SPV→Kode C)." />
                 <Hdr label="Revenue" extra={sel('revenue')} info="Σ New_Row_Total dari customer yang dia pegang (sesuai filter). Total penjualan." />
-                <Hdr label="% Ach" extra={sel('pct')} info="Revenue ÷ Target × 100. Target = Σ target bulanan pos (Kode C) yang dia pegang. Seberapa jauh mencapai target." />
+                <Hdr label="% Ach" extra={sel('pct')} info="Revenue ÷ Target × 100. Target = SISA GAP saat serah-terima (target pos penuh − realisasi pemegang sebelumnya). SP yang masuk tengah periode dinilai dari sisa yang harus dikejar." />
                 <Hdr label="Gap" info="Target − Revenue. Sisa menuju target (negatif = sudah melampaui)." />
                 <Hdr label="Growth YoY" extra={sel('growth_yoy')} info="(Revenue tahun ini − tahun lalu) ÷ tahun lalu. '–' bila tak ada baseline (mapping mulai 2026, 2025 tanpa pemegang)." />
                 <Hdr label="MoM" info="(Revenue bulan terakhir − bulan sebelumnya) ÷ bulan sebelumnya. Perubahan bulan ke bulan." />

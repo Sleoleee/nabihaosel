@@ -1135,6 +1135,8 @@ def pos_achievement(year: Optional[int] = Query(None), channels: Optional[str] =
     pos = []
     person = defaultdict(lambda: {"rev": 0.0, "tgt": 0.0, "pos": set()})
     spv = defaultdict(lambda: {"rev": 0.0, "tgt": 0.0, "pos": set()})
+    spv2 = defaultdict(lambda: {"cur": 0.0, "prev": 0.0, "tgt": 0.0})   # stacked: pemegang sekarang vs sebelumnya
+    person_a = defaultdict(float)                                       # Opsi A: target = sisa gap saat serah-terima
     for kc in sorted(set(rev) | set(tgt)):
         if is_ns(kc):
             continue
@@ -1156,6 +1158,26 @@ def pos_achievement(year: Optional[int] = Query(None), channels: Optional[str] =
                 spv[sh]["rev"] += rv; spv[sh]["tgt"] += tg; spv[sh]["pos"].add(kc)
         spv_changes = [{"bulan": m, "dari": spv_holder(kc, m - 1), "ke": spv_holder(kc, m)}
                        for m in range(2, 13) if spv_holder(kc, m) and spv_holder(kc, m - 1) and spv_holder(kc, m) != spv_holder(kc, m - 1)]
+        # --- stacked per SPV: kontribusi pemegang SEKARANG vs pemegang SEBELUMNYA ---
+        cur_sp = holder_now(kc); sb = spv_now(kc); full_t = sum(tgt[kc].values())
+        if sb:
+            for m in range(1, 13):
+                rv = rev[kc].get(m, 0.0)
+                if rv == 0 and tgt[kc].get(m, 0.0) == 0:
+                    continue
+                if hb[m] == cur_sp:
+                    spv2[sb]["cur"] += rv
+                else:
+                    spv2[sb]["prev"] += rv
+            spv2[sb]["tgt"] += full_t
+        # --- Opsi A: target tiap pemegang = target pos penuh - realisasi sebelum dia mulai ---
+        cum = 0.0; prev_h = None
+        for m in range(1, 13):
+            h = hb[m]; rv = rev[kc].get(m, 0.0)
+            if h and h != prev_h:
+                person_a[h] += max(full_t - cum, 0.0)
+                prev_h = h
+            cum += rv
         pos.append({"kode_c": kc, "salesperson_now": holder_now(kc), "spv_now": spv_now(kc),
                     "total_revenue": round(tr), "total_target": round(tt),
                     "pct": round(tr / tt * 100, 1) if tt else None,
@@ -1163,10 +1185,16 @@ def pos_achievement(year: Optional[int] = Query(None), channels: Optional[str] =
     pos.sort(key=lambda x: -x["total_revenue"])
     persons = [{"slp_name": k, "revenue": round(v["rev"]), "target": round(v["tgt"]),
                 "pct": round(v["rev"] / v["tgt"] * 100, 1) if v["tgt"] else None,
+                # Opsi A: target = sisa gap saat serah-terima; pct_sisa = realisasi / sisa gap
+                "target_sisa": round(person_a.get(k, 0.0)),
+                "pct_sisa": round(v["rev"] / person_a[k] * 100, 1) if person_a.get(k) else None,
                 "pos": sorted(v["pos"])} for k, v in person.items()]
     persons.sort(key=lambda x: -x["revenue"])
     spvs = [{"spv": k, "revenue": round(v["rev"]), "target": round(v["tgt"]),
              "pct": round(v["rev"] / v["tgt"] * 100, 1) if v["tgt"] else None,
+             # stacked: kontribusi pemegang sekarang vs sebelumnya
+             "rev_cur": round(spv2.get(k, {}).get("cur", 0.0)),
+             "rev_prev": round(spv2.get(k, {}).get("prev", 0.0)),
              "pos": sorted(v["pos"])} for k, v in spv.items()]
     spvs.sort(key=lambda x: -x["revenue"])
     return {"year": year, "pos": pos, "persons": persons, "spvs": spvs}
