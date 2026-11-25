@@ -8,7 +8,7 @@ import Skeleton, { SkeletonCard } from '../components/Skeleton'
 import { formatRupiah, formatRupiahShort, formatNumber } from '../utils/format'
 import { useGlobalFilters } from '../context/GlobalFilters'
 import { useAuth } from '../context/Auth'
-import { filterCustomers } from '../auth/access'
+import { scopeNames } from '../auth/access'
 import {
   getCustomerAnalytics, getCustomerLifecycle, getCustomerCohort, getCustomerListNew,
   getCustomerBridge, getCustomerDetail, getCustomerGroups, getGroupMembers, getCustomerMonths,
@@ -53,7 +53,8 @@ export default function CustomerIntelligence() {
   const [life, setLife] = useState(null)
   const [cohort, setCohort] = useState(null)
   const [list, setList] = useState(null)
-  const scopedList = useMemo(() => filterCustomers(user, list?.data || []), [user, list])
+  const holders = useMemo(() => (scopeNames(user) || []).join(',') || undefined, [user])
+  const scopedList = list?.data || []   // server sudah menerapkan cakupan (param holders)
   const [attention, setAttention] = useState(null)
   const [bridge, setBridge] = useState(null)
   const [detail, setDetail] = useState(null)
@@ -77,7 +78,7 @@ export default function CustomerIntelligence() {
     Promise.all([
       getCustomerAnalytics({ channels }),
       getCustomerCohort(),
-      getCustomerListNew({ page:1, limit:8, status:'Perhatian', channel: g.channels?.length===1?g.channels[0]:undefined }),
+      getCustomerListNew({ page:1, limit:8, status:'Perhatian', holders, channel: g.channels?.length===1?g.channels[0]:undefined }),
     ]).then(([a,c,at])=>{ setAn(a); setCohort(c); setAttention(at?.data||[]) })
       .catch(()=>{}).finally(()=>setLoading(false))
   }, [g?.ready, years, channels])
@@ -103,9 +104,9 @@ export default function CustomerIntelligence() {
 
   useEffect(() => {
     if (!g?.ready) return
-    getCustomerListNew({ tier, status, search, page, limit:25,
+    getCustomerListNew({ tier, status, search, page, limit:25, holders,
       channel: g.channels?.length===1?g.channels[0]:undefined }).then(setList).catch(()=>{})
-  }, [g?.ready, tier, status, search, page, channels])
+  }, [g?.ready, tier, status, search, page, channels, holders])
   useEffect(()=>setPage(1),[tier,status,search])
 
   if (!g) return null

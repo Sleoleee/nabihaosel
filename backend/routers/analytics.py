@@ -511,16 +511,29 @@ def customer_cohort():
 @router.get("/customer-list")
 def customer_list(segment: Optional[str] = Query(None), tier: Optional[str] = Query(None),
                   status: Optional[str] = Query(None), channel: Optional[str] = Query(None),
-                  search: Optional[str] = Query(None), page: int = Query(1), limit: int = Query(25)):
+                  search: Optional[str] = Query(None), holders: Optional[str] = Query(None),
+                  page: int = Query(1), limit: int = Query(25)):
     dc = _fetch_all_rows("dim_customer",
         "customer_code,customer_name,tier,segmen_rfm,status,total_revenue,avg_spending_per_month_active,"
         "jumlah_bills,last_order_date,interval_normal_hari,days_since_last_order,recency_ratio,"
-        "revenue_at_risk,salesperson_utama,channel_utama,"
+        "revenue_at_risk,salesperson_utama,salesperson_history,kode_c,channel_utama,"
         "kategori_favorit,item_favorit,item_favorit_desc,sub_item_favorit")
     # status recency dihitung live (menggantikan Active/Overdue/Lost lama)
     for c in dc:
         c["status"] = status_recency(c.get("days_since_last_order"))
+    # cakupan pemegang (RBAC): customer masuk bila PERNAH dipegang salah satu SP di 'holders'
+    # (pemegang saat ini ATAU ada di riwayat pemegang) -> satu customer bisa tampil di >1 SP.
+    hset = {h.strip().lower() for h in (holders or "").split(",") if h.strip()} or None
+    def ever_held(c):
+        s = set()
+        su = (c.get("salesperson_utama") or "").strip().lower()
+        if su: s.add(su)
+        for h in (c.get("salesperson_history") or []):
+            nm = (h.get("slp_name") or "").strip().lower()
+            if nm: s.add(nm)
+        return s
     def keep(c):
+        if hset is not None and not (ever_held(c) & hset): return False
         if tier and tier!="all" and c.get("tier")!=tier: return False
         if status and status!="all":
             if status == "Perhatian":
